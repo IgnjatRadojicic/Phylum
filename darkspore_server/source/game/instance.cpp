@@ -622,15 +622,14 @@ namespace Game {
 			combatEvent.mDirection = glm::normalize(offset);
 		}
 
-		const auto [landed, damage, critical] = target->TakeDamage(
+		const auto result = target->TakeDamage(
 			nullptr, damageRange, DamageType::Life, DamageSource::Physical, 0.f, Descriptors::IsBasic, 1.f, combatEvent.mDirection
 		);
+		const float damage = result.damage;
 
 		combatEvent.mDeltaHealth = damage;
 		combatEvent.mIntegerHpChange = static_cast<int32_t>(damage);
-		if (critical) {
-			combatEvent.mFlags = CombatEventFlags::Critical;
-		}
+		combatEvent.mFlags = CombatFlagsFor(result);
 		SendCombatEvent(combatEvent);
 
 		DamageReport hit;

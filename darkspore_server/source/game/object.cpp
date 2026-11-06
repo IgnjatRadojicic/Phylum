@@ -6,6 +6,8 @@
 #include "catalyst.h"
 #include "config.h"
 #include "castpayment.h"
+#include "difficultytuning.h"
+#include "magicnumbers.h"
 
 #include "sporenet/part.h"
 
@@ -1430,35 +1432,71 @@ namespace Game {
 		return false;
 	}
 
-	std::tuple<bool, float, bool> Object::TakeDamage(
+	DamageResult Object::TakeDamage(
 		const AttributesPtr& attackerAttributes,
 		const std::tuple<float, float>& damageRange,
 		DamageType damageType, DamageSource damageSource, float damageCoefficient,
 		Descriptors descriptors, float damageMultiplier, const glm::vec3& direction
 	) {
-		// Move this to Instance?
+		DamageResult result;
+		const auto descriptorFlags = utils::enum_wrapper { descriptors };
+		const auto& numbers = MagicNumbers::Game();
 
-		// calculate damage stuff
-		float damage = 0;
-		bool critical = false;
-		if (damage <= 0) {
-			damage = utils::random::get<float>(std::get<0>(damageRange), std::get<1>(damageRange));
-
-			critical = CheckCritical(attackerAttributes);
-			if (critical) {
-				auto criticalIncrease = attackerAttributes->GetValue(AttributeType::CriticalDamageIncrease);
-				damage *= criticalIncrease + 1;
-			}
+		// Whether it lands at all
+		HitDefense defense;
+		defense.physicalDefense = GetAttributeValue(AttributeType::PhysicalDefense);
+		defense.energyDefense = GetAttributeValue(AttributeType::EnergyDefense);
+		defense.immune = GetAttributeValue(AttributeType::Immune) > 0;
+		result.outcome = HitRoll::Roll(
+			damageSource == DamageSource::Physical, descriptorFlags.test(Descriptors::IsDoT), defense,
+			GetRatingPerPercent(), numbers.dodgePercentCap, numbers.resistPercentCap, utils::random::get<float>(0.f, 1.f)
+		);
+		if (result.outcome != HitOutcome::Hit) {
+			return result;
 		}
-		
+
+		// How hard. The coefficient is not applied yet (see docs/damage.md).
+		float damage = utils::random::get<float>(std::get<0>(damageRange), std::get<1>(damageRange));
+		damage *= std::max(0.f, damageMultiplier);
+
+		result.critical = CheckCritical(attackerAttributes);
+		if (result.critical) {
+			damage *= HitRoll::CriticalMultiplier(numbers.criticalDamageBonus, attackerAttributes->GetValue(AttributeType::CriticalDamageIncrease));
+		}
+
+		// Reductions are fractions (a full physical shield sets 1). Approximate: each one
+		// takes its share of what is left.
+		auto reduce = [&damage, this](AttributeType attribute) {
+			damage *= 1.f - std::clamp(GetAttributeValue(attribute), 0.f, 1.f);
+		};
+		reduce(AttributeType::DamageReduction);
+		reduce(damageSource == DamageSource::Physical ? AttributeType::PhysicalDamageReduction : AttributeType::EnergyDamageReduction);
+		if (descriptorFlags.test(Descriptors::IsAoE)) {
+			reduce(AttributeType::AoEResistance);
+		}
+
+		result.landed = true;
+		result.damage = damage;
 		if (damage > 0) {
 			SetHealth(GetHealth() - damage);
 			if (GetHealth() <= 0) {
-				GetGame().OnObjectDeath(shared_from_this(), critical, false);
+				GetGame().OnObjectDeath(shared_from_this(), result.critical, false);
 			}
 		}
+		return result;
+	}
 
-		return { true, damage, critical };
+	CombatEventFlags CombatFlagsFor(const DamageResult& result) {
+		switch (result.outcome) {
+			case HitOutcome::Dodged: return CombatEventFlags::Dodge;
+			case HitOutcome::Resisted: return CombatEventFlags::Resist;
+			case HitOutcome::Immune: return CombatEventFlags::Immune;
+			default: return result.critical ? CombatEventFlags::Critical : CombatEventFlags::None;
+		}
+	}
+
+	float Object::GetRatingPerPercent() const {
+		return DifficultyTuning::Game().GetRatingConversion(GetGame().GetChainData().GetLevelIndex());
 	}
 
 	std::tuple<float, bool> Object::Heal(
@@ -1542,12 +1580,10 @@ if (health <= 0) {
 			return false;
 		}
 
-		float value = 1.f;
-		if (attacker->GetPlayerIndex() != 0xFF) {
-			// value = DifficultyTuning::RatingConversion[0] - 4 + difficulty * 4;
-		}
-
-		return utils::random::get<float>(0.f, 1.f) < (attackerAttributes->GetValue(AttributeType::CriticalRating) / (value * 100.f));
+		// A hero's rating goes through the level's rating table, and anything else's counts in
+		// whole percents (from the client: RatingConversion is only read for players).
+		const float perPercent = attacker->GetPlayerIndex() != 0xFF ? GetRatingPerPercent() : 0.f;
+		return utils::random::get<float>(0.f, 1.f) < HitRoll::CriticalChance(attackerAttributes->GetValue(AttributeType::CriticalRating), perPercent);
 	}
 
 	void Object::DistributeDamageAmongSquad(float damage) {

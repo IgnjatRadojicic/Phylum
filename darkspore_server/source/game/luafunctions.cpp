@@ -865,12 +865,9 @@ namespace LuaFunction {
 					combatEvent.mDirection
 				);
 
-				combatEvent.mDeltaHealth = std::get<1>(result);
+				combatEvent.mDeltaHealth = result.damage;
 				combatEvent.mIntegerHpChange = static_cast<int32_t>(combatEvent.mDeltaHealth);
-
-				if (std::get<2>(result)) {
-					combatEvent.mFlags = Game::CombatEventFlags::Critical;
-				}
+				combatEvent.mFlags = Game::CombatFlagsFor(result);
 
 				game.SendCombatEvent(combatEvent);
 
@@ -878,12 +875,12 @@ namespace LuaFunction {
 				Game::DamageReport hit;
 				hit.victim = object->GetId();
 				hit.attacker = attacker ? attacker->GetId() : 0;
-				hit.amount = std::get<1>(result);
+				hit.amount = result.damage;
 				hit.descriptors = static_cast<uint32_t>(descriptors);
 				hit.damageType = static_cast<uint32_t>(damageType);
 				hit.damageSource = static_cast<uint32_t>(damageSource);
 				game.ReportDamage(hit);
-				return result;
+				return std::make_tuple(result.landed, result.damage, result.critical);
 			}
 
 			return std::make_tuple(false, 0.f, false);

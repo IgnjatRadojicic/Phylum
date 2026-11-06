@@ -6,8 +6,10 @@
 #include "noun.h"
 #include "attributes.h"
 #include "attributestack.h"
+#include "hitroll.h"
 #include "locomotion.h"
 #include "lua.h"
+#include "serverevent.h"
 
 #include <map>
 #include <tuple>
@@ -19,6 +21,18 @@ namespace SporeNet { class Part; }
 namespace Game {
 	// Cooldown = tuple(Start + milliseconds, milliseconds)
 	using Cooldown = std::tuple<uint64_t, uint32_t>;
+
+	// DamageResult
+	// One hit: whether it landed (see HitRoll for dodge, resist and immune), and how hard.
+	struct DamageResult {
+		bool landed = false;
+		float damage = 0;
+		bool critical = false;
+		HitOutcome outcome = HitOutcome::Hit;
+	};
+
+	// The client's combat flag for a hit: Critical, Dodge, Resist or Immune.
+	CombatEventFlags CombatFlagsFor(const DamageResult& result);
 
 	class Object;
 	class ObjectManager;
@@ -462,7 +476,7 @@ namespace Game {
 			// Combatant functions
 			bool IsOverdriveCharged() const;
 
-			std::tuple<bool, float, bool> TakeDamage(
+			DamageResult TakeDamage(
 				const AttributesPtr& attackerAttributes,
 				const std::tuple<float, float>& damageRange,
 				DamageType damageType, DamageSource damageSource, float damageCoefficient,
@@ -479,6 +493,8 @@ namespace Game {
 			);
 
 			bool CheckCritical(const AttributesPtr& attackerAttributes) const;
+			// Rating per percent of dodge, resist and critical chance at this level.
+			float GetRatingPerPercent() const;
 			void DistributeDamageAmongSquad(float damage);
 
 			int32_t CanUseAbility(
