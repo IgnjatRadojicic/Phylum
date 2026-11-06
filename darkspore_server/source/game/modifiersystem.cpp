@@ -118,7 +118,9 @@ namespace Game {
 	void ModifierSystem::Start(uint32_t id, sol::table context) {
 		const auto instance = mManager.Get(id);
 
+		// Abilities have instance numbers too, and they can equal this id.
 		context["instanceId"] = id;
+		context["modifierId"] = id;
 		mRuns[id].context = sol::main_table(context);
 
 		if (const auto object = mGame.GetObjectManager().Get(instance->agent)) {

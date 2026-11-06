@@ -53,6 +53,14 @@ namespace {
 			nModifier.registered[nUtil.SPID("ModifierCheckHelper")] = nil
 		end
 
+		-- An ability has an instance number of its own, which can equal a modifier's id.
+		function ModifierCheckAbilityChange(agent, abilityInstance)
+			nThread.Create(agent, function()
+				CastContext.Set({ instanceId = abilityInstance })
+				nAttribute.AddAttributeModifier(agent, nAttributeType.Strength, 5)
+			end)
+		end
+
 		function ModifierCheckImmunityDetails(agent, guid)
 			local modifier = nModifier.registered[guid]
 			return "number=" .. tostring(nAttributeType.ImmuneToSlow)
@@ -101,6 +109,7 @@ namespace {
 				CheckDeathEndsIt(slow);
 				CheckScriptCanEndIt(slow);
 				CheckDestroyedAgentLeavesNothing(slow);
+				CheckAbilityChangeOutlivesModifier(slow);
 				CheckDeactivateCanDeleteObjects(slow);
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
@@ -284,6 +293,29 @@ namespace {
 				const auto leaked = Manager().GetAll(carrierId).size();
 				Report("deactivate-can-delete-objects", id != 0 && left == 0 && leaked == 0 && Manager().GetAll(agentId).empty(),
 					"left=" + std::to_string(left) + " leaked=" + std::to_string(leaked));
+			}
+
+			void EndNow(uint32_t id) {
+				mGame.GetModifiers().MarkForDelete(id);
+				mGame.GetModifiers().Update();
+			}
+
+			float Strength(const Game::ObjectPtr& object) {
+				return object->GetAttributeValue(Game::AttributeType::Strength);
+			}
+
+			void CheckAbilityChangeOutlivesModifier(uint32_t slow) {
+				auto agent = Spawn();
+				auto caster = Spawn();
+				const float before = Strength(agent);
+
+				const auto id = Request(agent, caster, slow);
+				sol::protected_function change = mState["ModifierCheckAbilityChange"];
+				change(agent->GetId(), id);
+				EndNow(id);
+
+				Report("ability-change-outlives-modifier", id != 0 && Strength(agent) == before + 5,
+					"before=" + std::to_string(before) + " after=" + std::to_string(Strength(agent)));
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.

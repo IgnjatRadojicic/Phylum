@@ -449,7 +449,7 @@ namespace {
 				return id
 			end
 			local context = CastContext.Get()
-			return context and context.instanceId or 0
+			return context and context.modifierId or 0
 		end
 
 		-- A script can set a function by its nAbilityFns number or by its name
