@@ -17,6 +17,8 @@
 
 #include "installer.h"
 
+#include <boost/system/system_error.hpp>
+
 #include <iostream>
 #include <cstring>
 #include <fstream>
@@ -136,21 +138,28 @@ bool Application::OnInit() {
 
 	const auto ip = utils::net::resolve_ip(host, http_port);
 
-	// Blaze
-	mRedirectorServer = std::make_unique<Blaze::Server>(mIoService, ip, redirector_port);
-	mBlazeServer = std::make_unique<Blaze::Server>(mIoService, ip, blaze_port);
+	// A port that is already taken throws here; usually another recap_server is still running.
+	try {
+		// Blaze
+		mRedirectorServer = std::make_unique<Blaze::Server>(mIoService, ip, redirector_port);
+		mBlazeServer = std::make_unique<Blaze::Server>(mIoService, ip, blaze_port);
 
-	mPssServer = std::make_unique<Blaze::Server>(mIoService, ip, pss_port);
-	mTickServer = std::make_unique<Blaze::Server>(mIoService, ip, tick_port);
-	mTelemetryServer = std::make_unique<Blaze::Server>(mIoService, ip, telemetry_port);
+		mPssServer = std::make_unique<Blaze::Server>(mIoService, ip, pss_port);
+		mTickServer = std::make_unique<Blaze::Server>(mIoService, ip, tick_port);
+		mTelemetryServer = std::make_unique<Blaze::Server>(mIoService, ip, telemetry_port);
 
-	// QoS
-	mQosServer = std::make_unique<QoS::Server>(mIoService, ip, qos_port);
+		// QoS
+		mQosServer = std::make_unique<QoS::Server>(mIoService, ip, qos_port);
 
-	// HTTP
-	mHttpServer = std::make_unique<HTTP::Server>(mIoService, ip, http_port);
-	mHttpTelemetryServer = std::make_unique<HTTP::Server>(mIoService, ip, http_telemetry_port);
-	mHttpQosServer = std::make_unique<HTTP::Server>(mIoService, ip, http_qos_port);
+		// HTTP
+		mHttpServer = std::make_unique<HTTP::Server>(mIoService, ip, http_port);
+		mHttpTelemetryServer = std::make_unique<HTTP::Server>(mIoService, ip, http_telemetry_port);
+		mHttpQosServer = std::make_unique<HTTP::Server>(mIoService, ip, http_qos_port);
+	} catch (const boost::system::system_error& e) {
+		std::cout << "Could not open the server ports: " << e.what() << std::endl;
+		std::cout << "Is another recap_server already running? Close it and start again." << std::endl;
+		return false;
+	}
 
 	const auto& router = mHttpServer->get_router();
 	mHttpTelemetryServer->set_router(router);
