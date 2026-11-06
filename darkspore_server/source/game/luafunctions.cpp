@@ -2063,6 +2063,7 @@ namespace Game {
 		object["GetHealth"] = &Object::GetHealth;
 		object["GetMaxHealth"] = &Object::GetMaxHealth;
 		object["SetHealth"] = &Object::SetHealth;
+		object["Kill"] = &Object::Kill;
 
 		object["GetMana"] = &Object::GetMana;
 		object["GetMaxMana"] = &Object::GetMaxMana;

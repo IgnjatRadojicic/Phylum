@@ -1256,6 +1256,15 @@ namespace Game {
 		}
 	}
 
+	void Object::Kill() {
+		if (!HasCombatantData() || GetHealth() <= 0) {
+			return;
+		}
+
+		SetHealth(0);
+		GetGame().OnObjectDeath(shared_from_this(), false, false);
+	}
+
 	float Object::GetMana() const {
 		if (HasCombatantData()) {
 			return mCombatantData->mManaPoints;

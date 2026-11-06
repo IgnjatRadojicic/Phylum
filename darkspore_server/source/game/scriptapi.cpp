@@ -150,8 +150,19 @@ namespace {
 				cursorPosition = cursorPosition,
 				rank = rank or 1,
 				sequenceIndex = step,
-				instanceId = nextInstanceId
+				instanceId = nextInstanceId,
+				startTime = nGameSimulator.GetGameTime()
 			}
+		end
+
+		-- Seconds since the running cast or modifier began. Its threads share it, so a
+		-- handler can set a deadline that the modifier's own loop then checks.
+		function nThread.GetDurationElapsed()
+			local cast = currentCast()
+			if cast and cast.startTime then
+				return nGameSimulator.GetGameTime() - cast.startTime
+			end
+			return 0
 		end
 
 		-- The server starts a cast through ability.castTick, which sets up the cast
@@ -384,6 +395,25 @@ namespace {
 			return 0, 0, 0
 		end
 
+		-- The server keeps no terrain, so where an object stands is already on the ground.
+		nGameObject.GetGroundPosition = nGameObject.GetPosition
+
+		local function forward(method, fallback)
+			return function(id, ...)
+				local object = get(id)
+				if object then
+					return object[method](object, ...)
+				end
+				return fallback
+			end
+		end
+
+		nGameObject.GetManaPoints = forward("GetMana", 0)
+		nGameObject.GetMaxManaPoints = forward("GetMaxMana", 0)
+		nGameObject.SetManaPoints = forward("SetMana")
+		nGameObject.GetIsStealthed = forward("IsStealthed", false)
+		nGameObject.KillObject = forward("Kill")
+
 		-- Scripts never read these four values, only hand them back to the functions here.
 		function nGameObject.GetOrientation(id)
 			local object = get(id)
@@ -563,6 +593,7 @@ namespace {
 
 		function ModifierApi.Start(context)
 			CastContext.Set(context)
+			context.startTime = nGameSimulator.GetGameTime()
 			local modifier = context.ability
 			local activate = scriptFunction(modifier, nAbilityFns.Activate, "activate", "hasActivate")
 			if activate then

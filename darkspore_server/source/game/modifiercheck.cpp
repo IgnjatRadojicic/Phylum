@@ -299,6 +299,7 @@ namespace {
 				CheckDamageReachesHandlers();
 				CheckThornsHitsMeleeAttackerBack();
 				CheckMobPassiveStartsOnce();
+				CheckKillObjectEndsPassive();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
 				forget();
@@ -630,6 +631,23 @@ namespace {
 					"running=" + std::to_string(running.size()) + " second=" + std::to_string(second) +
 					" named=" + std::to_string(Game::PassiveModifiers::NamedBy(*mob->GetNoun())) +
 					" ai=" + std::to_string(mob->GetNoun()->GetAIDefinition() != nullptr));
+			}
+
+			// Bosses and pets end through nGameObject.KillObject, which must die like a killing hit.
+			void CheckKillObjectEndsPassive() {
+				auto mob = mGame.GetObjectManager().Create(utils::hash_id(passiveNounName));
+				if (!mob || !mob->GetNoun() || Game::PassiveModifiers(mLua).Start(mob) == 0) {
+					Report("kill-object-ends-passive", false, "no passive to end");
+					return;
+				}
+
+				sol::protected_function kill = mState["nGameObject"]["KillObject"];
+				const bool called = kill(mob->GetId()).valid();
+				mGame.GetModifiers().Update();
+
+				const auto left = Manager().GetAll(mob->GetId()).size();
+				Report("kill-object-ends-passive", called && mob->GetHealth() <= 0 && left == 0,
+					"health=" + std::to_string(mob->GetHealth()) + " left=" + std::to_string(left));
 			}
 
 			// The game's own thorns script, given a melee hit, hits the attacker back.

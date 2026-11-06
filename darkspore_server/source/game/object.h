@@ -409,6 +409,9 @@ namespace Game {
 			float GetMaxHealth() const;
 			void SetHealth(float newHealth);
 
+			// Dies the way a killing hit makes it die. Does nothing to the dead or to non-combatants.
+			void Kill();
+
 			float GetMana() const;
 			float GetMaxMana() const;
 			void SetMana(float newMana);
