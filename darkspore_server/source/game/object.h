@@ -6,7 +6,6 @@
 #include "noun.h"
 #include "attributes.h"
 #include "attributestack.h"
-#include "attributestack.h"
 #include "locomotion.h"
 #include "lua.h"
 
