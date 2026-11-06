@@ -29,6 +29,14 @@ The process of building the ReCap server with a Docker container can be executed
    ./build.sh
    ```
 
+## Tests
+`build.ps1` builds and runs the unit tests in `darkspore_server/tests`, and stops if one fails.
+
+To check that game scripts have not got worse, run this with the game installed:
+```powershell
+.\check-scripts.ps1 -GameBin "C:\Program Files (x86)\Steam\steamapps\common\Darkspore\DarksporeBin"
+```
+
 ## Windows
 Needs no Visual Studio install. From PowerShell, in `scripts/windows`:
 1. Download the tools. This accepts the Visual Studio license, and uses about 3 GB in `.tools`, or the folder given with `-ToolsDir`:

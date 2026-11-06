@@ -10,7 +10,8 @@ Multiplayer, PvP and public hosting are out of scope.
 
 - Run the game's own scripts and data. Do not rewrite game rules that the files already contain.
 - `scriptapi.cpp` only translates. Real behaviour goes in C++, in small classes with one job.
-- Check with `recap_server --check-scripts` before testing in game.
+- Every change passes the unit tests, which `build.ps1` runs, and `check-scripts.ps1`.
+- Add tests with new logic. The game is for judging look and feel, not routine checks.
 - Name server crashes from dumps and the linker map. Do not guess.
 - Never add game files to the repository.
 - Commit small steps as `feat(scope):` or `fix(scope):`.
