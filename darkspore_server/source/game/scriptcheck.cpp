@@ -205,7 +205,7 @@ namespace Game {
 
 		const auto game = GameManager::CreateGame();
 		game->CreateWorld();
-		Lua lua(*game);
+		Lua& lua = game->GetLua();
 		lua.SetGapLogPath(gapLogPath);
 		lua.Initialize();
 		lua.PreloadAbilities();

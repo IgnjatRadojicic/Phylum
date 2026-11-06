@@ -10,8 +10,10 @@
 #include "utils/functions.h"
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace {
@@ -87,6 +89,37 @@ namespace Game {
 		auto& objects = game.GetObjectManager();
 		const uint32_t mobNoun = utils::hash_id("ZelemBasicHybrid.Noun");
 		const uint32_t projectileNoun = utils::hash_id("Ability_Fireball.Noun");
+
+		// The game's own script, from the cast to the hit. Its waits follow the real clock.
+		float scriptLane = -500;
+		for (const char* abilityName : { "Fireball", "Frostbolt", "HomingFireball" }) {
+			scriptLane -= laneSpacing;
+			const auto& ability = lua.GetAbility(abilityName);
+			if (!ability) {
+				report << "FLIGHT script-" << abilityName << " wrong not found\n";
+				continue;
+			}
+
+			auto caster = objects.Create(mobNoun);
+			auto target = objects.Create(mobNoun);
+			caster->SetPosition(glm::vec3(0, scriptLane, 0));
+			caster->SetTeam(shooterTeam);
+			caster->SetAttributeValue(AttributeType::CooldownScale, 1);
+			target->SetPosition(glm::vec3(10, scriptLane, 0));
+			target->SetTeam(enemyTeam);
+
+			const float startingHealth = target->GetHealth();
+			const bool cast = ability->Tick(caster, target, target->GetPosition(), 1);
+			const bool castBlocked = !ability->Tick(caster, target, target->GetPosition(), 1);
+			for (int ticks = 0; ticks < 300 && target->GetHealth() >= startingHealth; ++ticks) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
+				game.Update();
+			}
+
+			const bool good = cast && castBlocked && target->GetHealth() < startingHealth;
+			report << "FLIGHT script-" << abilityName << (good ? " good" : " wrong") << " secondCastBlocked=" << castBlocked
+				<< " health=" << startingHealth << "->" << target->GetHealth() << "\n";
+		}
 
 		float lane = 0;
 		for (const auto& shot : GetShots()) {
