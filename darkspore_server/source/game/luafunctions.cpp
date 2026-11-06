@@ -1791,6 +1791,7 @@ namespace Game {
 
 				auto& parameters = locomotion->GetProjectileParameters();
 				parameters = LuaGetProjectileParameters(projectileParametersTable);
+				locomotion->BeginFlight(projectile->GetPosition());
 
 				projectile->SetLinearVelocity(parameters.mDirection * parameters.mSpeed);
 				projectile->SetAngularVelocity(parameters.mDirection * parameters.mSpinRate);
@@ -1868,7 +1869,11 @@ namespace Game {
 			glm::vec3 destination,
 			float height,
 			float flightTime,
-			float speed
+			float speed,
+			bool groundCollisionOnly,
+			int32_t bounces,
+			float restitution,
+			bool stopBounceOnCreatures
 		) {
 			auto thread = GetThread(L);
 			if (!thread) {
@@ -1882,20 +1887,21 @@ namespace Game {
 			}
 
 			// A lob with no ground to cover lands straight away.
-			const auto arc = Game::LobArc::Build(projectile->GetPosition(), destination, height, flightTime, speed);
+			auto arc = Game::LobArc::Build(projectile->GetPosition(), destination, height, flightTime, speed);
 			if (arc) {
+				arc->AddBounces(bounces, restitution);
 				projectile->SetMovementType(Game::MovementType::Lobbed);
 				projectile->SetLinearVelocity(arc->GetInitialVelocity());
-				projectile->GetLocomotionData()->StartLob(*arc, mGame.GetTime());
+				projectile->GetLocomotionData()->StartLob(*arc, mGame.GetTime(), groundCollisionOnly, stopBounceOnCreatures);
 			}
 
-			thread->set_resume_condition([&objectManager, id = projectile->GetId(), destination](lua_State* L, sol::variadic_results& results) {
+			thread->set_resume_condition([&objectManager, id = projectile->GetId(), landing = arc ? arc->GetLanding() : destination](lua_State* L, sol::variadic_results& results) {
 				const Game::ObjectPtr& object = objectManager.Get(id);
 				if (object && !object->GetLocomotionData()->HasLobFinished()) {
 					return false;
 				}
 
-				results.push_back({ L, sol::in_place, destination });
+				results.push_back({ L, sol::in_place, landing });
 				return true;
 			});
 

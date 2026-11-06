@@ -11,31 +11,26 @@ namespace {
 	// which of two stacked mobs is hit.
 	constexpr float distanceStep = 0.001f;
 
-	// How far along the path, from 0 to 1, a circle is first touched. The game is played on a
-	// plane, and a shot's height should not make it miss a mob it visibly crosses.
-	std::optional<float> FindEntry(const glm::vec2& from, const glm::vec2& to, const glm::vec2& center, float radius) {
-		const glm::vec2 path = to - from;
-		const glm::vec2 toCenter = center - from;
-		const float distanceSquared = glm::dot(toCenter, toCenter);
-		const float radiusSquared = radius * radius;
-		if (distanceSquared <= radiusSquared) {
-			return 0.f;
-		}
+	// How far along the path, from 0 to 1, a point first enters a box. Growing the target's box
+	// by the projectile's half size lets the projectile count as a point.
+	std::optional<float> FindEntry(const glm::vec3& from, const glm::vec3& path, const glm::vec3& minimum, const glm::vec3& maximum) {
+		float entry = 0;
+		float exit = 1;
+		for (int axis = 0; axis < 3; ++axis) {
+			if (path[axis] == 0) {
+				if (from[axis] < minimum[axis] || from[axis] > maximum[axis]) {
+					return std::nullopt;
+				}
+				continue;
+			}
 
-		const float lengthSquared = glm::dot(path, path);
-		if (lengthSquared == 0) {
-			return std::nullopt;
-		}
-
-		const float along = glm::dot(toCenter, path);
-		const float discriminant = along * along - lengthSquared * (distanceSquared - radiusSquared);
-		if (discriminant < 0) {
-			return std::nullopt;
-		}
-
-		const float entry = (along - std::sqrt(discriminant)) / lengthSquared;
-		if (entry < 0 || entry > 1) {
-			return std::nullopt;
+			const float first = (minimum[axis] - from[axis]) / path[axis];
+			const float second = (maximum[axis] - from[axis]) / path[axis];
+			entry = std::max(entry, std::min(first, second));
+			exit = std::min(exit, std::max(first, second));
+			if (entry > exit) {
+				return std::nullopt;
+			}
 		}
 		return entry;
 	}
@@ -44,17 +39,20 @@ namespace {
 // Game
 namespace Game {
 	// ProjectileSweep
-	ProjectileSweep::ProjectileSweep(const glm::vec3& from, const glm::vec3& to, float radius, uint32_t intendedId) :
-		mFrom(from), mTo(to), mRadius(radius), mIntendedId(intendedId) {}
+	ProjectileSweep::ProjectileSweep(const glm::vec3& from, const glm::vec3& to, const glm::vec3& halfExtent, uint32_t intendedId) :
+		mFrom(from), mTo(to), mHalfExtent(halfExtent), mIntendedId(intendedId) {}
 
 	std::vector<SweepHit> ProjectileSweep::Find(const std::vector<SweepTarget>& targets) const {
-		const float pathLength = glm::length(mTo - mFrom);
+		const glm::vec3 path = mTo - mFrom;
+		const float pathLength = glm::length(path);
 
 		std::vector<SweepHit> hits;
 		for (const auto& target : targets) {
-			const auto entry = FindEntry(mFrom, mTo, target.position, mRadius + target.radius);
+			const glm::vec3 minimum = target.position + target.minimum - mHalfExtent;
+			const glm::vec3 maximum = target.position + target.maximum + mHalfExtent;
+			const auto entry = FindEntry(mFrom, path, minimum, maximum);
 			if (entry) {
-				hits.push_back({ target.id, *entry * pathLength, mFrom + (mTo - mFrom) * *entry });
+				hits.push_back({ target.id, *entry * pathLength, mFrom + path * *entry });
 			}
 		}
 

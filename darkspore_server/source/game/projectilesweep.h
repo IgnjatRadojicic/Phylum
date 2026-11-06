@@ -11,10 +11,12 @@
 // Game
 namespace Game {
 	// SweepTarget
+	// A box around a mob. The minimum and maximum are relative to its position.
 	struct SweepTarget {
 		uint32_t id = 0;
 		glm::vec3 position {};
-		float radius = 0;
+		glm::vec3 minimum {};
+		glm::vec3 maximum {};
 	};
 
 	// SweepHit
@@ -25,19 +27,19 @@ namespace Game {
 	};
 
 	// ProjectileSweep
-	// Finds what a projectile touches along one tick of movement, in the order it touches them.
-	// Testing the whole path means a fast shot cannot jump over a target between ticks. Mobs at
-	// the same point always come back in the same order: the intended target, then lowest id.
+	// Finds what a projectile's box touches along one tick of movement, in the order it touches
+	// them. Testing the whole path means a fast shot cannot jump over a target between ticks. Mobs
+	// at the same point always come back in the same order: the intended target, then lowest id.
 	class ProjectileSweep {
 		public:
-			ProjectileSweep(const glm::vec3& from, const glm::vec3& to, float radius, uint32_t intendedId);
+			ProjectileSweep(const glm::vec3& from, const glm::vec3& to, const glm::vec3& halfExtent, uint32_t intendedId);
 
 			std::vector<SweepHit> Find(const std::vector<SweepTarget>& targets) const;
 
 		private:
 			glm::vec3 mFrom;
 			glm::vec3 mTo;
-			float mRadius;
+			glm::vec3 mHalfExtent;
 			uint32_t mIntendedId;
 	};
 }

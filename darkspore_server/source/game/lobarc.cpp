@@ -26,6 +26,7 @@ namespace Game {
 		arc.mPlaneDirection = glm::vec3(plane / planeDistance, 0);
 		arc.mHeight = height;
 		arc.mDuration = duration;
+		arc.mTotalDuration = duration;
 		arc.mPlaneSpeed = planeDistance / duration;
 
 		const float rise = destination.z - start.z;
@@ -55,15 +56,32 @@ namespace Game {
 		return arc;
 	}
 
+	void LobArc::AddBounces(int32_t count, float restitution) {
+		mBounces = std::max(count, 0);
+		mBounceRestitution = restitution;
+
+		mTotalDuration = mDuration;
+		float bounce = mDuration;
+		for (int32_t index = 0; index < mBounces; ++index) {
+			bounce *= restitution;
+			mTotalDuration += bounce;
+		}
+	}
+
 	glm::vec3 LobArc::GetPositionAt(float seconds) const {
 		if (seconds >= mDuration) {
-			return mDestination;
+			// Bouncing carries it on along the ground past where it first landed.
+			return mDestination + mPlaneDirection * (mPlaneSpeed * (std::min(seconds, mTotalDuration) - mDuration));
 		}
 
 		const float distance = mPlaneSpeed * std::max(seconds, 0.f);
 		glm::vec3 position = mStart + mPlaneDirection * distance;
 		position.z = mStart.z + mUpLinear * distance + mUpQuadratic * distance * distance;
 		return position;
+	}
+
+	glm::vec3 LobArc::GetLanding() const {
+		return GetPositionAt(mTotalDuration);
 	}
 
 	glm::vec3 LobArc::GetInitialVelocity() const {

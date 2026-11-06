@@ -5,6 +5,7 @@
 // Include
 #include <glm/glm.hpp>
 
+#include <cstdint>
 #include <optional>
 
 // Game
@@ -18,7 +19,11 @@ namespace Game {
 			// there is no ground to cover or no way to work out the time.
 			static std::optional<LobArc> Build(const glm::vec3& start, const glm::vec3& destination, float height, float flightTime, float speed);
 
+			// Approximate: each bounce keeps its ground speed and is shorter by the restitution.
+			void AddBounces(int32_t count, float restitution);
+
 			glm::vec3 GetPositionAt(float seconds) const;
+			glm::vec3 GetLanding() const;
 			glm::vec3 GetInitialVelocity() const;
 
 		public:
@@ -28,9 +33,13 @@ namespace Game {
 
 			float mHeight = 0;
 			float mDuration = 0;
+			float mTotalDuration = 0;
+			float mBounceRestitution = 0;
 			float mPlaneSpeed = 0;
 			float mUpLinear = 0;
 			float mUpQuadratic = 0;
+
+			int32_t mBounces = 0;
 	};
 }
 

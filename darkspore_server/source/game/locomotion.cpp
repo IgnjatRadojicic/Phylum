@@ -777,28 +777,26 @@ LAB_009ef634:
 		return false;
 	}
 
-	float Locomotion::GetProjectileRadius() const {
+	glm::vec3 Locomotion::GetProjectileHalfExtent() const {
 		const auto& noun = mObject->GetNoun();
 		if (!noun) {
-			return 0;
+			return glm::zero<glm::vec3>();
 		}
 
 		const auto& projectile = noun->GetProjectileData();
 		if (!projectile) {
-			return 0;
+			return glm::zero<glm::vec3>();
 		}
 
 		const auto& volume = projectile->GetCreatureCollisionVolume();
 		if (!volume) {
-			return 0;
+			return glm::zero<glm::vec3>();
 		}
 
 		if (volume->GetShape() == CollisionShape::Sphere) {
-			return volume->GetSphereRadius();
+			return glm::vec3(volume->GetSphereRadius());
 		}
-
-		const auto& extents = volume->GetBoxExtents();
-		return std::max(extents.x, extents.y) * 0.5f;
+		return volume->GetBoxExtents() * 0.5f;
 	}
 
 	std::vector<SweepHit> Locomotion::SweepCreatures(const glm::vec3& from, const glm::vec3& to) {
@@ -806,17 +804,24 @@ LAB_009ef634:
 			return {};
 		}
 
-		const float radius = GetProjectileRadius();
-		const BoundingSphere area((from + to) * 0.5f, glm::length(to - from) * 0.5f + radius + largestTargetRadius);
+		const glm::vec3 halfExtent = GetProjectileHalfExtent();
+		const BoundingSphere area((from + to) * 0.5f, glm::length(to - from) * 0.5f + glm::length(halfExtent) + largestTargetRadius);
 
 		std::vector<SweepTarget> targets;
 		for (const auto& object : mObject->GetGame().GetObjectManager().GetObjectsInRadius(area, { NounType::Creature })) {
 			if (!mHitIds.contains(object->GetId()) && CanHit(object)) {
-				targets.push_back({ object->GetId(), object->GetPosition(), std::max(object->GetFootprintRadius(), smallestTargetRadius) });
+				// The centre point is halfway up the mob, so it gives the height of the box.
+				const float width = std::max(object->GetFootprintRadius(), smallestTargetRadius);
+				const float height = (object->GetCenterPoint().z - object->GetPosition().z) * 2;
+				targets.push_back({ object->GetId(), object->GetPosition(), glm::vec3(-width, -width, 0), glm::vec3(width, width, height > 0 ? height : width * 2) });
 			}
 		}
 
-		return ProjectileSweep(from, to, radius, mTargetId).Find(targets);
+		return ProjectileSweep(from, to, halfExtent, mTargetId).Find(targets);
+	}
+
+	void Locomotion::BeginFlight(const glm::vec3& position) {
+		mFlightStart = position;
 	}
 
 	bool Locomotion::TakeProjectileHit(SweepHit& hit) {
@@ -829,7 +834,7 @@ LAB_009ef634:
 		return true;
 	}
 
-	void Locomotion::StartLob(const LobArc& arc, uint64_t startTime) {
+	void Locomotion::StartLob(const LobArc& arc, uint64_t startTime, bool groundCollisionOnly, bool stopBounceOnCreatures) {
 		mLobArc = arc;
 		mLobSeconds = 0;
 
@@ -839,7 +844,10 @@ LAB_009ef634:
 		mLobParameters.mPlaneVelocity = arc.mPlaneSpeed;
 		mLobParameters.mHeight = arc.mHeight;
 		mLobParameters.mDuration = arc.mDuration;
-		mLobParameters.mGroundCollisionOnly = true;
+		mLobParameters.mBounceNumber = arc.mBounces;
+		mLobParameters.mBounceRestitution = arc.mBounceRestitution;
+		mLobParameters.mGroundCollisionOnly = groundCollisionOnly;
+		mLobParameters.mStopBounceOnCreatures = stopBounceOnCreatures;
 		mLobParameters.mPlaneDirection = arc.mPlaneDirection;
 		mLobParameters.mPlaneLinear = arc.mPlaneSpeed;
 		mLobParameters.mUpLinear = arc.mUpLinear;
@@ -854,7 +862,7 @@ LAB_009ef634:
 	}
 
 	bool Locomotion::HasLobFinished() const {
-		return !mLobArc || mLobSeconds >= mLobArc->mDuration;
+		return !mLobArc || mLobSeconds >= mLobArc->mTotalDuration;
 	}
 
 	// The client flies its own copy, so this position is only for where the shot lands.
@@ -899,10 +907,22 @@ LAB_009ef634:
 			movementSpeed = mObject->GetLinearVelocity() * acceleration;
 		}
 
+		// A shot goes no further than its range, and a contact right at the end of it is a miss.
+		const auto position = mObject->GetPosition();
+		const float step = glm::length(movementSpeed);
+		const float rangeLeft = mProjectileParameters.mRange - glm::length(position - mFlightStart);
+		const bool reachesRange = mProjectileParameters.mRange > 0 && step >= rangeLeft;
+		if (reachesRange && step > 0) {
+			movementSpeed *= std::max(rangeLeft, 0.f) / step;
+		}
+
 		// A normal shot stops at its first hit. A piercing shot keeps every hit, and scripts take
 		// them one at a time, so they wait here.
-		const auto position = mObject->GetPosition();
 		for (const auto& hit : SweepCreatures(position, position + movementSpeed)) {
+			if (reachesRange && hit.distance >= rangeLeft) {
+				continue;
+			}
+
 			mHitIds.insert(hit.id);
 			mPendingHits.push_back(hit);
 			mHasCollidedWithCreature = true;

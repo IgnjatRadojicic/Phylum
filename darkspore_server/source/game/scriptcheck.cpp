@@ -87,7 +87,7 @@ namespace Game {
 
 			-- Engine functions cannot take fake objects, so record calls to them instead.
 			local stubbed = {}
-			local safeTables = { nBit = true, nUtil = true }
+			local safeTables = { nBit = true, nUtil = true, nGameSimulator = true }
 			local adapterTables = { nLocomotion = true, nObjectManager = true, nMathUtil = true }
 			for tableName, value in pairs(_G) do
 				local isEngineTable = tableName:match("^n%u") or tableName == "Locomotion" or tableName == "Ability"

@@ -95,6 +95,33 @@ TEST_CASE("the launch velocity matches the ground speed") {
 	CHECK(arc->GetInitialVelocity().z == doctest::Approx(arc->mUpLinear));
 }
 
+TEST_CASE("a lob with no bounces stops at the destination") {
+	const auto arc = LobArc::Build(start, { 10, 0, 0 }, 4, 1, 0);
+
+	REQUIRE(arc);
+	CHECK(arc->mTotalDuration == doctest::Approx(1));
+	CHECK(arc->GetLanding().x == doctest::Approx(10));
+}
+
+TEST_CASE("bounces take longer and carry on past the destination") {
+	auto arc = LobArc::Build(start, { 10, 0, 0 }, 4, 1, 0);
+
+	REQUIRE(arc);
+	arc->AddBounces(2, 0.5f);
+	CHECK(arc->mTotalDuration == doctest::Approx(1.75f));
+	CHECK(arc->GetLanding().x == doctest::Approx(17.5f));
+	CHECK(arc->GetPositionAt(100).x == doctest::Approx(17.5f));
+}
+
+TEST_CASE("the first arc is the same with or without bounces") {
+	auto arc = LobArc::Build(start, { 10, 0, 0 }, 4, 1, 0);
+
+	REQUIRE(arc);
+	arc->AddBounces(4, 0.4f);
+	CHECK(arc->GetPositionAt(0.5f).z == doctest::Approx(4));
+	CHECK(arc->GetPositionAt(1).x == doctest::Approx(10));
+}
+
 TEST_CASE("a lob with no ground to cover or no time gives nothing") {
 	CHECK_FALSE(LobArc::Build(start, { 0, 0, 5 }, 4, 1, 0));
 	CHECK_FALSE(LobArc::Build(start, { 10, 0, 0 }, 4, 0, 0));

@@ -189,7 +189,7 @@ namespace Game {
 
 		// The game's own script, from the cast to the hit. Its waits follow the real clock.
 		float scriptLane = -500;
-		for (const char* abilityName : { "Fireball", "Frostbolt", "HomingFireball", "FireToss" }) {
+		for (const char* abilityName : { "Fireball", "Frostbolt", "HomingFireball", "FireToss", "Trapper_Grenade", "VoodooTempestBasic" }) {
 			scriptLane -= laneSpacing;
 			const auto& ability = lua.GetAbility(abilityName);
 			if (!ability) {
@@ -202,6 +202,7 @@ namespace Game {
 			caster->SetPosition(glm::vec3(0, scriptLane, 0));
 			caster->SetTeam(shooterTeam);
 			caster->SetAttributeValue(AttributeType::CooldownScale, 1);
+			caster->GetAttributeData()->SetWeaponDamage(6, 12);
 			target->SetPosition(glm::vec3(10, scriptLane, 0));
 			target->SetTeam(enemyTeam);
 

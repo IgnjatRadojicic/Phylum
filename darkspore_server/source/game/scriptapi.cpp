@@ -1,5 +1,6 @@
 
 // Include
+#include "instance.h"
 #include "lua.h"
 #include "scriptgaps.h"
 #include "scriptsource.h"
@@ -35,6 +36,9 @@ namespace {
 			return nUtil.GetAsset(name)
 		end
 		function nModifier.RequestModifier() end
+		function nModifier.CheckForModifierDebuffDescriptor()
+			return false
+		end
 
 		-- Scripts require files as "Folder!Name.lua"
 		table.insert(package.loaders, 2, function(name)
@@ -484,8 +488,9 @@ namespace {
 
 		-- Scripts read where the shot landed as three numbers
 		nThread.EngineWaitForLobbedProjectile = nThread.WaitForLobbedProjectile
-		function nThread.WaitForLobbedProjectile(agent, projectile, x, y, z, height, flightTime, speed)
-			local landed = nThread.EngineWaitForLobbedProjectile(projectile, vector(x, y, z), height or 0, flightTime or 0, speed or 0)
+		function nThread.WaitForLobbedProjectile(agent, projectile, x, y, z, height, flightTime, speed, groundOnly, bounces, restitution, stopOnCreatures)
+			local landed = nThread.EngineWaitForLobbedProjectile(projectile, vector(x, y, z), height or 0, flightTime or 0, speed or 0,
+				groundOnly ~= false, bounces or 0, restitution or 0, stopOnCreatures == true)
 			if landed then
 				return landed.x, landed.y, landed.z
 			end
@@ -543,6 +548,14 @@ namespace Game {
 		// Scripts keep an asset as an id and hand it back to the engine.
 		sol::table util = mState["nUtil"];
 		util["GetAsset"] = preload;
+
+		sol::table simulator = mState.create_named_table("nGameSimulator");
+		simulator["GetGameTime"] = [this]() {
+			return GetGame().GetTime() / 1000.0;
+		};
+		simulator["IsChainGame"] = [] {
+			return false;
+		};
 
 		sol::table bitOperations = mState.create_named_table("nBit");
 		bitOperations["Or"] = [](sol::variadic_args values) {

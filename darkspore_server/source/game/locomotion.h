@@ -167,8 +167,11 @@ namespace Game {
 			bool HasCollidedWithCreature() const;
 			void SetHasCollidedWithCreature(bool hasCollided);
 
+			// Marks where a shot's range is measured from.
+			void BeginFlight(const glm::vec3& position);
+
 			// Sends a lobbed projectile along an arc, from the given game time.
-			void StartLob(const LobArc& arc, uint64_t startTime);
+			void StartLob(const LobArc& arc, uint64_t startTime, bool groundCollisionOnly, bool stopBounceOnCreatures);
 			bool HasLobFinished() const;
 
 			// Gives the next creature this projectile hit, if one is waiting.
@@ -209,7 +212,7 @@ namespace Game {
 
 		private:
 			bool CanHit(const ObjectPtr& collidingObject) const;
-			float GetProjectileRadius() const;
+			glm::vec3 GetProjectileHalfExtent() const;
 			std::vector<SweepHit> SweepCreatures(const glm::vec3& from, const glm::vec3& to);
 			void SteerToTarget();
 			void FlyLob(float deltaTime);
@@ -251,6 +254,8 @@ namespace Game {
 
 			bool mHasCollidedWithCreature = false;
 			bool mHasCollided = false;
+
+			glm::vec3 mFlightStart {};
 
 			std::optional<LobArc> mLobArc;
 			float mLobSeconds = 0;
