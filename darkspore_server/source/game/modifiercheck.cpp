@@ -166,6 +166,7 @@ namespace {
 				CheckMissingIdMarksNothing(slow);
 				CheckFullyResistedIsRefused(slow);
 				CheckReusedIdKeepsItsChanges(slow);
+				CheckResetAnimationReachesTheClient();
 				CheckDeactivateCanDeleteObjects(slow);
 				CheckDeactivateCanRequestItself();
 				CheckMarkedObjectsOutlastDeactivate();
@@ -501,6 +502,16 @@ namespace {
 				for (uint32_t running : Manager().GetAll(agent->GetId())) {
 					EndNow(running);
 				}
+			}
+
+			void CheckResetAnimationReachesTheClient() {
+				auto agent = Spawn();
+
+				mPackets->clear();
+				sol::protected_function reset = mState["nGameObject"]["ResetAnimationState"];
+				reset(agent->GetId());
+
+				Report("reset-animation-reaches-the-client", Saw("SetAnimationState"), "");
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.

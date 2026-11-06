@@ -662,6 +662,12 @@ namespace LuaFunction {
 			game.SendAnimationState(LuaGetObject(game.GetObjectManager(), objectValue), animationState, overlay.value_or(false), scale.value_or(1.f));
 		}
 
+		auto ResetAnimationState(sol::this_state L, sol::object objectValue) {
+			// State zero sends the object back to what it was doing.
+			auto& game = LuaGetGame(L);
+			game.SendAnimationState(LuaGetObject(game.GetObjectManager(), objectValue), 0);
+		}
+
 		auto SetAnimationStateToDeath(sol::this_state L, sol::object objectValue) {
 			// TODO: 
 		}
@@ -2067,6 +2073,7 @@ namespace Game {
 		};
 
 		object["SetAnimationState"] = &LuaFunction::Object::SetAnimationState;
+		object["ResetAnimationState"] = &LuaFunction::Object::ResetAnimationState;
 		object["SetAnimationStateToDeath"] = &LuaFunction::Object::SetAnimationStateToDeath;
 		object["SetAnimationStateToAggro"] = &LuaFunction::Object::SetAnimationStateToAggro;
 		object["SetGraphicsState"] = &LuaFunction::Object::SetGraphicsState;
