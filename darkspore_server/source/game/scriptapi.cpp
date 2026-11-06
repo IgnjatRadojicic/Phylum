@@ -1,6 +1,7 @@
 
 // Include
 #include "difficultytuning.h"
+#include "magicnumbers.h"
 #include "instance.h"
 #include "lua.h"
 #include "modifiersystem.h"
@@ -1183,6 +1184,8 @@ namespace Game {
 		tuning["DefenseRatingPerPercent"] = [this]() {
 			return DifficultyTuning::Game().GetRatingConversion(GetGame().GetChainData().GetLevelIndex());
 		};
+		tuning["DodgePercentCap"] = [] { return MagicNumbers::Game().dodgePercentCap; };
+		tuning["ResistPercentCap"] = [] { return MagicNumbers::Game().resistPercentCap; };
 
 		modifierEngine["AdoptThread"] = [this](sol::this_state L, uint32_t id) {
 			const auto thread = GetThread(L);
