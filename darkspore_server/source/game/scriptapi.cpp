@@ -101,8 +101,13 @@ namespace {
 		local sequenceSteps = {}
 		local nextInstanceId = 0
 
+		-- The main thread is no coroutine, so running gives nil there.
+		local function currentThread()
+			return running() or casts
+		end
+
 		local function currentCast()
-			return casts[running()]
+			return casts[currentThread()]
 		end
 
 		-- A thread started by an ability belongs to the same cast.
@@ -160,7 +165,7 @@ namespace {
 		CastContext = {
 			Get = currentCast,
 			Set = function(context)
-				casts[running()] = context
+				casts[currentThread()] = context
 			end
 		}
 
@@ -533,15 +538,12 @@ namespace {
 			end
 
 			rank = rank or 1
-			if not canUse(modifier, agent, initiator, rank) then
-				return kObjIDNone
-			end
 
 			local caster = get(initiator)
 			local source = caster or object
 			local debuffs = modifier.debuffDescriptors
 			local descriptors = modifier.descriptors
-			local id = ModifierEngine.Request({
+			local context = {
 				ability = modifier,
 				object = object,
 				initiator = caster,
@@ -552,7 +554,18 @@ namespace {
 				properties = { ... },
 				descriptors = descriptors or 0,
 				debuffDescriptors = debuffs or 0
-			}, {
+			}
+
+			-- It can read the request's properties, so it runs as the modifier it may become
+			local previous = CastContext.Get()
+			CastContext.Set(context)
+			local allowed = canUse(modifier, agent, initiator, rank)
+			CastContext.Set(previous)
+			if not allowed then
+				return kObjIDNone
+			end
+
+			local id = ModifierEngine.Request(context, {
 				guid = guid,
 				seconds = GetRankedValueHelper(modifier.duration or 0, rank) or 0,
 				maxStackCount = GetRankedValueHelper(modifier.maxStackCount or 0, rank) or 0,

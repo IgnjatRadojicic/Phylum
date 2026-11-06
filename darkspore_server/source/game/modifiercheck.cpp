@@ -60,6 +60,28 @@ namespace {
 			return nUtil.SPID("ModifierCheckWitness")
 		end
 
+		-- Reads a property of its own request, as modifier_pushpullboss does.
+		nModifier.RegisterModifier("ModifierCheckProperty", {
+			CanUseModifier = function()
+				ModifierCheckHelper.sawProperty = nModifier.GetFloatProperty(nil, 0)
+				return true
+			end
+		})
+
+		function ModifierCheckPropertyRequest(agent, result)
+			nThread.Create(agent, function()
+				local caller = { instanceId = 0 }
+				CastContext.Set(caller)
+				nModifier.RequestModifier(agent, agent, nUtil.SPID("ModifierCheckProperty"), nil, 1, 7)
+				result.restored = CastContext.Get() == caller
+			end)
+		end
+
+		-- Not in a thread, where coroutine.running gives nil.
+		function ModifierCheckPropertyRequestOnMain(agent)
+			nModifier.RequestModifier(agent, agent, nUtil.SPID("ModifierCheckProperty"), nil, 1, 8)
+		end
+
 		function ModifierCheckHelperGuid()
 			return nUtil.SPID("ModifierCheckHelper")
 		end
@@ -67,6 +89,7 @@ namespace {
 		function ModifierCheckForgetHelper()
 			nModifier.registered[nUtil.SPID("ModifierCheckHelper")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckWitness")] = nil
+			nModifier.registered[nUtil.SPID("ModifierCheckProperty")] = nil
 		end
 
 		-- An ability has an instance number of its own, which can equal a modifier's id.
@@ -146,6 +169,7 @@ namespace {
 				CheckDeactivateCanDeleteObjects(slow);
 				CheckDeactivateCanRequestItself();
 				CheckMarkedObjectsOutlastDeactivate();
+				CheckCanUseReadsItsOwnContext();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
 				forget();
@@ -454,6 +478,29 @@ namespace {
 
 				const bool sawFirst = helper.get_or("sawFirst", false);
 				Report("marked-objects-outlast-deactivate", sawFirst, "sawFirst=" + std::to_string(sawFirst));
+			}
+
+			void CheckCanUseReadsItsOwnContext() {
+				auto agent = Spawn();
+
+				sol::table helper = mState["ModifierCheckHelper"];
+				sol::table result = mState.create_table();
+
+				sol::protected_function request = mState["ModifierCheckPropertyRequest"];
+				request(agent->GetId(), result);
+				const double inThread = helper.get_or("sawProperty", 0.0);
+				const bool restored = result.get_or("restored", false);
+
+				sol::protected_function requestOnMain = mState["ModifierCheckPropertyRequestOnMain"];
+				sol::protected_function_result onMain = requestOnMain(agent->GetId());
+				const double mainValue = helper.get_or("sawProperty", 0.0);
+
+				Report("can-use-reads-its-own-context", inThread == 7 && restored && onMain.valid() && mainValue == 8,
+					"thread=" + std::to_string(inThread) + " restored=" + std::to_string(restored) + " main=" + std::to_string(mainValue));
+
+				for (uint32_t running : Manager().GetAll(agent->GetId())) {
+					EndNow(running);
+				}
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.
