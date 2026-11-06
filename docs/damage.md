@@ -37,7 +37,10 @@ dodged, resisted or stopped by immunity.
 
 ## Approximate
 
-These are judgement calls, to be replaced by reading the client's own damage code.
+These are judgement calls. The client cannot settle them: it never reads `CriticalDamageBonus`,
+the rating `Decrease` values or the leech values from MagicNumbers, so the damage roll was server
+code that did not ship. The client only reads the two caps (for `nTuning`) and the per-point
+values (to build stats, see below).
 
 - The reductions multiply. They might add up instead, or have a cap.
 - Damage over time is never dodged or resisted.
@@ -47,3 +50,19 @@ These are judgement calls, to be replaced by reading the client's own damage cod
 - A critical hit from a creature uses whole percents.
 - `Deflect` is never sent.
 - The `Dodged` ability event is not raised yet.
+
+## Stats the client builds
+
+The client works out a hero's stats as class base + primary stat × the MagicNumbers per-point value
+(`Darkspore.exe` 0x9e2580):
+
+| Attribute | Adds |
+|---|---|
+| MaxHealth | Strength × HealthPerPointofStrength (5) |
+| MaxMana | Mind × ManaPerPointofMind (1) |
+| PhysicalDefense | Dexterity × PhysicalDefensePerPointofDexterity (6) |
+| EnergyDefense | Mind × EnergyDefensePerPointofMind (6) |
+| CriticalRating | Dexterity × CritRatingPerPointofDexterity (4) |
+
+The server does not add these yet. It uses the class base values alone, so heroes dodge, resist
+and crit less than the client's tooltip says.
