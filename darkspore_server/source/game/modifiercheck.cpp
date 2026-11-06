@@ -61,6 +61,13 @@ namespace {
 			end)
 		end
 
+		function ModifierCheckMarkNothing(agent, running)
+			nThread.Create(agent, function()
+				CastContext.Set(ModifierEngine.GetContext(running))
+				nModifier.MarkForDelete(agent, nModifier.GetFirstModifierByGUID(agent, 1))
+			end)
+		end
+
 		function ModifierCheckImmunityDetails(agent, guid)
 			local modifier = nModifier.registered[guid]
 			return "number=" .. tostring(nAttributeType.ImmuneToSlow)
@@ -110,6 +117,7 @@ namespace {
 				CheckScriptCanEndIt(slow);
 				CheckDestroyedAgentLeavesNothing(slow);
 				CheckAbilityChangeOutlivesModifier(slow);
+				CheckMissingIdMarksNothing(slow);
 				CheckDeactivateCanDeleteObjects(slow);
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
@@ -316,6 +324,19 @@ namespace {
 
 				Report("ability-change-outlives-modifier", id != 0 && Strength(agent) == before + 5,
 					"before=" + std::to_string(before) + " after=" + std::to_string(Strength(agent)));
+			}
+
+			void CheckMissingIdMarksNothing(uint32_t slow) {
+				auto agent = Spawn();
+				auto caster = Spawn();
+
+				const auto id = Request(agent, caster, slow);
+				sol::protected_function mark = mState["ModifierCheckMarkNothing"];
+				mark(agent->GetId(), id);
+				mGame.GetModifiers().Update();
+
+				Report("missing-id-marks-nothing", id != 0 && Manager().Get(id), "");
+				EndNow(id);
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.

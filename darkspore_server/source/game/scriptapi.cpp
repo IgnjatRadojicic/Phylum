@@ -634,14 +634,19 @@ namespace {
 			return id ~= nil and ModifierEngine.GetContext(id) ~= nil
 		end
 
-		-- Scripts pass the agent and the instance, or only the instance, or nothing for themselves
+		-- Scripts pass the agent and the instance, or only the instance, or nothing for themselves.
+		-- They often look the instance up first, so one that is not running means nothing to end.
 		function nModifier.MarkForDelete(...)
 			local count = select("#", ...)
-			local id = select(count > 0 and count or 1, ...)
-			if type(id) ~= "number" or ModifierEngine.GetContext(id) == nil then
+			local id
+			if count == 0 then
 				id = instanceOf(nil)
+			else
+				id = select(count, ...)
 			end
-			ModifierEngine.MarkForDelete(id)
+			if type(id) == "number" and ModifierEngine.GetContext(id) ~= nil then
+				ModifierEngine.MarkForDelete(id)
+			end
 		end
 
 		function nModifier.GetFirstModifierByGUID(agent, guid)
