@@ -2,7 +2,7 @@
 
 A fork of the [Resurrection Capsule](https://github.com/Resurrection-Capsule/Resurrection-Capsule) (ReCap) server, a local server that lets you play Darkspore offline. This fork focuses on making combat work, tested on the Steam Demo (5.3.0.103).
 
-This is an unofficial community project. It is not affiliated with EA or Maxis, and it contains no game files. You need your own copy of Darkspore.
+This is an unofficial community project, not affiliated with EA or Maxis. You need your own copy of Darkspore. Game scripts are extracted from your own install. Some data and images inherited from upstream ReCap are still in this repository, and the aim is to remove them too.
 
 ## Status
 
@@ -62,7 +62,7 @@ The game's ability scripts hold the real combat logic, but they call a Lua API t
 
 ## Contributing
 
-Commits use the `feat(scope):` and `fix(scope):` style. Never commit game files, including anything extracted from them.
+Commits use the `feat(scope):` and `fix(scope):` style. Never add game files, including anything extracted from them.
 
 For the wider project, see the [ReCap repository](https://github.com/Resurrection-Capsule/Resurrection-Capsule) and [Discord](https://discord.gg/btfTw62).
 
