@@ -616,7 +616,7 @@ namespace Game {
 					SetAttributeValue(AttributeType::MovementSpeedBuff, value);
 				}
 
-				mAttributes->SetWeaponDamage(1, 5);
+				mAttributes->SetWeaponDamage(data->GetWeaponMinDamage(), data->GetWeaponMaxDamage());
 			}
 		} else {
 			// All nonplayer objects should have an AI object
