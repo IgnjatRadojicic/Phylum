@@ -118,6 +118,7 @@ namespace Game {
 		mResumeCondition = nullptr;
 
 		sol::protected_function_result result = mCoroutine(sol::as_args(results));
+		mFailed = !result.valid();
 		if (!result.valid()) {
 			sol::error err = result;
 			std::cout << "LuaThread::resume()" << std::endl;

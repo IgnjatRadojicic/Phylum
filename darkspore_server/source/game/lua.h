@@ -40,6 +40,10 @@ namespace Game {
 			// A finished or failed thread is free. Only one waiting to resume is still in use.
 			bool is_waiting() const { return mCoroutine.valid() && mCoroutine.status() == sol::call_status::yielded; }
 
+			// Whether the last call or resume ended in a script error. Kept apart from the
+			// coroutine, because a failed thread is renewed as soon as it goes back to the pool.
+			bool failed() const { return mFailed; }
+
 			sol::object get_value(const std::string& key) const;
 			void set_value(const std::string& key, sol::object&& value);
 
@@ -54,6 +58,7 @@ namespace Game {
 				create(func);
 
 				sol::protected_function_result result = mCoroutine(std::forward<Args>(args)...);
+				mFailed = !result.valid();
 				if (result.valid()) {
 					post_call();
 				} else {
@@ -90,6 +95,7 @@ namespace Game {
 			// The object casting on this thread, whose pointer is cleared when the thread is freed.
 			std::weak_ptr<Object> mOwner;
 			uint64_t mTicket = 0;
+			bool mFailed = false;
 
 			// A cast running on this thread, whose deactivate runs when the thread is freed.
 			sol::main_table mCastContext;

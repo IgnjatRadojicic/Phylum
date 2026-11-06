@@ -100,6 +100,22 @@ namespace {
 			ModifierCheckCast.stopped = nAbility.GetAgentID()
 		end
 
+		-- A modifier whose script dies at start. It has no duration, so only the failure can end it.
+		ModifierCheckBroken = { stops = 0 }
+		nModifier.RegisterModifier("ModifierCheckBroken", {
+			activationType = nActivationType.Unique,
+			activate = function()
+				error("this modifier fails on purpose")
+			end,
+			deactivate = function()
+				ModifierCheckBroken.stops = ModifierCheckBroken.stops + 1
+			end
+		})
+
+		function ModifierCheckBrokenGuid()
+			return nUtil.SPID("ModifierCheckBroken")
+		end
+
 		function ModifierCheckHelperGuid()
 			return nUtil.SPID("ModifierCheckHelper")
 		end
@@ -108,6 +124,7 @@ namespace {
 			nModifier.registered[nUtil.SPID("ModifierCheckHelper")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckWitness")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckProperty")] = nil
+			nModifier.registered[nUtil.SPID("ModifierCheckBroken")] = nil
 			nAbility.scripts.ModifierCheckWaits = nil
 			nAbility.scripts.ModifierCheckFails = nil
 		end
@@ -197,6 +214,7 @@ namespace {
 				CheckDeactivateCanRequestItself();
 				CheckMarkedObjectsOutlastDeactivate();
 				CheckCanUseReadsItsOwnContext();
+				CheckFailedStartEndsIt();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
 				forget();
@@ -430,6 +448,22 @@ namespace {
 				for (uint32_t left : Manager().GetAll(agent->GetId())) {
 					EndNow(left);
 				}
+			}
+
+			void CheckFailedStartEndsIt() {
+				auto agent = Spawn();
+				auto caster = Spawn();
+
+				sol::protected_function brokenGuid = mState["ModifierCheckBrokenGuid"];
+				const uint32_t guid = brokenGuid();
+
+				const auto id = Request(agent, caster, guid);
+				const bool startedRunning = id != 0 && static_cast<bool>(Manager().Get(id));
+				Wait(100);
+
+				const int stops = mState["ModifierCheckBroken"]["stops"];
+				Report("failed-start-ends-it", startedRunning && !Manager().Get(id) && stops == 1,
+					"id=" + std::to_string(id) + " left=" + std::to_string(static_cast<bool>(Manager().Get(id))) + " stops=" + std::to_string(stops));
 			}
 
 			void CheckDeactivateCanRequestItself() {
