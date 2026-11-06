@@ -139,16 +139,23 @@ namespace {
 			}
 		end
 
+		-- A script can call its own tick to reuse it, which is not a new cast
+		local function castingTick(tick)
+			return function(self, object, target, cursorPosition, rank)
+				if object then
+					nAbility.BeginCast(self, object, target, cursorPosition, rank)
+				end
+				return tick(self)
+			end
+		end
+
 		nAbility.scripts = {}
 		local registerAbility = nAbility.RegisterAbility
 		function nAbility.RegisterAbility(name, ability)
 			nAbility.scripts[name] = ability
 			local tick = ability.tick
 			if tick then
-				ability.tick = function(self, object, target, cursorPosition, rank)
-					nAbility.BeginCast(self, object, target, cursorPosition, rank)
-					return tick(self)
-				end
+				ability.tick = castingTick(tick)
 			end
 			registerAbility(name, ability)
 		end
@@ -157,10 +164,7 @@ namespace {
 		function nAbility.NumberedTick(ability)
 			local tick = ability[nAbilityFns.Tick]
 			if tick then
-				ability.tick = function(self, object, target, cursorPosition, rank)
-					nAbility.BeginCast(self, object, target, cursorPosition, rank)
-					return tick(self)
-				end
+				ability.tick = castingTick(tick)
 				return ability.tick
 			end
 		end
