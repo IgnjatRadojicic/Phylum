@@ -185,7 +185,7 @@ namespace RakNet {
 			void SendActionCancel(const ClientPtr& client, uint8_t value, uint32_t otherValue);
 
 			void SendActionCommandResponse(const ClientPtr& client, uint8_t type);
-			void SendActionCommandResponse(const ClientPtr& client, const AbilityCommandResponse& data);
+			void SendActionCommandResponse(const ClientPtr& client, const AbilityCommandResponse& data, uint8_t sequence);
 			void SendObjectJump(
 				const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& destination, const glm::vec3& direction,
 				float speed, float minJumpHeight, float maxJumpHeight, float rangeToHitMaxJumpHeight

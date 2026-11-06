@@ -763,7 +763,10 @@ namespace RakNet {
 					// The client dereferences its ability lookup without a null check, so an
 					// unknown id in the response crashes it. Ids from the player class are valid.
 					std::cout << "Ability ID: 0x" << std::hex << combatData.abilityId << std::dec
-						<< " hero: " << static_cast<uint32_t>(creatureIndex) << std::endl;
+						<< " hero: " << static_cast<uint32_t>(creatureIndex)
+						<< " seq: " << static_cast<uint32_t>(command.data.unk[0])
+						<< "," << static_cast<uint32_t>(command.data.unk[1])
+						<< "," << static_cast<uint32_t>(command.data.unk[2]) << std::endl;
 
 					mGame.UseAbility(object, combatData);
 
@@ -773,7 +776,7 @@ namespace RakNet {
 						actionResponse.cooldown = 500;
 						actionResponse.timeImmobilized = 0;
 						actionResponse.userData = command.ability.userData;
-						SendActionCommandResponse(client, actionResponse);
+						SendActionCommandResponse(client, actionResponse, command.data.unk[0]);
 
 						if (command.ability.index == 0) {
 							mGame.WeaponAttack(object, command.ability.targetId, combatData.abilityId, player->GetWeaponDamage(creatureIndex));
@@ -818,7 +821,7 @@ namespace RakNet {
 					actionResponse.cooldown = 2000;
 					actionResponse.timeImmobilized = 0;
 					actionResponse.userData = command.ability.userData;
-					SendActionCommandResponse(client, actionResponse);
+					SendActionCommandResponse(client, actionResponse, command.data.unk[0]);
 				}
 				break;
 			}
@@ -1522,11 +1525,12 @@ namespace RakNet {
 		Send(outStream, client);
 	}
 
-	void Server::SendActionCommandResponse(const ClientPtr& client, const AbilityCommandResponse& data) {
+	void Server::SendActionCommandResponse(const ClientPtr& client, const AbilityCommandResponse& data, uint8_t sequence) {
 		BitStream outStream(57);
 		outStream.Write(PacketID::ActionCommandResponse);
 
-		Write<uint8_t>(outStream, 0x00); // arg_0 -> sub_4E21D0 | esi+1Ch | compared with byte_143FD6E
+		// The client only accepts the response for its pending command if this matches (byte_143FD6E)
+		Write<uint8_t>(outStream, sequence);
 		Write<uint8_t>(outStream, 0x01);
 		Write<uint8_t>(outStream, 0x00); // unused
 		Write<uint8_t>(outStream, 0x00); // unused
@@ -1536,7 +1540,7 @@ namespace RakNet {
 		Write<uint32_t>(outStream, 0); // unused
 
 		auto time = mGame.GetTime();
-		Write<uint64_t>(outStream, 0); // ([esi+20h], [esi+24h]) sub_4E1FE0
+		Write<uint64_t>(outStream, time); // start of the cast ([esi+20h], [esi+24h]) sub_4E1FE0
 		Write<uint64_t>(outStream, time + data.timeImmobilized); // ([esi+28h], [esi+2Ch])
 		Write<uint64_t>(outStream, time + data.cooldown); // arg_0 -> sub_9D7A00_3 (packed as 64 bit)
 		Write<uint64_t>(outStream, time); // arg_0 -> sub_9D7A00_4 (packed as 64 bit)
