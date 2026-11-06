@@ -132,7 +132,12 @@ namespace {
 		function nAbility.BeginCast(ability, object, target, cursorPosition, rank)
 			nextInstanceId = nextInstanceId + 1
 			local id = object:GetId()
-			ScriptTrace("CAST ability=" .. tostring(ability.id) .. " object=" .. tostring(id))
+			-- Where the caster stands decides where shots start. Never lets the trace break a cast.
+			local ok, at = pcall(function()
+				local p = object:GetPosition()
+				return string.format(" at=%.1f,%.1f,%.1f", p.x, p.y, p.z)
+			end)
+			ScriptTrace("CAST ability=" .. tostring(ability.id) .. " object=" .. tostring(id) .. (ok and at or ""))
 			local steps = ability.animationSequence and #ability.animationSequence or 0
 			local step = sequenceSteps[id] or 0
 			if steps > 0 then
