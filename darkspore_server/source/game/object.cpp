@@ -4,6 +4,7 @@
 #include "objectmanager.h"
 #include "instance.h"
 #include "catalyst.h"
+#include "config.h"
 
 #include "sporenet/part.h"
 
@@ -676,6 +677,11 @@ namespace Game {
 			if (attributes) {
 				auto health = attributes->GetBaseAttribute(ClassAttribute::Health);
 				if (health > 0) {
+					// Zero leaves mobs as they are. Otherwise they survive being tested on in the real game.
+					if (const auto testHealth = Config::GetU32(ConfigKey::CONFIG_TEST_MOB_HEALTH); testHealth > 0) {
+						health = static_cast<decltype(health)>(testHealth);
+					}
+
 					SetAttributeValue(AttributeType::MaxHealth, health);
 					SetHealth(GetMaxHealth());
 				}

@@ -72,6 +72,8 @@ namespace Game {
 				mConfig[CONFIG_DARKSPORE_INDEX_PAGE_PATH] = value;
 			} else if (name == "TEMPLATE_CREATURE_PATH") {
 				mConfig[CONFIG_TEMPLATE_CREATURE_PATH] = value;
+			} else if (name == "TEST_MOB_HEALTH") {
+				mConfig[CONFIG_TEST_MOB_HEALTH] = value;
 			} else if (name == "TEMPLATE_CREATURE_PARTS_PATH") {
 				mConfig[CONFIG_TEMPLATE_CREATURE_PARTS_PATH] = value;
 			} else {
@@ -97,6 +99,7 @@ namespace Game {
 		mConfig[CONFIG_DARKSPORE_INDEX_PAGE_PATH] = "index.html";
 		mConfig[CONFIG_TEMPLATE_CREATURE_PATH] = "data/creature_templates.json";
 		mConfig[CONFIG_TEMPLATE_CREATURE_PARTS_PATH] = "data/creature_parts_templates.json";
+		mConfig[CONFIG_TEST_MOB_HEALTH] = "0";
 
 		pugi::xml_document document;
 		if (auto parse_result = document.load_file(path.c_str())) {
@@ -172,6 +175,7 @@ namespace Game {
 				case CONFIG_DARKSPORE_INDEX_PAGE_PATH: return "DARKSPORE_INDEX_PAGE_PATH";
 				case CONFIG_TEMPLATE_CREATURE_PATH: return "TEMPLATE_CREATURE_PATH";
 				case CONFIG_TEMPLATE_CREATURE_PARTS_PATH: return "TEMPLATE_CREATURE_PARTS_PATH";
+				case CONFIG_TEST_MOB_HEALTH: return "TEST_MOB_HEALTH";
 				default: return "UNKNOWN";
 			}
 		};
