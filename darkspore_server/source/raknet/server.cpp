@@ -1866,7 +1866,7 @@ namespace RakNet {
 		Write<uint64_t>(outStream, timestamp);
 		Write<bool>(outStream, overlay);
 		Write<float>(outStream, scale);
-		Write<uint32_t>(outStream, state); // some client data?
+		Write<uint32_t>(outStream, 0); // The client's own sender leaves this at zero
 
 		Send(outStream, client);
 	}
