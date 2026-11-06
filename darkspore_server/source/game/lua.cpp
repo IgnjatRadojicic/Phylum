@@ -1949,6 +1949,24 @@ namespace Game {
 				return value
 			end
 
+			function nBit.And(...)
+				local value = -1
+				for i = 1, select("#", ...) do
+					value = bit.band(value, (select(i, ...)))
+				end
+				return value
+			end
+
+			-- Modifiers register but have no effect yet
+			nModifier = nModifier or {}
+			nModifier.registered = {}
+			function nModifier.RegisterModifier(name, modifier)
+				nModifier.registered[name] = modifier
+			end
+			function nModifier.PreloadAsset(name)
+				return nUtil.GetAsset(name)
+			end
+
 			-- Scripts require files as "Folder!Name.lua"
 			table.insert(package.loaders, 2, function(name)
 				local folder, file = name:match("^([^!]+)!(.+)%.lua$")

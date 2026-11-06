@@ -23,6 +23,24 @@ namespace Game {
 		lua.Initialize();
 		lua.PreloadAbilities();
 
+		// What scripts can really reach, which a text search of the source cannot tell.
+		lua.LoadBuffer(R"lua(
+			local names = {}
+			for tableName, value in pairs(_G) do
+				if type(value) == "table" and tableName:match("^n%u") then
+					for name, field in pairs(value) do
+						if type(name) == "string" and type(field) == "function" then
+							names[#names + 1] = tableName .. "." .. name
+						end
+					end
+				end
+			end
+			table.sort(names)
+			local file = io.open("script-api.txt", "w")
+			file:write(table.concat(names, "\n"), "\n")
+			file:close()
+		)lua");
+
 		std::cout.rdbuf(consoleBuffer);
 	}
 }
