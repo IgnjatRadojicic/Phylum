@@ -84,6 +84,9 @@ namespace Game {
 			
 			std::unordered_map<std::string, sol::object> mValues;
 
+			// The object casting on this thread, whose pointer is cleared when the thread is freed.
+			std::weak_ptr<Object> mOwner;
+
 			ResumeCondition mResumeCondition;
 
 			sol::thread mThread;
@@ -193,6 +196,8 @@ namespace Game {
 			void RemovePrivateTable(uint32_t id);
 
 			LuaThread* SpawnThread();
+			LuaThread* SpawnThreadFor(const ObjectPtr& object);
+			void RenewThread(LuaThread* thread);
 			LuaThread* GetThread(lua_State* L) const;
 			void YieldThread(LuaThread* thread);
 

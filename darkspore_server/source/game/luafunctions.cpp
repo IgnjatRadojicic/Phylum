@@ -1556,8 +1556,7 @@ namespace Game {
 				if (thread && thread->is_waiting()) {
 					return;
 				} else {
-					thread = SpawnThread();
-					object->SetLuaThread(thread);
+					thread = SpawnThreadFor(object);
 				}
 			} else {
 				thread = SpawnThread();
@@ -1630,7 +1629,7 @@ namespace Game {
 			YieldThread(thread);
 		});
 
-		thread["WaitForXSeconds"] = sol::yielding([this](sol::this_state L, double seconds, sol::object attributesSnapshotValue, sol::optional<bool> channeling) {
+		thread["WaitForXSeconds"] = sol::yielding([this](sol::this_state L, double seconds, sol::optional<sol::object> attributesSnapshotValue, sol::optional<bool> channeling) {
 			auto thread = GetThread(L);
 			if (!thread) {
 				return;
@@ -1638,9 +1637,9 @@ namespace Game {
 
 			if (seconds > 0) {
 				auto ability = LuaGetAbility(L);
-				if (ability && attributesSnapshotValue.is<Game::AttributesPtr>()) {
+				if (ability && attributesSnapshotValue && attributesSnapshotValue->is<Game::AttributesPtr>()) {
 					const auto descriptors = ability->GetDescriptors();
-					const auto& attributes = attributesSnapshotValue.as<Game::AttributesPtr>();
+					const auto& attributes = attributesSnapshotValue->as<Game::AttributesPtr>();
 
 					if (utils::enum_helper<Game::Descriptors>::test(descriptors, Game::Descriptors::IsBasic)) {
 						seconds /= std::max(-0.9f, attributes->GetValue(Game::AttributeType::AttackSpeedScale)) + 1;
@@ -1661,7 +1660,7 @@ namespace Game {
 			YieldThread(thread);
 		});
 
-		thread["WaitUntilTime"] = sol::yielding([this](sol::this_state L, double seconds, sol::object attributesSnapshotValue, sol::optional<bool> channeling) {
+		thread["WaitUntilTime"] = sol::yielding([this](sol::this_state L, double seconds, sol::optional<sol::object> attributesSnapshotValue, sol::optional<bool> channeling) {
 			auto thread = GetThread(L);
 			if (!thread) {
 				return;
@@ -1669,9 +1668,9 @@ namespace Game {
 
 			if (seconds > 0) {
 				auto ability = LuaGetAbility(L);
-				if (ability && attributesSnapshotValue.is<Game::AttributesPtr>()) {
+				if (ability && attributesSnapshotValue && attributesSnapshotValue->is<Game::AttributesPtr>()) {
 					const auto descriptors = ability->GetDescriptors();
-					const auto& attributes = attributesSnapshotValue.as<Game::AttributesPtr>();
+					const auto& attributes = attributesSnapshotValue->as<Game::AttributesPtr>();
 
 					if (utils::enum_helper<Game::Descriptors>::test(descriptors, Game::Descriptors::IsBasic)) {
 						seconds /= std::max(-0.9f, attributes->GetValue(Game::AttributeType::AttackSpeedScale)) + 1;
