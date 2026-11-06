@@ -116,6 +116,19 @@ if(lua_ADDED)
     target_link_libraries(recap_server PRIVATE lua)
 endif()
 
+# Tests
+CPMAddPackage(
+    NAME doctest
+    GITHUB_REPOSITORY doctest/doctest
+    VERSION 2.4.11
+    DOWNLOAD_ONLY YES)
+add_executable(recap_tests
+    tests/main.cpp
+    tests/scriptsource_test.cpp
+    source/game/scriptsource.cpp)
+target_include_directories(recap_tests PRIVATE source ${doctest_SOURCE_DIR})
+target_link_libraries(recap_tests PRIVATE lua)
+
 # Sol
 CPMAddPackage("gh:ThePhD/sol2@3.3.1")
 target_link_libraries(recap_server PRIVATE sol2)

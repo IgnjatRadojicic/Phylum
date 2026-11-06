@@ -54,7 +54,8 @@ set CXX=cl
 set PATH=$ToolsDir\cmake\cmake-4.4.5-windows-x86_64\bin;$ToolsDir\ninja;$ToolsDir\perl\perl\bin;$ToolsDir\nasm\nasm-2.16.03;%PATH%
 cd /d "$source"
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DOPENSSL_TARGET_PLATFORM=VC-WIN64A -DCMAKE_INSTALL_PREFIX=./dist || exit /b 1
-cmake --build build --target recap_server || exit /b 1
+cmake --build build --target recap_server recap_tests || exit /b 1
+build\recap_tests.exe || exit /b 1
 "@ | Set-Content -Encoding ascii $batch
 
 # Windows PowerShell turns any redirected stderr line into an error, and CMake warns on stderr.
