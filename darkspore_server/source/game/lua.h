@@ -36,6 +36,9 @@ namespace Game {
 			decltype(auto) lua_state() const { return mThread.thread_state(); }
 			decltype(auto) status() const { return mThread.status(); }
 
+			// A finished or failed thread is free. Only one waiting to resume is still in use.
+			bool is_waiting() const { return mCoroutine.valid() && mCoroutine.status() == sol::call_status::yielded; }
+
 			sol::object get_value(const std::string& key) const;
 			void set_value(const std::string& key, sol::object&& value);
 
@@ -57,6 +60,7 @@ namespace Game {
 					std::cout << "LuaThread::call()" << std::endl;
 					std::cout << err.what() << std::endl;
 					std::cout << std::to_underlying(mCoroutine.status()) << std::endl;
+					post_call();
 				}
 
 				if constexpr (!std::is_void_v<Result>) {

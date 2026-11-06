@@ -30,8 +30,10 @@ namespace {
 	auto LuaGetPlayer(const Game::Instance& instance, sol::object& value) {
 		Game::PlayerPtr result;
 		if (value.valid()) {
-			result = value.as<Game::PlayerPtr>();
-			if (!result) {
+			// Scripts can pass a pointer or an id, and an unchecked cast of the wrong one crashes.
+			if (value.is<Game::PlayerPtr>()) {
+				result = value.as<Game::PlayerPtr>();
+			} else if (value.is<uint8_t>()) {
 				result = instance.GetPlayerByIndex(value.as<uint8_t>());
 			}
 		}
@@ -41,8 +43,10 @@ namespace {
 	auto LuaGetObject(const Game::ObjectManager& objectManager, sol::object& value) {
 		Game::ObjectPtr result;
 		if (value.valid()) {
-			result = value.as<Game::ObjectPtr>();
-			if (!result) {
+			// Scripts can pass a pointer or an id, and an unchecked cast of the wrong one crashes.
+			if (value.is<Game::ObjectPtr>()) {
+				result = value.as<Game::ObjectPtr>();
+			} else if (value.is<uint32_t>()) {
 				result = objectManager.Get(value.as<uint32_t>());
 			}
 		}
@@ -52,8 +56,10 @@ namespace {
 	auto LuaGetTrigger(const Game::ObjectManager& objectManager, sol::object& value) {
 		Game::TriggerVolumePtr result;
 		if (value.valid()) {
-			result = value.as<Game::TriggerVolumePtr>();
-			if (!result) {
+			// Scripts can pass a pointer or an id, and an unchecked cast of the wrong one crashes.
+			if (value.is<Game::TriggerVolumePtr>()) {
+				result = value.as<Game::TriggerVolumePtr>();
+			} else if (value.is<uint32_t>()) {
 				result = objectManager.GetTrigger(value.as<uint32_t>());
 			}
 		}
@@ -584,7 +590,7 @@ namespace LuaFunction {
 		auto IsValid(sol::this_state L, sol::object objectValue) {
 			// object:IsValid() could be useful later.
 			if (objectValue.is<Game::ObjectPtr>()) {
-				return objectValue.as<Game::ObjectPtr>() != nullptr;
+				return objectValue.is<Game::ObjectPtr>() && objectValue.as<Game::ObjectPtr>() != nullptr;
 			}
 			return false;
 		}
@@ -1541,7 +1547,7 @@ namespace Game {
 			auto object = LuaGetObject(objectManager, objectValue);
 			if (object) {
 				thread = object->GetLuaThread();
-				if (thread && thread->status() != sol::thread_status::dead) {
+				if (thread && thread->is_waiting()) {
 					return;
 				} else {
 					thread = SpawnThread();
