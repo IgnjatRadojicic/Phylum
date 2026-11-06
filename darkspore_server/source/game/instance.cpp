@@ -505,6 +505,13 @@ namespace Game {
 			return;
 		}
 
+		// Game ability scripts load, but still call functions this server does not have.
+		// Running them mid fight would fail, so they stay off until their API is ready.
+		constexpr bool runAbilityScripts = false;
+		if (!runAbilityScripts) {
+			return;
+		}
+
 		if (object->HasCooldown(combatData.abilityId)) {
 			return;
 		}

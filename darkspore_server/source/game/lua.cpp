@@ -14,6 +14,8 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 
 #ifndef _MSC_VER
 #include <stdexcept>
@@ -1796,6 +1798,7 @@ namespace Game {
 		// temporary
 		LuaBase::Reload();
 		mLoadedAbilities.clear();
+		mRegisteredAbilities.clear();
 		LoadAbilities();
 	}
 
@@ -1807,6 +1810,43 @@ namespace Game {
 		static thread_local sol::bytecode emptyBytecode {};
 		auto it = mLoadedAbilities.find(abilityId);
 		return it != mLoadedAbilities.end() ? it->second : emptyBytecode;
+	}
+
+	const std::vector<uint32_t>& GlobalLua::GetRegisteredAbilities() const {
+		return mRegisteredAbilities;
+	}
+
+	namespace {
+		// The name a game ability script registers itself under, which is what hero data refers to.
+		std::string ReadRegisteredName(const std::filesystem::path& path) {
+			std::ifstream file(path);
+			std::stringstream buffer;
+			buffer << file.rdbuf();
+			const std::string text = buffer.str();
+
+			auto readQuoted = [&text](size_t start, size_t limit) -> std::string {
+				const auto open = text.find('"', start);
+				if (open == std::string::npos || open > limit) {
+					return {};
+				}
+
+				const auto close = text.find('"', open + 1);
+				return close == std::string::npos ? std::string {} : text.substr(open + 1, close - open - 1);
+			};
+
+			const auto call = text.find("RegisterAbility(");
+			if (call == std::string::npos) {
+				return {};
+			}
+
+			const auto callEnd = text.find_first_of(",\n", call);
+			if (auto name = readQuoted(call, callEnd); !name.empty()) {
+				return name;
+			}
+
+			const auto field = text.find(".abilityName =");
+			return field == std::string::npos ? std::string {} : readQuoted(field, text.find('\n', field));
+		}
 	}
 
 	void GlobalLua::LoadAbilities() {
@@ -1840,6 +1880,14 @@ namespace Game {
 				if (inserted) {
 					sol::protected_function target = result.get<sol::protected_function>();
 					it->second = target.dump();
+
+					if (const auto name = ReadRegisteredName(path); !name.empty()) {
+						const auto id = utils::hash_id(name);
+						sol::bytecode code = it->second;
+						if (mLoadedAbilities.try_emplace(id, std::move(code)).second || id == utils::hash_id(path.stem().string())) {
+							mRegisteredAbilities.push_back(id);
+						}
+					}
 				}
 			}
 		}
@@ -1866,8 +1914,51 @@ namespace Game {
 
 		RegisterEnums();
 		RegisterFunctions();
+		RegisterGameScriptApi();
 
 		LoadFile("data/serverdata/lua/global.lua");
+	}
+
+	void Lua::RegisterGameScriptApi() {
+		// The game's own scripts call nAbility, and much of it already exists on the server as Ability.
+		sol::table gameAbility = mState["nAbility"];
+
+		gameAbility["RegisterAbility"] = [this](sol::this_state L, const std::string& name, sol::table ability) {
+			if (auto [it, inserted] = mAbilities.try_emplace(utils::hash_id(name)); inserted) {
+				ability["id"] = it->first;
+				it->second = std::make_shared<Ability>(*this, std::move(ability), name, it->first);
+			}
+		};
+
+		const auto preload = [](const std::string& name, sol::variadic_args) -> uint32_t {
+			return utils::hash_id(name);
+		};
+		gameAbility["PreloadAnimation"] = preload;
+		gameAbility["PreloadAsset"] = preload;
+		gameAbility["PreloadModifier"] = preload;
+
+		LoadBuffer(R"lua(
+			setmetatable(nAbility, { __index = Ability })
+
+			nBit = nBit or {}
+			function nBit.Or(...)
+				local value = 0
+				for i = 1, select("#", ...) do
+					value = bit.bor(value, (select(i, ...)))
+				end
+				return value
+			end
+
+			-- Scripts require files as "Folder!Name.lua"
+			table.insert(package.loaders, 2, function(name)
+				local folder, file = name:match("^([^!]+)!(.+)%.lua$")
+				if not file then
+					return nil
+				end
+				local directory = folder == "Abilities" and "Abilities" or "lua"
+				return loadfile("data/serverdata/" .. directory .. "/" .. file .. ".lua")
+			end)
+		)lua");
 	}
 
 	void Lua::Reload() {
@@ -1889,7 +1980,16 @@ namespace Game {
 	}
 
 	void Lua::PreloadAbilities() {
-		// TODO:
+		size_t loaded = 0;
+		size_t failed = 0;
+		for (const uint32_t id : GlobalLua::Instance().GetRegisteredAbilities()) {
+			if (GetAbility(id)) {
+				++loaded;
+			} else {
+				++failed;
+			}
+		}
+		std::cout << "Game ability scripts: " << loaded << " registered, " << failed << " failed." << std::endl;
 	}
 
 	Instance& Lua::GetGame() {

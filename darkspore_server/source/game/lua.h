@@ -151,6 +151,8 @@ namespace Game {
 			const sol::bytecode& GetAbility(const std::string& abilityName) const;
 			const sol::bytecode& GetAbility(uint32_t abilityId) const;
 
+			const std::vector<uint32_t>& GetRegisteredAbilities() const;
+
 		private:
 			void LoadAbilities();
 
@@ -158,6 +160,7 @@ namespace Game {
 			static GlobalLua sInstance;
 
 			std::unordered_map<uint32_t, sol::bytecode> mLoadedAbilities;
+			std::vector<uint32_t> mRegisteredAbilities;
 	};
 
 	// Lua
@@ -177,6 +180,8 @@ namespace Game {
 
 			AbilityPtr GetAbility(const std::string& abilityName);
 			AbilityPtr GetAbility(uint32_t abilityId);
+
+			void RegisterGameScriptApi();
 
 			sol::table GetPrivateTable(uint32_t id) const;
 			sol::table CreatePrivateTable(uint32_t id);
