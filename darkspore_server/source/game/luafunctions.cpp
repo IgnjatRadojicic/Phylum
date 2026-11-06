@@ -127,7 +127,7 @@ namespace LuaFunction {
 	// nMathUtil
 	namespace nMathUtil {
 		auto TransformVector(const glm::vec3& v, const glm::quat& q) {
-			return v * glm::eulerAngles(q);
+			return q * v;
 		}
 
 		auto RotateVectorByAxisAngle(const glm::vec3& v, const glm::vec3& axis, float angle) {

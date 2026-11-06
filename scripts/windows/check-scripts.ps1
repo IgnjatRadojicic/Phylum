@@ -33,6 +33,7 @@ if ($report -notmatch 'Game ability scripts: (\d+) registered') { throw 'No regi
 $registered = [int]$Matches[1]
 if ($combat -notmatch 'Abilities passed: (\d+) of') { throw 'No ability count in the report' }
 $passed = [int]$Matches[1]
+if ($combat -notmatch 'MATH good') { throw 'Script maths test failed' }
 
 Write-Host "Registered $registered (baseline $($baseline.registered))"
 Write-Host "Abilities passed $passed (baseline $($baseline.abilitiesPassed))"

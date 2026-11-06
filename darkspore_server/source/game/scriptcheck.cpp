@@ -39,6 +39,14 @@ namespace Game {
 				function object:GetId() return id end
 				function object:GetPosition() return { x = x, y = 0, z = 0 } end
 				function object:GetFacing() return { x = 1, y = 0, z = 0 } end
+				function object:GetCenterPoint() return { x = x, y = 0, z = 1 } end
+				function object:GetOrientation() return { x = 0, y = 0, z = 0, w = 1 } end
+				function object:SetOrientation() end
+				function object:GetSharedAbilityOffset() return 0 end
+				function object:SetTeam() end
+				function object:SetStealthType() end
+				function object:SetAttributeSnapshot() end
+				function object:AddEffect() return 1 end
 				function object:GetTeam() return team end
 				function object:GetHealth() return 100 end
 				function object:GetMaxHealth() return 100 end
@@ -56,6 +64,12 @@ namespace Game {
 				end
 				return object
 			end
+
+			-- A quarter turn about Z takes X to Y. A wrong argument order gives no error, only
+			-- shots in the wrong place, so test the real adapter before stubs replace it.
+			local half = math.sqrt(0.5)
+			local turnedX, turnedY = nMathUtil.TransformVector(1, 0, 0, 0, 0, half, half)
+			local mathGood = math.abs(turnedX) < 0.001 and math.abs(turnedY - 1) < 0.001
 
 			-- A failure usually comes from a nil handed back earlier. A stub is a limit of this
 			-- check, and a missing name is a real gap, so the trail keeps them apart.
@@ -102,6 +116,7 @@ namespace Game {
 			nThread.WaitForXSeconds = function() end
 
 			local file = io.open("script-combat.txt", "w")
+			file:write("MATH ", mathGood and "good" or "wrong", "\n")
 			local passed, total = 0, 0
 			local names = {}
 			for name in pairs(nAbility.scripts) do

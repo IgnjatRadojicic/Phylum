@@ -279,6 +279,36 @@ namespace {
 		end
 		nGameObject.GetObjectDirection = nGameObject.GetFacing
 
+		function nGameObject.GetCenterPoint(id)
+			local object = get(id)
+			if object then
+				return unpackVector(object:GetCenterPoint())
+			end
+			return 0, 0, 0
+		end
+
+		-- Scripts never read these four values, only hand them back to the functions here.
+		function nGameObject.GetOrientation(id)
+			local object = get(id)
+			if object then
+				local orientation = object:GetOrientation()
+				return orientation.x, orientation.y, orientation.z, orientation.w
+			end
+			return 0, 0, 0, 1
+		end
+
+		function nGameObject.SetOrientation(id, x, y, z, w)
+			local object = get(id)
+			if object then
+				object:SetOrientation(quat.new(w or 1, x or 0, y or 0, z or 0))
+			end
+		end
+
+		function nGameObject.GetHitPoints(id)
+			local object = get(id)
+			return object and object:GetHealth() or 0
+		end
+
 		function nGameObject.GetLinearVelocity()
 			return 0, 0, 0
 		end
@@ -371,9 +401,15 @@ namespace {
 		end
 
 		local createObject = nObjectManager.CreateObject
-		function nObjectManager.CreateObject(noun, x, y, z)
+		function nObjectManager.CreateObject(noun, x, y, z, ...)
 			local object = createObject(noun, vector(x, y, z))
-			return object and object:GetId() or kObjIDNone
+			if not object then
+				return kObjIDNone
+			end
+			if select("#", ...) >= 4 then
+				nGameObject.SetOrientation(object:GetId(), ...)
+			end
+			return object:GetId()
 		end
 
 		local rotateVector = nMathUtil.RotateVectorByAxisAngle
@@ -387,9 +423,11 @@ namespace {
 			return circleIntersectsArc(vector(x, y, z), radius, ...)
 		end
 
-		-- Not worked out yet: scripts pass this one a quaternion in an unknown layout
-		function nMathUtil.TransformVector(x, y, z)
-			return x, y, z
+		local transformVector = nMathUtil.TransformVector
+		function nMathUtil.TransformVector(x, y, z, orientationX, orientationY, orientationZ, orientationW)
+			local orientation = quat.new(orientationW or 1, orientationX or 0, orientationY or 0, orientationZ or 0)
+			local result = transformVector(vector(x, y, z), orientation)
+			return result.x, result.y, result.z
 		end
 
 		-- Locomotion functions take an object, then a position, then anything else
