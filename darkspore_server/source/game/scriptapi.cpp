@@ -115,11 +115,15 @@ namespace {
 			return casts[currentThread()]
 		end
 
-		-- A thread started by an ability belongs to the same cast.
+		-- A thread started by an ability belongs to the same cast. One started by a
+		-- modifier also ends with it (modifier_cryosboss_passive's spawner waits forever).
 		function nThread.CreateThreadForObject(id, callback, ...)
 			local cast = currentCast()
 			nThread.Create(id, function(...)
 				casts[running()] = cast
+				if cast and cast.modifierId then
+					ModifierEngine.AdoptThread(cast.modifierId)
+				end
 				return callback(...)
 			end, ...)
 		end
@@ -1024,6 +1028,10 @@ namespace Game {
 			rules.crowdControlReduction = target ? target->GetAttributeValue(AttributeType::CrowdControlDurationDecrease) : 0.f;
 
 			return GetGame().GetModifiers().Request(spec, rules, settings.get<float>("seconds"), agent, initiator, std::move(context));
+		};
+		modifierEngine["AdoptThread"] = [this](sol::this_state L, uint32_t id) {
+			const auto thread = GetThread(L);
+			return thread && GetGame().GetModifiers().AdoptThread(id, TrackThread(thread));
 		};
 		modifierEngine["GetContext"] = [this](sol::this_state L, uint32_t id) {
 			return GetGame().GetModifiers().GetContext(id, L);

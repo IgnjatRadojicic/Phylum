@@ -83,6 +83,15 @@ namespace Game {
 		mManager.MarkForDelete(id);
 	}
 
+	bool ModifierSystem::AdoptThread(uint32_t id, uint64_t ticket) {
+		const auto it = mRuns.find(id);
+		if (it == mRuns.end() || ticket == 0) {
+			return false;
+		}
+		it->second.children.push_back(ticket);
+		return true;
+	}
+
 	void ModifierSystem::ResetDuration(uint32_t id) {
 		mManager.ResetDuration(id, mGame.GetTime());
 		SendUpdated(id, true);
@@ -197,8 +206,12 @@ namespace Game {
 		auto run = std::move(it->second);
 		mRuns.erase(it);
 
+		// Threads that have already finished have given their tickets back, so stopping them does nothing.
 		auto& lua = mGame.GetLua();
 		lua.StopThread(run.ticket);
+		for (const auto child : run.children) {
+			lua.StopThread(child);
+		}
 
 		const auto instance = mManager.Get(id);
 		const auto agent = instance ? instance->agent : 0;

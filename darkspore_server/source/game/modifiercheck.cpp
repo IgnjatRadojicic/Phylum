@@ -140,6 +140,24 @@ namespace {
 			end)
 		end
 
+		-- Starts a thread that runs forever, as modifier_cryosboss_passive's spawner does.
+		ModifierCheckParent = { ticks = 0 }
+		nModifier.RegisterModifier("ModifierCheckParent", {
+			activationType = nActivationType.Unique,
+			activate = function()
+				nThread.CreateThreadForObject(nAbility.GetAgentID(), function()
+					while true do
+						ModifierCheckParent.ticks = ModifierCheckParent.ticks + 1
+						nThread.WaitForXSeconds(0.02)
+					end
+				end)
+			end
+		})
+
+		function ModifierCheckParentGuid()
+			return nUtil.SPID("ModifierCheckParent")
+		end
+
 		function ModifierCheckBrokenGuid()
 			return nUtil.SPID("ModifierCheckBroken")
 		end
@@ -153,6 +171,7 @@ namespace {
 			nModifier.registered[nUtil.SPID("ModifierCheckWitness")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckProperty")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckBroken")] = nil
+			nModifier.registered[nUtil.SPID("ModifierCheckParent")] = nil
 			nAbility.scripts.ModifierCheckWaits = nil
 			nAbility.scripts.ModifierCheckFails = nil
 			nAbility.scripts.ModifierCheckFinishes = nil
@@ -246,6 +265,7 @@ namespace {
 				CheckFailedStartEndsIt();
 				CheckReusedThreadForgetsItsCast();
 				CheckReusedThreadHasPlainGlobals();
+				CheckChildThreadEndsWithIt();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
 				forget();
@@ -508,6 +528,25 @@ namespace {
 				const bool reused = result.get_or("reused", false);
 				const bool plain = result.get_or("plain", false);
 				Report("reused-thread-has-plain-globals", plain, "reused=" + std::to_string(reused) + " plain=" + std::to_string(plain));
+			}
+
+			void CheckChildThreadEndsWithIt() {
+				auto agent = Spawn();
+				auto caster = Spawn();
+
+				sol::protected_function parentGuid = mState["ModifierCheckParentGuid"];
+				const uint32_t guid = parentGuid();
+				const auto id = Request(agent, caster, guid);
+				Wait(100);
+
+				const int whileRunning = mState["ModifierCheckParent"]["ticks"];
+				EndNow(id);
+				const int atEnd = mState["ModifierCheckParent"]["ticks"];
+				Wait(100);
+				const int later = mState["ModifierCheckParent"]["ticks"];
+
+				Report("child-thread-ends-with-it", id != 0 && whileRunning > 1 && later == atEnd,
+					"whileRunning=" + std::to_string(whileRunning) + " atEnd=" + std::to_string(atEnd) + " later=" + std::to_string(later));
 			}
 
 			void CheckFailedStartEndsIt() {

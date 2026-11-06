@@ -36,6 +36,10 @@ namespace Game {
 			void OnAgentDestroyed(uint32_t agent);
 
 			void MarkForDelete(uint32_t id);
+
+			// A thread the modifier's script started, which is stopped when the modifier ends.
+			// Returns false when the modifier is not running.
+			bool AdoptThread(uint32_t id, uint64_t ticket);
 			void ResetDuration(uint32_t id);
 			void SetStackCount(uint32_t id, uint32_t count);
 
@@ -57,6 +61,7 @@ namespace Game {
 				sol::main_table context;
 				std::vector<AttributeChange> changes;
 				uint64_t ticket = 0;
+				std::vector<uint64_t> children;
 			};
 
 		private:

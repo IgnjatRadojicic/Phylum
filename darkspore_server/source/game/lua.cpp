@@ -537,6 +537,11 @@ namespace Game {
 	}
 
 	uint64_t Lua::TrackThread(LuaThread* thread) {
+		// One ticket per thread, so a thread tracked twice can still be found by the first.
+		if (thread->mTicket != 0) {
+			return thread->mTicket;
+		}
+
 		const auto ticket = mNextThreadTicket++;
 		thread->mTicket = ticket;
 		mTrackedThreads.emplace(ticket, thread);
