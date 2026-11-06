@@ -718,9 +718,7 @@ namespace {
 			}
 
 			// The game's Zelem slow aura puts its slow on an enemy inside its trigger volume and takes
-			// it off when the enemy leaves. The volume goes with the aura's agent. The aura has no
-			// filter, so whether its own agent is slowed only shows what the server decided (see
-			// ScriptTriggerVolumes) and is not checked.
+			// it off when the enemy leaves. Its own agent is never slowed, and the volume goes with it.
 			void CheckAuraSlowsEnemyInside() {
 				auto* volumes = mGame.GetTriggerVolumes();
 				const size_t volumesBefore = volumes ? volumes->Count() : 0;
@@ -749,7 +747,7 @@ namespace {
 				Wait(100);
 				const size_t volumesAfter = volumes ? volumes->Count() : 0;
 
-				Report("aura-slows-enemy-inside", id != 0 && inside && !outside && volumesAfter == volumesBefore,
+				Report("aura-slows-enemy-inside", id != 0 && inside && !agentSlowed && !outside && volumesAfter == volumesBefore,
 					"id=" + std::to_string(id) + " inside=" + std::to_string(inside) + " agent=" + std::to_string(agentSlowed) +
 					" outside=" + std::to_string(outside) + " volumes=" + std::to_string(volumesBefore) + "->" + std::to_string(volumesAfter));
 			}

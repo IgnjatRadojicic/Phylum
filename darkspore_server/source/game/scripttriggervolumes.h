@@ -33,8 +33,8 @@ namespace Game {
 	// From the client: any object counts, the callbacks' results are not used (they only matter
 	// for a level's once-only triggers), destroying a volume calls nothing, and an object that
 	// leaves the world first exits every volume it is in (0xa270a0).
-	// Approximate: a volume's owner counts like any other object, and a volume goes when its
-	// owner does.
+	// Approximate: a volume skips the object it is attached to, as a physics phantom on a body
+	// would, and a volume goes when its owner does.
 	class ScriptTriggerVolumes {
 		public:
 			using Call = std::function<void(const sol::main_function& callback, uint32_t volume, uint32_t objectId)>;

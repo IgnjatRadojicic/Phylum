@@ -137,5 +137,7 @@ Approximate:
   meet the 0.1 m fire wall.
 - The box sizes are half sizes, as physics box shapes take them. The firewall gives its scale as
   the length and 0.1 as the width and height.
-- A volume's own object counts like any other. Hostile auras skip it through their filter.
+- A volume skips the object it is attached to. The client's trigger code has no such check, so
+  it would come from its physics, which cannot be read. Allies still count: an aura with no
+  filter, such as the Zelem slow aura, slows them too, as its script asks.
 - A volume goes when its object does. The client may keep it until the script detaches it.
