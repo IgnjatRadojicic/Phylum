@@ -17,7 +17,7 @@ A modifier is any effect that sits on an object for a while: a slow, a stun, a d
 ## A modifier's life
 
 1. A script calls `nModifier.RequestModifier(agent, initiator, id, snapshot, rank, ...)`. Anything after the rank comes back through `GetFloatProperty`, numbered from zero.
-2. `CanUseModifier(agent, initiator, rank)` can refuse it.
+2. `CanUseModifier(agent, initiator, rank)` can refuse it. So can the server, if the agent is being deleted, or if resistance cuts a timed modifier to zero.
 3. The activation type decides what happens, as the table below shows.
 4. A new modifier gets its own thread, which runs `activate`, then `tick`. Most ticks call `nThread.WaitForever`.
 5. When its time is up, or something marks it, the thread stops, `deactivate` runs, and any attribute changes it still holds come off.
@@ -83,6 +83,9 @@ Bound means the modifier blocks actions, not only movement.
 - The order operations combine in is our best reading. The game's files name them, but the rule lived on EA's server: `(base + adds + best add) * (1 + percents + best percent)`, then the lowest clamp.
 - What each activation type does comes from its name.
 - Which debuffs count as crowd control, and which are bound, is chosen from their names.
+- Refusing a fully resisted modifier is our choice, and the scripts do not show what EA's server did. A script with no duration still lasts until something removes it.
+- Durations too long for the packet's 32 bits stop at the longest it can hold. Scripts use 100000000 seconds to mean forever, and what the client shows for that has not been checked.
+- A modifier's child threads are not stopped when it ends. Only `modifier_cryosboss_passive` starts one, and passives do not run yet.
 - Durations follow the client's order, which darkspin recovered. Which object supplies each attribute is chosen: the caster for `BuffDuration`, the target for the others. `DebuffDurationIncrease` is not used, and the client's diminishing returns are not done.
 - Only `StackModifier` reaches scripts. `TookDamage`, `DealtDamage` and the other events do not, so modifiers that react to them do nothing yet.
 - Passive modifiers are not started for heroes and mobs.

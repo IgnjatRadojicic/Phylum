@@ -40,6 +40,7 @@ Make every hero's abilities work.
 - [x] Implement `AddAttributeModifier` and the `nModifier` functions (see `docs/modifiers.md` for what is still approximate)
 - [ ] Send modifiers the ability events beyond stacking, such as `TookDamage` and `DealtDamage`
 - [ ] Start hero and mob passive modifiers
+- [ ] Stop a modifier's child threads when it ends, which `modifier_cryosboss_passive` needs
 - [x] Reconstruct how attribute changes combine (the order is approximate, see `docs/modifiers.md`)
 - [x] Fix projectile abilities (see `docs/projectiles.md` for what is still approximate)
 - [ ] Implement `CreateThreadForObject` and the remaining `nAbility` functions
