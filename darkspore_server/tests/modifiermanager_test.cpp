@@ -143,17 +143,26 @@ TEST_CASE("durations follow buffs, debuffs and the target's resistances") {
 	ModifierDurationRules buff;
 	buff.isBuff = true;
 	buff.buffIncrease = 0.5f;
-	CHECK(ResolveModifierDuration(2, buff) == 3000);
+	CHECK(ResolveModifierDuration(2, buff) == 3000u);
 
 	ModifierDurationRules stun;
 	stun.isDebuff = true;
 	stun.isCrowdControl = true;
 	stun.debuffReduction = 0.5f;
 	stun.crowdControlReduction = 0.5f;
-	CHECK(ResolveModifierDuration(4, stun) == 1000);
+	CHECK(ResolveModifierDuration(4, stun) == 1000u);
 
 	ModifierDurationRules dot;
 	dot.isDoT = true;
 	dot.dotReduction = 2;
-	CHECK(ResolveModifierDuration(4, dot) == 0);
+	CHECK_FALSE(ResolveModifierDuration(4, dot).has_value());
+}
+
+TEST_CASE("resistance cannot make a timed modifier last forever") {
+	ModifierDurationRules stun;
+	stun.isCrowdControl = true;
+	stun.crowdControlReduction = 1;
+
+	CHECK_FALSE(ResolveModifierDuration(4, stun).has_value());
+	CHECK(ResolveModifierDuration(0, stun) == 0u);
 }

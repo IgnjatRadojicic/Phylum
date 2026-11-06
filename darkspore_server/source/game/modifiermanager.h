@@ -80,7 +80,8 @@ namespace Game {
 		bool isCrowdControl = false;
 	};
 
-	uint32_t ResolveModifierDuration(float seconds, const ModifierDurationRules& rules);
+	// Nothing means the target resists all of it. Zero seconds stay zero, which lasts until removed.
+	std::optional<uint32_t> ResolveModifierDuration(float seconds, const ModifierDurationRules& rules);
 
 	// ModifierManager
 	// Decides what happens to modifiers: which one a request creates, stacks or replaces, and when

@@ -118,6 +118,7 @@ namespace {
 				CheckDestroyedAgentLeavesNothing(slow);
 				CheckAbilityChangeOutlivesModifier(slow);
 				CheckMissingIdMarksNothing(slow);
+				CheckFullyResistedIsRefused(slow);
 				CheckDeactivateCanDeleteObjects(slow);
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
@@ -337,6 +338,21 @@ namespace {
 
 				Report("missing-id-marks-nothing", id != 0 && Manager().Get(id), "");
 				EndNow(id);
+			}
+
+			void CheckFullyResistedIsRefused(uint32_t slow) {
+				auto agent = Spawn();
+				auto caster = Spawn();
+				agent->SetAttributeValue(Game::AttributeType::DebuffDuration, 1);
+				agent->SetAttributeValue(Game::AttributeType::CrowdControlDurationDecrease, 1);
+
+				const auto id = Request(agent, caster, slow);
+				const auto running = Manager().GetAll(agent->GetId()).size();
+
+				Report("fully-resisted-is-refused", id == 0 && running == 0, "running=" + std::to_string(running));
+				for (uint32_t left : Manager().GetAll(agent->GetId())) {
+					EndNow(left);
+				}
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.

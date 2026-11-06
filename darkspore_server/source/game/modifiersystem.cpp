@@ -16,8 +16,13 @@ namespace Game {
 	uint32_t ModifierSystem::Request(const ModifierSpec& spec, const ModifierDurationRules& rules, float seconds, uint32_t agent, uint32_t initiator, sol::table context) {
 		using Action = ModifierDecision::Action;
 
+		const auto duration = ResolveModifierDuration(seconds, rules);
+		if (!duration) {
+			return 0;
+		}
+
 		auto resolved = spec;
-		resolved.durationMs = ResolveModifierDuration(seconds, rules);
+		resolved.durationMs = *duration;
 
 		const auto decision = mManager.Request(resolved, agent, initiator, mGame.GetTime());
 		switch (decision.action) {

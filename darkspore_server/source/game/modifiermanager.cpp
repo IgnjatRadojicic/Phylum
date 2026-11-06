@@ -21,7 +21,9 @@ namespace Game {
 	}
 
 	// Functions
-	uint32_t ResolveModifierDuration(float seconds, const ModifierDurationRules& rules) {
+	std::optional<uint32_t> ResolveModifierDuration(float seconds, const ModifierDurationRules& rules) {
+		const bool timed = seconds > 0;
+
 		if (rules.isBuff) {
 			seconds *= 1.f + rules.buffIncrease;
 		} else if (rules.isDebuff) {
@@ -34,7 +36,11 @@ namespace Game {
 			seconds *= 1.f - rules.crowdControlReduction;
 		}
 
-		return static_cast<uint32_t>(std::lround(std::max(seconds, 0.f) * 1000.f));
+		const auto duration = static_cast<uint32_t>(std::lround(std::max(seconds, 0.f) * 1000.f));
+		if (timed && duration == 0) {
+			return std::nullopt;
+		}
+		return duration;
 	}
 
 	// ModifierManager
