@@ -59,6 +59,7 @@ Done when: every hero's abilities run in play, effects apply and expire, and loa
 Make one level, 1-1, play properly.
 
 - [ ] Spawn every enemy from the level's marker sets, removing the temporary one per group limit
+- [ ] Build level triggers (spawn, teleporter, checkpoint) on `TriggerArea` and `TriggerOccupancy`, with the hero-only modes, once-only and dwell time the client keeps (see `docs/abilities.md`), then remove the old `TriggerVolume` object class
 - [ ] Read how `aidefinition` and `phase` data drive enemies
 - [ ] Build the enemy AI: aggro, movement and using abilities
 - [ ] Use `directortuning` and `difficultytuning` for pacing and scaling
