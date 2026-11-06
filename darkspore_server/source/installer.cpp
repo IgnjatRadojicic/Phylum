@@ -91,8 +91,11 @@ void Installer::LoadDarksporeData(std::string darksporeInstallPath, std::string 
 
 	// Step 5: Move final data into place
 	label = "Moving new files to the correct place...";
-	MergeDirectories("./ServerData_final/lua", "./data/serverdata/lua");
-	MergeDirectories("./ServerData_final/Abilities", "./data/serverdata/Abilities");
+	for (const auto& entry : std::filesystem::directory_iterator("./ServerData_final")) {
+		if (entry.is_directory()) {
+			MergeDirectories(entry.path(), std::filesystem::path("./data/serverdata") / entry.path().filename());
+		}
+	}
 	std::filesystem::remove_all("./ServerData_final");
 
 	std::ofstream(serverDataVersionBinPath) << darksporeInstallVersion;
