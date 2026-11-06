@@ -22,8 +22,9 @@ Multiplayer, PvP and public hosting are out of scope.
 | --- | --- |
 | Original script bytecode on Lua 5.1 | Done |
 | Script adapter | Working, some placeholders remain |
-| Ability scripts registered | 451, with 23 failing |
-| Abilities passing the self-check | 235 of 277 |
+| Ability scripts registered | 452 |
+| Modifier scripts started by the check | 381 of 483, the rest need other engine functions |
+| Abilities passing the self-check | 238 of 278 |
 | Basic attacks in play | Working |
 | Client crash while loading a level | Open, hits about half of recent loads |
 | Client crash on the vote screen | Open |
@@ -34,10 +35,12 @@ Make every hero's abilities work.
 
 - [x] Log calls to functions the adapter does not have
 - [ ] Find the cause of the load crash, starting with the data sent at login
-- [ ] Build `ModifierManager`, proven first on one simple effect such as a slow
-- [ ] Work out the `ModifierCreated`, `ModifierUpdated` and `ModifierDeleted` packets
-- [ ] Implement `AddAttributeModifier` and the `nModifier` functions
-- [ ] Reconstruct how attribute changes combine, using the client code and `magicnumbers`
+- [x] Build `ModifierManager`, proven first on one simple effect such as a slow
+- [x] Work out the `ModifierCreated`, `ModifierUpdated` and `ModifierDeleted` packets
+- [x] Implement `AddAttributeModifier` and the `nModifier` functions (see `docs/modifiers.md` for what is still approximate)
+- [ ] Send modifiers the ability events beyond stacking, such as `TookDamage` and `DealtDamage`
+- [ ] Start hero and mob passive modifiers
+- [x] Reconstruct how attribute changes combine (the order is approximate, see `docs/modifiers.md`)
 - [x] Fix projectile abilities (see `docs/projectiles.md` for what is still approximate)
 - [ ] Implement `CreateThreadForObject` and the remaining `nAbility` functions
 - [ ] Work out `TransformVector`, and replace adapter placeholders such as `IsPet`
