@@ -5,6 +5,8 @@
 // Include
 #include "noun.h"
 #include "attributes.h"
+#include "attributestack.h"
+#include "attributestack.h"
 #include "locomotion.h"
 #include "lua.h"
 
@@ -397,6 +399,10 @@ namespace Game {
 			void SetAttributeValue(uint8_t idx, float value);
 			void SetAttributeValue(AttributeType type, float value);
 
+			// A change made by a script. The handle takes it off again.
+			uint32_t AddAttributeChange(uint8_t idx, float value, AttributeOp op);
+			void RemoveAttributeChange(uint32_t handle);
+
 			PrimaryAttribute GetPrimaryAttribute() const;
 			float GetPrimaryAttributeValue() const;
 
@@ -532,6 +538,7 @@ namespace Game {
 
 			std::unique_ptr<EffectList> mEffects;
 			std::unique_ptr<Attributes> mAttributes;
+			AttributeStack mAttributeStack;
 			std::unique_ptr<CombatantData> mCombatantData;
 			std::unique_ptr<InteractableData> mInteractableData;
 			std::unique_ptr<LootData> mLootData;

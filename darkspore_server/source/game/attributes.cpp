@@ -10,6 +10,12 @@
 namespace Game {
 	// Attributes
 	float Attributes::GetValue(uint8_t idx) const {
+		constexpr auto clientCount = static_cast<uint8_t>(AttributeType::ClientCount);
+		if (idx >= clientCount) {
+			const size_t index = idx - clientCount;
+			return index < mServerValues.size() ? mServerValues[index] : 0.f;
+		}
+
 		// test performance some time
 		auto end = mData.end();
 		auto it = std::find_if(mData.begin(), end, [idx](const auto& data) { return std::get<0>(data) == idx; });
@@ -44,19 +50,9 @@ namespace Game {
 				std::sort(mData.begin(), mData.end(), [](const auto& lhs, const auto& rhs) { return std::get<0>(lhs) < std::get<0>(rhs); });
 			}
 			mDataBits.set(idx);
+		} else if (const size_t index = idx - static_cast<uint8_t>(AttributeType::ClientCount); index < mServerValues.size()) {
+			mServerValues[index] = value;
 		}
-		/*
-		else if (it != end) {
-			if (value == 0) {
-				mData.erase(it);
-			} else {
-				std::get<1>(*it) = value;
-			}
-		} else if (value != 0) {
-			mData.push_back({ idx, value });
-			std::sort(mData.begin(), mData.end(), [](const auto& lhs, const auto& rhs) { return std::get<0>(lhs) < std::get<0>(rhs); });
-		}
-		*/
 	}
 
 	void Attributes::SetValue(AttributeType idx, float value) {

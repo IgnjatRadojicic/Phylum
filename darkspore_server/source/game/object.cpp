@@ -1184,12 +1184,30 @@ namespace Game {
 			mAttributes = std::make_unique<Attributes>();
 			mAttributes->SetOwnerObject(shared_from_this());
 		}
+		if (mAttributeStack.Has(idx)) {
+			mAttributeStack.SetBase(idx, value);
+			value = mAttributeStack.Resolve(idx);
+		}
+
 		mAttributes->SetValue(idx, value);
 		SetFlags(GetFlags() | Flags::UpdateAttributes);
 	}
 
 	void Object::SetAttributeValue(AttributeType type, float value) {
 		SetAttributeValue(static_cast<uint8_t>(type), value);
+	}
+
+	uint32_t Object::AddAttributeChange(uint8_t idx, float value, AttributeOp op) {
+		const auto handle = mAttributeStack.Add(idx, value, op, GetAttributeValue(idx));
+		SetAttributeValue(idx, mAttributeStack.GetBase(idx));
+		return handle;
+	}
+
+	void Object::RemoveAttributeChange(uint32_t handle) {
+		if (const auto idx = mAttributeStack.Remove(handle)) {
+			// Resolve gives the base back once no changes are left.
+			SetAttributeValue(*idx, mAttributeStack.Has(*idx) ? mAttributeStack.GetBase(*idx) : mAttributeStack.Resolve(*idx));
+		}
 	}
 
 	PrimaryAttribute Object::GetPrimaryAttribute() const {

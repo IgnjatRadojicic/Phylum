@@ -31,7 +31,7 @@ set_target_properties(recap_server PROPERTIES
     VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
 if(MSVC)
-    target_compile_options(recap_server PRIVATE $<$<CONFIG:Debug>:/bigobj>)
+    target_compile_options(recap_server PRIVATE /bigobj)
     set_target_properties(recap_server PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE /INCREMENTAL:NO /Brepro")
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
@@ -128,10 +128,14 @@ add_executable(recap_tests
     tests/scriptgaps_test.cpp
     tests/projectilesweep_test.cpp
     tests/lobarc_test.cpp
+    tests/attributestack_test.cpp
+    tests/modifiermanager_test.cpp
     source/game/scriptsource.cpp
     source/game/scriptgaps.cpp
     source/game/projectilesweep.cpp
-    source/game/lobarc.cpp)
+    source/game/lobarc.cpp
+    source/game/attributestack.cpp
+    source/game/modifiermanager.cpp)
 target_include_directories(recap_tests PRIVATE source ${doctest_SOURCE_DIR})
 target_link_libraries(recap_tests PRIVATE lua)
 

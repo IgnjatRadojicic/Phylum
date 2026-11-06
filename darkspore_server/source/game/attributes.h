@@ -3,6 +3,7 @@
 #define _GAME_ATTRIBUTES_HEADER
 
 // Include
+#include <array>
 #include <cstdint>
 #include <vector>
 #include <bitset>
@@ -333,6 +334,9 @@ namespace Game {
 			std::vector<std::tuple<uint8_t, float>> mData;
 			std::vector<uint8_t> mErasedData;
 			std::bitset<sClientVisibleAttributeCount> mDataBits;
+
+			// The client never hears about these, but scripts read them.
+			std::array<float, static_cast<size_t>(AttributeType::Count) - static_cast<size_t>(AttributeType::ClientCount)> mServerValues {};
 
 			float mMinWeaponDamage = 0;
 			float mMaxWeaponDamage = 0;
