@@ -131,6 +131,7 @@ add_executable(recap_tests
     tests/attributestack_test.cpp
     tests/modifiermanager_test.cpp
     tests/damageevents_test.cpp
+    tests/difficultytuning_test.cpp
     source/game/scriptsource.cpp
     source/game/scriptgaps.cpp
     source/game/projectilesweep.cpp
@@ -138,9 +139,10 @@ add_executable(recap_tests
     source/game/attributestack.cpp
     source/game/modifiermanager.cpp
     source/game/abilityevent.cpp
-    source/game/damageevents.cpp)
+    source/game/damageevents.cpp
+    source/game/difficultytuning.cpp)
 target_include_directories(recap_tests PRIVATE source ${doctest_SOURCE_DIR})
-target_link_libraries(recap_tests PRIVATE lua)
+target_link_libraries(recap_tests PRIVATE lua pugixml)
 
 # Sol
 CPMAddPackage("gh:ThePhD/sol2@3.3.1")

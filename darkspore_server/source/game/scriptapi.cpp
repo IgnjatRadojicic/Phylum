@@ -1,5 +1,6 @@
 
 // Include
+#include "difficultytuning.h"
 #include "instance.h"
 #include "lua.h"
 #include "modifiersystem.h"
@@ -1062,6 +1063,12 @@ namespace Game {
 
 			return GetGame().GetModifiers().Request(spec, rules, settings.get<float>("seconds"), agent, initiator, std::move(context));
 		};
+		// Scripts turn percentages into ratings with this, so it follows the level being played.
+		sol::table tuning = mState["nTuning"];
+		tuning["DefenseRatingPerPercent"] = [this]() {
+			return DifficultyTuning::Game().GetRatingConversion(GetGame().GetChainData().GetLevelIndex());
+		};
+
 		modifierEngine["AdoptThread"] = [this](sol::this_state L, uint32_t id) {
 			const auto thread = GetThread(L);
 			return thread && GetGame().GetModifiers().AdoptThread(id, TrackThread(thread));
