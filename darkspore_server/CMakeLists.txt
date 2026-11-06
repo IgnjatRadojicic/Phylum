@@ -127,9 +127,11 @@ add_executable(recap_tests
     tests/scriptsource_test.cpp
     tests/scriptgaps_test.cpp
     tests/projectilesweep_test.cpp
+    tests/lobarc_test.cpp
     source/game/scriptsource.cpp
     source/game/scriptgaps.cpp
-    source/game/projectilesweep.cpp)
+    source/game/projectilesweep.cpp
+    source/game/lobarc.cpp)
 target_include_directories(recap_tests PRIVATE source ${doctest_SOURCE_DIR})
 target_link_libraries(recap_tests PRIVATE lua)
 
