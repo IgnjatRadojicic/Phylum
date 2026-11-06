@@ -124,6 +124,7 @@ namespace Game {
 
 			bool IsLevelLoaded() const;
 			bool LoadLevel();
+			std::vector<uint32_t> GetUsableEnemyNouns() const;
 
 			MarkerPtr GetMarker(uint32_t id) const;
 

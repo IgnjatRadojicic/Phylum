@@ -364,7 +364,8 @@ namespace Game {
 				}
 			}
 
-			const auto TestEnemy = [this](const auto& markerset) {
+			const auto enemyNouns = GetUsableEnemyNouns();
+			const auto TestEnemy = [this, &enemyNouns](const auto& markerset) {
 				for (const auto& marker : markerset.GetMarkers()) {
 					mMarkers[marker->GetId()] = marker;
 
@@ -374,7 +375,12 @@ namespace Game {
 						case utils::hash_id("SpawnPoint_DirectorB.Noun"):
 						case utils::hash_id("SpawnPoint_DirectorWanderer.Noun"):
 						{
-							const auto& object = mObjectManager->Create(mChainData.GetEnemyNoun(utils::random::get<uint32_t>(0, 5)));
+							if (enemyNouns.empty()) {
+								break;
+							}
+
+							const auto noun = enemyNouns[utils::random::get<size_t>(0, enemyNouns.size() - 1)];
+							const auto& object = mObjectManager->Create(noun);
 							if (object) {
 								object->SetPosition(marker->GetPosition());
 								object->SetOrientation(marker->GetRotation());
@@ -501,6 +507,19 @@ namespace Game {
 		}
 
 		return false;
+	}
+
+	// The level's enemy nouns that really exist. There are six slots (3 minions, 3 specials),
+	// and unused ones hold the hash of an empty name, which ObjectManager::Create would accept.
+	std::vector<uint32_t> Instance::GetUsableEnemyNouns() const {
+		std::vector<uint32_t> result;
+		const auto& nouns = NounDatabase::Instance();
+		for (uint32_t i = 0; i < 6; ++i) {
+			if (const auto noun = mChainData.GetEnemyNoun(i); nouns.Get(noun)) {
+				result.push_back(noun);
+			}
+		}
+		return result;
 	}
 
 	void Instance::MoveObject(const ObjectPtr& object, const Locomotion& locomotionData) {
