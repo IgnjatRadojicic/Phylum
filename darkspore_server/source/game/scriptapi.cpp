@@ -122,6 +122,7 @@ namespace {
 		function nAbility.BeginCast(ability, object, target, cursorPosition, rank)
 			nextInstanceId = nextInstanceId + 1
 			local id = object:GetId()
+			ScriptTrace("CAST ability=" .. tostring(ability.id) .. " object=" .. tostring(id))
 			local steps = ability.animationSequence and #ability.animationSequence or 0
 			local step = sequenceSteps[id] or 0
 			if steps > 0 then
@@ -534,6 +535,7 @@ namespace {
 			local modifier = nModifier.registered[guid]
 			local object = get(agent)
 			if not modifier or not object then
+				ScriptTrace("MODIFIER not-found guid=" .. tostring(guid) .. " known=" .. tostring(modifier ~= nil) .. " agent=" .. tostring(agent))
 				return kObjIDNone
 			end
 
@@ -562,6 +564,7 @@ namespace {
 			local allowed = canUse(modifier, agent, initiator, rank)
 			CastContext.Set(previous)
 			if not allowed then
+				ScriptTrace("MODIFIER can-use-refused guid=" .. tostring(guid) .. " agent=" .. tostring(agent))
 				return kObjIDNone
 			end
 
@@ -821,6 +824,17 @@ namespace Game {
 		mGapLogPath = path;
 	}
 
+	void Lua::SetTracePath(const std::string& path) {
+		mTracePath = path;
+	}
+
+	void Lua::Trace(const std::string& line) {
+		if (!mTrace.is_open()) {
+			mTrace.open(mTracePath, std::ios::app);
+		}
+		mTrace << GetGame().GetTime() << " " << line << std::endl;
+	}
+
 	void Lua::RegisterGameScriptApi() {
 		sol::table gameAbility = mState["nAbility"];
 
@@ -877,6 +891,10 @@ namespace Game {
 		sol::table scriptGaps = mState.create_named_table("ScriptGaps");
 		scriptGaps["Record"] = [gapLog, gaps](const std::string& name) {
 			gaps->Record(name);
+		};
+
+		mState["ScriptTrace"] = [this](const std::string& line) {
+			Trace(line);
 		};
 
 		sol::table modifierEngine = mState.create_named_table("ModifierEngine");

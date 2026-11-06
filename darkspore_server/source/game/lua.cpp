@@ -122,10 +122,15 @@ namespace Game {
 			sol::error err = result;
 			std::cout << "LuaThread::resume()" << std::endl;
 			std::cout << err.what() << std::endl;
+			report("resume", err.what());
 			std::cout << std::to_underlying(mCoroutine.status()) << std::endl;
 		}
 
 		return !is_waiting();
+	}
+
+	void LuaThread::report(const char* where, const std::string& error) {
+		mLua.Trace(std::string("ERROR ") + where + " " + error);
 	}
 
 	void LuaThread::stop() {

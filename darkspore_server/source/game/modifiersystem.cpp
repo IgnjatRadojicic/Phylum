@@ -24,6 +24,7 @@ namespace Game {
 
 		const auto duration = ResolveModifierDuration(seconds, rules);
 		if (!duration) {
+			Trace("resisted", spec.guid, 0, agent, initiator);
 			return 0;
 		}
 
@@ -33,13 +34,16 @@ namespace Game {
 		const auto decision = mManager.Request(resolved, agent, initiator, mGame.GetTime());
 		switch (decision.action) {
 			case Action::Refused:
+				Trace("refused", spec.guid, decision.id, agent, initiator);
 				return 0;
 
 			case Action::Refreshed:
+				Trace("refreshed", spec.guid, decision.id, agent, initiator);
 				SendUpdated(decision.id, true);
 				return decision.id;
 
 			case Action::Stacked:
+				Trace("stacked", spec.guid, decision.id, agent, initiator);
 				Stack(decision.id);
 				return decision.id;
 
@@ -48,6 +52,7 @@ namespace Game {
 				[[fallthrough]];
 
 			case Action::Created:
+				Trace("started", spec.guid, decision.id, agent, initiator);
 				Start(decision.id, std::move(context));
 				return decision.id;
 		}
@@ -188,6 +193,7 @@ namespace Game {
 
 		const auto instance = mManager.Get(id);
 		const auto agent = instance ? instance->agent : 0;
+		Trace("ended", instance ? instance->spec.guid : 0, id, agent, instance ? instance->initiator : 0);
 
 		// Kept while deactivating, so the script finds its context and can take off its own changes.
 		// Anything it adds then ends with it too, though no game script does that.
@@ -219,6 +225,11 @@ namespace Game {
 		context["handled"] = false;
 		lua.SpawnThread()->call<void>(script, context);
 		return context.get_or("handled", false);
+	}
+
+	void ModifierSystem::Trace(const char* what, uint32_t guid, uint32_t id, uint32_t agent, uint32_t initiator) {
+		mGame.GetLua().Trace(std::string("MODIFIER ") + what + " guid=" + std::to_string(guid) + " id=" + std::to_string(id) +
+			" agent=" + std::to_string(agent) + " initiator=" + std::to_string(initiator));
 	}
 
 	void ModifierSystem::SendUpdated(uint32_t id, bool restarted) {

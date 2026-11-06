@@ -5,6 +5,7 @@
 // Include
 #include "attributes.h"
 
+#include <fstream>
 #include <glm/glm.hpp>
 
 #define SOL_SAFE_FUNCTION_OBJECTS 1
@@ -59,6 +60,7 @@ namespace Game {
 					sol::error err = result;
 					std::cout << "LuaThread::call()" << std::endl;
 					std::cout << err.what() << std::endl;
+					report("call", err.what());
 					std::cout << std::to_underlying(mCoroutine.status()) << std::endl;
 					post_call();
 				}
@@ -78,6 +80,7 @@ namespace Game {
 			void create(const sol::function& func);
 			void renew();
 			void post_call();
+			void report(const char* where, const std::string& error);
 		
 		private:
 			Lua& mLua;
@@ -191,6 +194,11 @@ namespace Game {
 
 			void RegisterGameScriptApi();
 			void SetGapLogPath(const std::string& path);
+			void SetTracePath(const std::string& path);
+
+			// One line of what scripts did, for reading after a session. Script errors only reach the
+			// console otherwise, and each line is flushed so a crash keeps it.
+			void Trace(const std::string& line);
 
 			sol::table GetPrivateTable(uint32_t id) const;
 			sol::table CreatePrivateTable(uint32_t id);
@@ -241,6 +249,8 @@ namespace Game {
 			Instance& mGame;
 
 			std::string mGapLogPath = "script-missing.txt";
+			std::string mTracePath = "script-live.txt";
+			std::ofstream mTrace;
 
 			std::unordered_map<lua_State*, LuaThread*> mThreads;
 			std::unordered_map<uint32_t, AbilityPtr> mAbilities;

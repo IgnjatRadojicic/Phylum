@@ -214,6 +214,11 @@ namespace Game {
 		game->CreateWorld();
 		Lua& lua = game->GetLua();
 		lua.SetGapLogPath(gapLogPath);
+
+		constexpr const char* tracePath = "script-check-trace.txt";
+		std::filesystem::remove(tracePath);
+		lua.SetTracePath(tracePath);
+
 		lua.Initialize();
 		lua.PreloadAbilities();
 

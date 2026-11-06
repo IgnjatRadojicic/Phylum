@@ -66,6 +66,7 @@ namespace Game {
 
 			bool CallScript(const char* function, sol::table context);
 			void SendUpdated(uint32_t id, bool restarted);
+			void Trace(const char* what, uint32_t guid, uint32_t id, uint32_t agent, uint32_t initiator);
 
 		private:
 			Instance& mGame;
