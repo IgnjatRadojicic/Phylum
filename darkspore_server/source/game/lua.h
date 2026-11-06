@@ -78,6 +78,7 @@ namespace Game {
 			template<typename Result, typename... Args>
 			auto call(const sol::environment& env, const sol::function& func, Args&&... args) {
 				env.set_on(mThread);
+				mHasEnvironment = true;
 				return call<Result>(func, std::forward<Args>(args)...);
 			}
 
@@ -96,6 +97,9 @@ namespace Game {
 			std::weak_ptr<Object> mOwner;
 			uint64_t mTicket = 0;
 			bool mFailed = false;
+
+			// Set when a call gave the thread its own globals, which the next user must not inherit.
+			bool mHasEnvironment = false;
 
 			// A cast running on this thread, whose deactivate runs when the thread is freed.
 			sol::main_table mCastContext;

@@ -125,6 +125,21 @@ namespace {
 			end)
 		end
 
+		-- An ability that ends at once, so its thread goes straight back to the pool.
+		local finishes = {}
+		nAbility.RegisterAbility("ModifierCheckFinishes", finishes)
+		finishes[nAbilityFns.Tick] = function()
+			ModifierCheckCast.finishedOn = coroutine.running()
+		end
+
+		-- Runs after that cast, usually on the same pooled thread, which must have the plain globals again.
+		function ModifierCheckThreadGlobals(object, result)
+			nThread.Create(object, function()
+				result.reused = coroutine.running() == ModifierCheckCast.finishedOn
+				result.plain = getfenv(0) == _G
+			end)
+		end
+
 		function ModifierCheckBrokenGuid()
 			return nUtil.SPID("ModifierCheckBroken")
 		end
@@ -140,6 +155,7 @@ namespace {
 			nModifier.registered[nUtil.SPID("ModifierCheckBroken")] = nil
 			nAbility.scripts.ModifierCheckWaits = nil
 			nAbility.scripts.ModifierCheckFails = nil
+			nAbility.scripts.ModifierCheckFinishes = nil
 		end
 
 		-- An ability has an instance number of its own, which can equal a modifier's id.
@@ -229,6 +245,7 @@ namespace {
 				CheckCanUseReadsItsOwnContext();
 				CheckFailedStartEndsIt();
 				CheckReusedThreadForgetsItsCast();
+				CheckReusedThreadHasPlainGlobals();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
 				forget();
@@ -474,6 +491,23 @@ namespace {
 				const bool stale = result.get_or("stale", true);
 				Report("reused-thread-forgets-its-cast", reused && !stale,
 					"reused=" + std::to_string(reused) + " stale=" + std::to_string(stale));
+			}
+
+			// A cast gives its thread the ability's environment. The thread is renewed when it is
+			// freed, so "reused" is expected to be false: the point is that the globals are plain.
+			void CheckReusedThreadHasPlainGlobals() {
+				auto agent = Spawn();
+				const auto ability = mLua.GetAbility(utils::hash_id("ModifierCheckFinishes"));
+				ability->FindNumberedTick();
+				ability->Tick(agent, nullptr, glm::vec3(0.f), 1);
+
+				sol::table result = mState.create_table();
+				sol::protected_function check = mState["ModifierCheckThreadGlobals"];
+				check(agent->GetId(), result);
+
+				const bool reused = result.get_or("reused", false);
+				const bool plain = result.get_or("plain", false);
+				Report("reused-thread-has-plain-globals", plain, "reused=" + std::to_string(reused) + " plain=" + std::to_string(plain));
 			}
 
 			void CheckFailedStartEndsIt() {

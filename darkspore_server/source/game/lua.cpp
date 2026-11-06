@@ -151,6 +151,7 @@ namespace Game {
 	void LuaThread::renew() {
 		mCoroutine = sol::nil;
 		mResumeCondition = nullptr;
+		mHasEnvironment = false;
 		mThread = sol::thread::create(mLua.GetState());
 	}
 
@@ -577,8 +578,9 @@ namespace Game {
 		}
 		thread->mOwner.reset();
 
-		// A Lua thread that failed can never run again.
-		if (lua_status(thread->lua_state()) > LUA_YIELD) {
+		// A Lua thread that failed can never run again, and one given its own globals
+		// would pass them on to whatever runs on it next.
+		if (lua_status(thread->lua_state()) > LUA_YIELD || thread->mHasEnvironment) {
 			RenewThread(thread);
 		}
 
