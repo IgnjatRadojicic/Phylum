@@ -697,6 +697,14 @@ namespace RakNet {
 			// Could not find the object.
 			return;
 		}
+
+		// The client moves its hero itself and stamps every command with where the hero is.
+		// The server does not walk heroes, so this is the only place it learns where one
+		// stopped or stands when casting, and shots start from there. Taken for the player's
+		// own hero only, and simulated only, so nothing is sent back to move the client's pose.
+		if (object == player->GetDeployedCharacterObject()) {
+			object->SetPositionSimulated(command.data.position);
+		}
 #if 0
 		std::cout << "------------------------" << std::endl;
 		std::cout << "OnActionCommandMsgs(" << static_cast<int>(type) << ", " << bits_to_bytes(mInStream.GetNumberOfUnreadBits()) << ")" << std::endl;
