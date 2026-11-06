@@ -753,25 +753,33 @@ namespace RakNet {
 					combatData.cursorPosition = command.ability.cursorPosition;
 					combatData.targetPosition = command.ability.targetPosition;
 					// TODO: find creature index, can be in range of [0..2] i.e. one of three characters in squad
-					const uint32_t creatureIndex = 0;
+					const uint8_t creatureIndex = static_cast<uint8_t>(player->GetCurrentDeckIndex());
 					combatData.abilityId = player->GetAbilityId(creatureIndex, command.ability.index);
 					combatData.abilityRank = command.ability.rank;
 					combatData.unk[0] = command.ability.rank;
 					combatData.unk[1] = command.ability.unk;
 					combatData.valueFromActionResponse = command.ability.userData;
 
+					// The client dereferences its ability lookup without a null check, so an
+					// unknown id in the response crashes it. Ids from the player class are valid.
+					std::cout << "Ability ID: 0x" << std::hex << combatData.abilityId << std::dec
+						<< " hero: " << static_cast<uint32_t>(creatureIndex) << std::endl;
+
 					mGame.UseAbility(object, combatData);
 
-					auto targetObject = mGame.GetObjectManager().Get(command.ability.targetId);
-					if (targetObject) {
-						//AbilityCommandResponse actionResponse;
-						//actionResponse.abilityId = combatData.abilityId;
-						//actionResponse.cooldown = 0;
-						//actionResponse.timeImmobilized = 0;
-						//actionResponse.userData = command.ability.userData;
-						//SendActionCommandResponse(client, actionResponse);
+					if (combatData.abilityId != 0) {
+						AbilityCommandResponse actionResponse {};
+						actionResponse.abilityId = combatData.abilityId;
+						actionResponse.cooldown = 500;
+						actionResponse.timeImmobilized = 0;
+						actionResponse.userData = command.ability.userData;
+						SendActionCommandResponse(client, actionResponse);
+
+						if (command.ability.index == 0) {
+							mGame.WeaponAttack(object, command.ability.targetId, combatData.abilityId, player->GetWeaponDamage(creatureIndex));
+						}
 					}
-					
+
 					std::cout << "=== End UseCharacterAbility ===" << std::endl;
 					break;
 			}
