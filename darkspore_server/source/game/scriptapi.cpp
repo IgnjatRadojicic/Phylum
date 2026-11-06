@@ -935,6 +935,14 @@ namespace {
 			end
 		end
 
+		-- TargetUtils passes its type list where the radius goes. Read as a number that is 0,
+		-- leaving no type list, which is what the game's own engine made of it.
+		local alongLine = nObjectManager.GetObjectsAlongLine
+		function nObjectManager.GetObjectsAlongLine(x1, y1, z1, x2, y2, z2, radius, types)
+			radius = tonumber(radius) or 0
+			return toIds(alongLine(vector(x1, y1, z1), vector(x2, y2, z2), radius, type(types) == "table" and types or {}))
+		end
+
 		function nObjectManager.RemoveObjectById(id)
 			local object = get(id)
 			if object then

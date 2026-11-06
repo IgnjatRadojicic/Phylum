@@ -236,6 +236,28 @@ namespace LuaFunction {
 		return result;
 	}
 
+	// Nearest first, so a beam that stops at the first hit can take the first entry.
+	auto nObjectManager_GetObjectsAlongLine(sol::this_state L, glm::vec3 from, glm::vec3 to, float radius, sol::table objectTypes) {
+		auto& game = LuaGetGame(L);
+		const auto& objectManager = game.GetObjectManager();
+
+		std::vector<Game::NounType> types;
+		for (const auto& entry : objectTypes) {
+			types.push_back(static_cast<Game::NounType>(entry.second.as<uint32_t>()));
+		}
+
+		const auto hits = objectManager.SweepObjects(from, to, glm::vec3(std::max(0.f, radius)), types, 0, nullptr);
+		auto result = sol::state_view(L).create_table(static_cast<int>(hits.size()), 0);
+		int index = 0;
+		for (const auto& hit : hits) {
+			if (auto object = objectManager.Get(hit.id)) {
+				result[++index] = object;
+			}
+		}
+
+		return result;
+	}
+
 	auto nObjectManager_GetObjectsInRadius_SortedByDistance(sol::this_state L, glm::vec3 position, float radius, sol::table objectTypes) {
 		auto& game = LuaGetGame(L);
 
@@ -1971,6 +1993,7 @@ namespace Game {
 		objectManager["CreateTriggerVolume"] = &LuaFunction::nObjectManager_CreateTriggerVolume;
 
 		objectManager["GetObjectsInRadius"] = &LuaFunction::nObjectManager_GetObjectsInRadius;
+		objectManager["GetObjectsAlongLine"] = &LuaFunction::nObjectManager_GetObjectsAlongLine;
 		objectManager["GetObjectsInRadius_SortedByDistance"] = &LuaFunction::nObjectManager_GetObjectsInRadius_SortedByDistance;
 	}
 

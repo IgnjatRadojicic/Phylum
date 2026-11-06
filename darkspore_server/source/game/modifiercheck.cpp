@@ -300,6 +300,7 @@ namespace {
 				CheckThornsHitsMeleeAttackerBack();
 				CheckMobPassiveStartsOnce();
 				CheckKillObjectEndsPassive();
+				CheckLineFindsMobOnIt();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
 				forget();
@@ -631,6 +632,36 @@ namespace {
 					"running=" + std::to_string(running.size()) + " second=" + std::to_string(second) +
 					" named=" + std::to_string(Game::PassiveModifiers::NamedBy(*mob->GetNoun())) +
 					" ai=" + std::to_string(mob->GetNoun()->GetAIDefinition() != nullptr));
+			}
+
+			// Beams (twin laser, plasma wall) ask for what lies along a line, with the game's own call.
+			void CheckLineFindsMobOnIt() {
+				auto mob = Spawn();
+				if (!mob) {
+					Report("line-finds-mob-on-it", false, "no mob");
+					return;
+				}
+				Wait(40); // New objects reach the spatial index on the next update
+
+				const auto at = mob->GetPosition();
+				sol::protected_function along = mState["nObjectManager"]["GetObjectsAlongLine"];
+				auto countOn = [&](float sideways) -> size_t {
+					sol::protected_function_result result = along(at.x - 10, at.y + sideways, at.z + 0.5f, at.x + 10, at.y + sideways, at.z + 0.5f, 0);
+					if (!result.valid() || result.get_type() != sol::type::table) {
+						return SIZE_MAX;
+					}
+					size_t found = 0;
+					for (const auto& entry : result.get<sol::table>()) {
+						found += entry.second.as<uint32_t>() == mob->GetId();
+					}
+					return found;
+				};
+
+				const size_t onLine = countOn(0);
+				const size_t beside = countOn(20);
+				Report("line-finds-mob-on-it", onLine == 1 && beside == 0,
+					"on=" + std::to_string(onLine) + " beside=" + std::to_string(beside));
+				mob->MarkForDeletion();
 			}
 
 			// Bosses and pets end through nGameObject.KillObject, which must die like a killing hit.

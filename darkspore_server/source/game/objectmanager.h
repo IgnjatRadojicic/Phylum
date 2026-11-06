@@ -7,6 +7,9 @@
 #include "octree.h"
 #include "lua.h"
 #include "level.h"
+#include "projectilesweep.h"
+
+#include <functional>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -74,6 +77,11 @@ namespace Game {
 
 			std::vector<ObjectPtr> GetObjectsInRegion(const BoundingBox& region, const std::vector<NounType>& types) const;
 			std::vector<ObjectPtr> GetObjectsInRadius(const BoundingSphere& region, const std::vector<NounType>& types) const;
+
+			// What a box of halfExtent touches moving from one point to another, nearest first.
+			// Shots and beams share it, so both agree on how big a mob is.
+			std::vector<SweepHit> SweepObjects(const glm::vec3& from, const glm::vec3& to, const glm::vec3& halfExtent,
+				const std::vector<NounType>& types, uint32_t intendedId, const std::function<bool(const ObjectPtr&)>& canHit) const;
 
 			bool IsInLineOfSight(const ObjectPtr& object, const ObjectPtr& target, const glm::vec3& targetPosition) const;
 

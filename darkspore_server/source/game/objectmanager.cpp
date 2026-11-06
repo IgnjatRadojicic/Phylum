@@ -8,6 +8,8 @@
 #include "utils/functions.h"
 #include "utils/log.h"
 
+#include <algorithm>
+
 // Game
 namespace Game {
 	// TriggerVolume
@@ -261,6 +263,29 @@ namespace Game {
 
 	std::vector<ObjectPtr> ObjectManager::GetObjectsInRadius(const BoundingSphere& region, const std::vector<NounType>& types) const {
 		return mOctTree->GetObjectsInRadius(region, types);
+	}
+
+	// Approximate: how far from a mob's centre a shot still counts, and how far to look for mobs.
+	constexpr float smallestTargetRadius = 0.5f;
+	constexpr float largestTargetRadius = 15.f;
+
+	std::vector<SweepHit> ObjectManager::SweepObjects(const glm::vec3& from, const glm::vec3& to, const glm::vec3& halfExtent,
+		const std::vector<NounType>& types, uint32_t intendedId, const std::function<bool(const ObjectPtr&)>& canHit) const {
+		const BoundingSphere area((from + to) * 0.5f, glm::length(to - from) * 0.5f + glm::length(halfExtent) + largestTargetRadius);
+
+		std::vector<SweepTarget> targets;
+		for (const auto& object : GetObjectsInRadius(area, types)) {
+			if (canHit && !canHit(object)) {
+				continue;
+			}
+
+			// The centre point is halfway up the mob, so it gives the height of the box.
+			const float width = std::max(object->GetFootprintRadius(), smallestTargetRadius);
+			const float height = (object->GetCenterPoint().z - object->GetPosition().z) * 2;
+			targets.push_back({ object->GetId(), object->GetPosition(), glm::vec3(-width, -width, 0), glm::vec3(width, width, height > 0 ? height : width * 2) });
+		}
+
+		return ProjectileSweep(from, to, halfExtent, intendedId).Find(targets);
 	}
 
 	bool ObjectManager::IsInLineOfSight(const ObjectPtr& object, const ObjectPtr& target, const glm::vec3& targetPosition) const {

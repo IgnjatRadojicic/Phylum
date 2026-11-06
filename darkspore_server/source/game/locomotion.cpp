@@ -12,10 +12,6 @@
 // internal floats
 constexpr size_t TEST_VALUE = 0x37800000U;
 
-// Approximate: how far from a mob's centre a shot still counts, and how far to look for mobs.
-constexpr float smallestTargetRadius = 0.5f;
-constexpr float largestTargetRadius = 15.f;
-
 // unknown functions
 namespace {
 	void Func(Game::Object& object) {}
@@ -804,20 +800,8 @@ LAB_009ef634:
 			return {};
 		}
 
-		const glm::vec3 halfExtent = GetProjectileHalfExtent();
-		const BoundingSphere area((from + to) * 0.5f, glm::length(to - from) * 0.5f + glm::length(halfExtent) + largestTargetRadius);
-
-		std::vector<SweepTarget> targets;
-		for (const auto& object : mObject->GetGame().GetObjectManager().GetObjectsInRadius(area, { NounType::Creature })) {
-			if (!mHitIds.contains(object->GetId()) && CanHit(object)) {
-				// The centre point is halfway up the mob, so it gives the height of the box.
-				const float width = std::max(object->GetFootprintRadius(), smallestTargetRadius);
-				const float height = (object->GetCenterPoint().z - object->GetPosition().z) * 2;
-				targets.push_back({ object->GetId(), object->GetPosition(), glm::vec3(-width, -width, 0), glm::vec3(width, width, height > 0 ? height : width * 2) });
-			}
-		}
-
-		return ProjectileSweep(from, to, halfExtent, mTargetId).Find(targets);
+		return mObject->GetGame().GetObjectManager().SweepObjects(from, to, GetProjectileHalfExtent(), { NounType::Creature }, mTargetId,
+			[this](const ObjectPtr& object) { return !mHitIds.contains(object->GetId()) && CanHit(object); });
 	}
 
 	void Locomotion::BeginFlight(const glm::vec3& position) {
