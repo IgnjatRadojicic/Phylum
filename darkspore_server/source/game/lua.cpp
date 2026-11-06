@@ -750,11 +750,11 @@ namespace Game {
 		return mLua.GetGame().GetObjectManager().IsInLineOfSight(object, target, targetPosition);
 	}
 
+	// The numbered tick, when a script sets one, is the ability's real entry point and
+	// wins over the named one. Most just call self:tick(), but some do more first
+	// (FearNova removes a modifier, SoulRavagerBasic passes its soul count) and some
+	// replace it entirely (LightningTempest_Active's volley never calls self:tick()).
 	void Ability::FindNumberedTick() {
-		if (mTickFn) {
-			return;
-		}
-
 		sol::state_view state(mLua.GetState());
 		sol::protected_function find = state["nAbility"]["NumberedTick"];
 		sol::protected_function_result result = find(mSelf);

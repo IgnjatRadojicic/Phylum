@@ -167,8 +167,8 @@ namespace Game {
 			table.sort(names)
 
 			-- Abilities with both a named tick and a numbered one. The server runs the
-			-- named one; a numbered tick that is more than "return self:tick()" would
-			-- mean the two disagree about what the ability does.
+			-- numbered one; those that are more than "return self:tick()" are listed,
+			-- because running the named tick alone would skip their own work.
 			local both, differing = 0, {}
 			for _, name in ipairs(names) do
 				local ability = nAbility.scripts[name]
