@@ -89,10 +89,7 @@ namespace Game {
 
 		mServer->start(mData.hostNetwork.exip.port);
 		mGameStartTime = utils::get_milliseconds();
-
-		mServer->add_task([this] {
-			mLua->Initialize();
-		});
+		mScriptsReady = false;
 		return true;
 	}
 
@@ -303,7 +300,18 @@ namespace Game {
 	void Instance::OnPlayerStart(const PlayerPtr& player) {
 		std::cout << "Player Start" << std::endl;
 
-		mLua->PreloadAbilities();
+		// Done here rather than at start, because this blocks the thread that talks to the
+		// client and should not happen while the client is loading the level.
+		if (!mScriptsReady) {
+			const auto setupStart = utils::get_milliseconds();
+			mLua->Initialize();
+			const auto preloadStart = utils::get_milliseconds();
+			mLua->PreloadAbilities();
+			std::cout << "Script setup took " << (preloadStart - setupStart) << " ms, loading abilities took "
+				<< (utils::get_milliseconds() - preloadStart) << " ms." << std::endl;
+			mScriptsReady = true;
+		}
+
 		mGameStarted = LoadLevel();
 
 		if (mGameStarted) {
@@ -952,7 +960,13 @@ namespace Game {
 		auto newFlags = flags;
 
 		for (const auto& [_, client] : mServer->GetClients()) {
+			// A client has no player until its hello has been handled.
 			const auto& player = client->GetPlayer();
+			if (!player) {
+				std::cout << "Object update for a client with no player." << std::endl;
+				continue;
+			}
+
 			if (object == player->GetDeployedCharacterObject()) {
 				player->SyncCharacterData();
 			}

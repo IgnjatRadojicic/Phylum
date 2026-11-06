@@ -776,18 +776,15 @@ namespace RakNet {
 						actionResponse.userData = command.ability.userData;
 						SendActionCommandResponse(client, actionResponse, command.data.unk[0]);
 
-						// Only basic attacks are proven to run as scripts so far.
-						if (command.ability.index == 0) {
-							const auto weaponDamage = player->GetWeaponDamage(creatureIndex);
-							if (const auto& attributes = object->GetAttributeData()) {
-								attributes->SetWeaponDamage(std::get<0>(weaponDamage), std::get<1>(weaponDamage));
-							}
+						const auto weaponDamage = player->GetWeaponDamage(creatureIndex);
+						if (const auto& attributes = object->GetAttributeData()) {
+							attributes->SetWeaponDamage(std::get<0>(weaponDamage), std::get<1>(weaponDamage));
+						}
 
-							const bool scripted = mGame.UseAbility(object, combatData);
-							std::cout << "Basic attack ran as script: " << scripted << std::endl;
-							if (!scripted) {
-								mGame.WeaponAttack(object, command.ability.targetId, combatData.abilityId, weaponDamage);
-							}
+						const bool scripted = mGame.UseAbility(object, combatData);
+						std::cout << "Ability ran as script: " << scripted << std::endl;
+						if (!scripted && command.ability.index == 0) {
+							mGame.WeaponAttack(object, command.ability.targetId, combatData.abilityId, weaponDamage);
 						}
 					}
 

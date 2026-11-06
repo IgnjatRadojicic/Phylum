@@ -236,6 +236,7 @@ namespace Game {
 
 			Level mLevel {};
 
+			bool mScriptsReady = false;
 			bool mGameStarted = false;
 			bool mLevelLoaded = false;
 
