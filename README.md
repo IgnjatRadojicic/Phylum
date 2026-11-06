@@ -11,8 +11,8 @@ This is an unofficial community project, not affiliated with EA or Maxis. You ne
 | Login, registration, entering levels | Working |
 | Levels in worlds 1 to 6 | Should load, only 1-1 has been tested |
 | Levels 7-1 and above | Do not load, the server's level table stops at world 6 |
-| Basic attacks | Swing, land on time and kill enemies |
-| Other abilities | Accepted by the game, but have no effect yet |
+| Abilities | Run the game's own scripts. About 60% of scripted abilities pass the self-check, and basic attacks work in play |
+| Effects | Buffs, debuffs and shields have no effect yet, because modifiers are not built |
 | Damage | Random roll in the hero's weapon range, with no armour or resistances |
 | Enemies | Only one spawns per spawn group |
 
@@ -22,7 +22,8 @@ This is an unofficial community project, not affiliated with EA or Maxis. You ne
 - **Attack crash:** the game crashes on an unknown ability ID in an ability reply, so replies now carry valid IDs.
 - **Stuck actions:** ability replies now echo the sequence number of the client's command, and send a real cast start time.
 - **False level end:** squad abilities no longer tell the game the boss is dead.
-- **Basic attacks:** swings and hit timing are read from the game's own ability scripts.
+- **Ability scripts:** the server runs the game's original compiled scripts on Lua 5.1, instead of decompiled copies on LuaJIT. An adapter in `scriptapi.cpp` connects them to server functions.
+- **Script check:** `recap_server --check-scripts` loads every script and tests each ability against fake objects, with no game needed.
 - **Build:** repaired the dead RakNet and LuaJIT sources, and added Windows scripts that need no Visual Studio install.
 
 ## Getting started on Windows
@@ -52,13 +53,12 @@ This is an unofficial community project, not affiliated with EA or Maxis. You ne
 ## Known issues
 
 - The game can crash on the vote screen after a level.
-- The game crashed once while loading 1-1. The cause is unknown.
-- Basic attacks have no range check.
-- Other abilities have no animation or effect.
+- The game can crash while loading a level. The cause is unknown, and retrying usually works.
+- Abilities that need modifiers or other missing functions stop partway.
 
 ## Roadmap
 
-The game's ability scripts hold the real combat logic, but they call a Lua API this server does not have yet. The main goal is to build that API so the scripts run as they are, starting with `template_ability_melee`.
+The game's scripts hold the real combat logic. The main goal is to finish the API they call, starting with modifiers, so that buffs and debuffs work.
 
 ## Contributing
 
