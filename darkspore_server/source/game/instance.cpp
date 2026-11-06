@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <array>
+#include <format>
 
 /*
 	eeh... maybe not
@@ -505,6 +506,11 @@ namespace Game {
 	void Instance::MoveObject(const ObjectPtr& object, const Locomotion& locomotionData) {
 		if (!object) {
 			return;
+		}
+
+		if (mLua && object->IsPlayerControlled()) {
+			const auto& goal = locomotionData.GetGoalPosition();
+			mLua->Trace(std::format("MOVE object={} goal={:.1f},{:.1f},{:.1f}", object->GetId(), goal.x, goal.y, goal.z));
 		}
 
 		const auto goalFlags = locomotionData.GetGoalFlags();
