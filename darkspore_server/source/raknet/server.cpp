@@ -793,12 +793,18 @@ namespace RakNet {
 						<< "," << static_cast<uint32_t>(command.data.unk[2]) << std::endl;
 
 					if (combatData.abilityId != 0) {
+						// The reply carries the cooldown, so the cast is paid for before it goes.
+						const auto answer = mGame.PayForCast(object, combatData.abilityId, combatData.abilityRank, 500);
+
 						AbilityCommandResponse actionResponse {};
 						actionResponse.abilityId = combatData.abilityId;
-						actionResponse.cooldown = 500;
+						actionResponse.cooldown = answer.cooldownMs;
 						actionResponse.timeImmobilized = 0;
 						actionResponse.userData = command.ability.userData;
 						SendActionCommandResponse(client, actionResponse, command.data.unk[0]);
+						if (!answer.allowed) {
+							break;
+						}
 
 						const auto weaponDamage = player->GetWeaponDamage(creatureIndex);
 						if (const auto& attributes = object->GetAttributeData()) {
@@ -846,11 +852,14 @@ namespace RakNet {
 					<< " target: " << combatData.targetId << std::endl;
 
 				if (combatData.abilityId != 0) {
-					mGame.UseAbility(object, combatData);
+					const auto answer = mGame.PayForCast(object, combatData.abilityId, combatData.abilityRank, 2000);
+					if (answer.allowed) {
+						mGame.UseAbility(object, combatData);
+					}
 
 					AbilityCommandResponse actionResponse {};
 					actionResponse.abilityId = combatData.abilityId;
-					actionResponse.cooldown = 2000;
+					actionResponse.cooldown = answer.cooldownMs;
 					actionResponse.timeImmobilized = 0;
 					actionResponse.userData = command.ability.userData;
 					SendActionCommandResponse(client, actionResponse, command.data.unk[0]);

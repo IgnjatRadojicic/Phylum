@@ -61,6 +61,8 @@ namespace Game {
 				function object:GetWeaponDamage() return { 6, 12 } end
 				function object:GetAttributeSnapshot() return {} end
 				function object:GetAttributeValue() return 0 end
+				function object:GetAbilityAttributeValue() return 0 end
+				function object:PayForCast() end
 				function object:IsPlayerControlled() return team == 1 end
 				function object:SetAnimationState() calls.animation = calls.animation + 1 end
 				function object:TakeDamage()

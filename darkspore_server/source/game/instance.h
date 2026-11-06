@@ -190,6 +190,15 @@ namespace Game {
 			void MoveObject(const ObjectPtr& object, const Locomotion& locomotionData);
 
 			// Abilities / Combat / Etc
+			// The answer to a hero's cast: whether it runs, and the cooldown the reply shows.
+			// An ability with no script costs nothing and shows unscriptedCooldownMs.
+			struct CastAnswer {
+				bool allowed = false;
+				uint32_t cooldownMs = 0;
+			};
+			CastAnswer PayForCast(const ObjectPtr& object, uint32_t abilityId, int32_t rank, uint32_t unscriptedCooldownMs);
+
+			// Runs the ability's script. PayForCast decides first whether it may.
 			bool UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData);
 			void WeaponAttack(const ObjectPtr& attacker, uint32_t targetId, uint32_t abilityId, const std::tuple<float, float>& damageRange);
 			void SwapCharacter(const PlayerPtr& player, uint32_t creatureIndex);

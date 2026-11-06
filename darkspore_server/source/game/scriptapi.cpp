@@ -269,6 +269,29 @@ namespace {
 			agent:UseAbility(ability, target, vec3.new(x or 0, y or 0, z or 0), rank)
 		end
 
+		-- What a cast costs, as the ability's script gives it. AbilityCost (abilitycost.h) adds the
+		-- caster's part. The game's own nAbility.GetManaCost (global.lua) finds the ability by its
+		-- namespace, so it is used when that name leads back to this ability.
+		AbilityApi = {}
+		function AbilityApi.CostData(ability, agentId, rank)
+			local manaCost
+			if ability.namespace and rawget(_G, ability.namespace) == ability then
+				manaCost = nAbility.GetManaCost(ability.namespace, agentId, rank)
+			else
+				manaCost = GetRankedValueHelper(ability.manaCost or 0, rank)
+			end
+			local manual = nCooldownType ~= nil and ability.cooldownType ~= nil and ability.cooldownType == nCooldownType.Manual
+			return manaCost or 0,
+				GetRankedValueHelper(ability.manaCoefficient or 0, rank) or 0,
+				GetRankedValueHelper(ability.cooldown or 0, rank) or 0,
+				manual
+		end
+
+		function nAbility.GetAbilityAttributeValue(agentId, abilityId)
+			local agent = agentId and agentId ~= kObjIDNone and nObjectManager.GetObject(agentId) or nil
+			return agent and agent:GetAbilityAttributeValue(abilityId) or 0
+		end
+
 		function nAbility.TargetInRangeAtStart()
 			return true
 		end
@@ -337,7 +360,20 @@ namespace {
 			return false
 		end
 
-		function nAbility.PayCooldownAndMana() end
+		-- A manual ability (cooldownType Manual) pays for its cast when its script says so. Every
+		-- other ability paid when the cast began, so its call does nothing: a cast pays once. The
+		-- lightning and missile tempests and the sleep mushroom call it without being manual.
+		function nAbility.PayCooldownAndMana()
+			local cast = currentCast()
+			if not (cast and cast.object and cast.ability and cast.ability.id) or cast.paid then
+				return
+			end
+			local ability = cast.ability
+			if nCooldownType and ability.cooldownType == nCooldownType.Manual then
+				cast.paid = true
+				cast.object:PayForCast(ability.id, cast.rank)
+			end
+		end
 
 		-- Scripts read this back with GetAbilityEventType. Events do not reach anything yet.
 		function nAbility.CreateAbilityEvent(eventType)

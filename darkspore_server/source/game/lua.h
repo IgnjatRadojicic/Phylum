@@ -3,6 +3,7 @@
 #define _GAME_LUA_HEADER
 
 // Include
+#include "abilitycost.h"
 #include "attributes.h"
 
 #include <fstream>
@@ -324,7 +325,8 @@ namespace Game {
 			bool ShouldPursue() const;
 
 			// methods
-			float GetManaCost(const ObjectPtr& object, int32_t rank, float value) const;
+			// What the script says a cast at this rank costs, before the caster's attributes.
+			AbilityCostData GetCostData(const ObjectPtr& object, int32_t rank) const;
 
 			bool IsInRange(const ObjectPtr& object, const ObjectPtr& target, const glm::vec3& targetPosition, int32_t rank) const;
 			bool IsAbleToHit(const ObjectPtr& object, const ObjectPtr& target, const glm::vec3& targetPosition, int32_t rank) const;

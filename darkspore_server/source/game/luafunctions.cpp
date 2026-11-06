@@ -4,6 +4,7 @@
 
 #include "instance.h"
 #include "objectmanager.h"
+#include "castpayment.h"
 #include "damageevents.h"
 #include "serverevent.h"
 
@@ -789,6 +790,26 @@ namespace LuaFunction {
 			if (object) {
 				const auto& [end, duration] = object->AddCooldown(abilityId, milliseconds);
 				game.SendCooldownUpdate(object, abilityId, end - duration, duration);
+			}
+		}
+
+		auto GetAbilityAttributeValue(sol::this_state L, sol::object objectValue, uint32_t abilityId) {
+			auto& game = LuaGetGame(L);
+			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
+			const auto& ability = game.GetLua().GetAbility(abilityId);
+			return object && ability ? object->GetAbilityAttributeValue(*ability) : 0.f;
+		}
+
+		// For an ability whose script says when it is paid (nAbility.PayCooldownAndMana)
+		auto PayForCast(sol::this_state L, sol::object objectValue, uint32_t abilityId, sol::optional<int32_t> rank) {
+			auto& game = LuaGetGame(L);
+			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
+			const auto& ability = game.GetLua().GetAbility(abilityId);
+			if (object && ability) {
+				const auto& [end, duration] = Game::CastPayment(*object, *ability, abilityId, rank.value_or(1)).Pay();
+				if (duration > 0) {
+					game.SendCooldownUpdate(object, abilityId, end - duration, duration);
+				}
 			}
 		}
 
@@ -2145,6 +2166,8 @@ namespace Game {
 
 		object["AddCooldown"] = &LuaFunction::Object::AddCooldown;
 		object["RemoveCooldown"] = &LuaFunction::Object::RemoveCooldown;
+		object["PayForCast"] = &LuaFunction::Object::PayForCast;
+		object["GetAbilityAttributeValue"] = &LuaFunction::Object::GetAbilityAttributeValue;
 		object["ScaleCooldown"] = &LuaFunction::Object::ScaleCooldown;
 
 		object["TakeDamage"] = &LuaFunction::Object::TakeDamage;

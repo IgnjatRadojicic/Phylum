@@ -5,6 +5,7 @@
 #include "objectmanager.h"
 #include "lua.h"
 #include "modifiersystem.h"
+#include "castpayment.h"
 #include "damageevents.h"
 #include "passivemodifiers.h"
 #include "serverevent.h"
@@ -566,8 +567,32 @@ namespace Game {
 		}
 	}
 
+	Instance::CastAnswer Instance::PayForCast(const ObjectPtr& object, uint32_t abilityId, int32_t rank, uint32_t unscriptedCooldownMs) {
+		const auto& ability = mLua->GetAbility(abilityId);
+		if (!object || !ability) {
+			return { object != nullptr, unscriptedCooldownMs };
+		}
+
+		CastPayment payment(*object, *ability, abilityId, rank);
+		const auto& cost = payment.GetCost();
+		if (!payment.CanPay()) {
+			mLua->Trace(std::format("REFUSED ability={} object={} mana={:.0f}/{:.0f} cooling={}",
+				abilityId, object->GetId(), object->GetMana(), cost.mana, object->HasCooldown(abilityId)));
+			return { false, 0 };
+		}
+
+		// A manual ability pays when its script calls PayCooldownAndMana.
+		if (cost.manual) {
+			return { true, 0 };
+		}
+
+		const auto [end, duration] = payment.Pay();
+		mLua->Trace(std::format("PAID ability={} object={} mana={:.0f} cooldown={}", abilityId, object->GetId(), cost.mana, duration));
+		return { true, duration };
+	}
+
 	bool Instance::UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData) {
-		if (!object || object->HasCooldown(combatData.abilityId)) {
+		if (!object) {
 			return false;
 		}
 

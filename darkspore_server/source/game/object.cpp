@@ -5,6 +5,7 @@
 #include "instance.h"
 #include "catalyst.h"
 #include "config.h"
+#include "castpayment.h"
 
 #include "sporenet/part.h"
 
@@ -1152,6 +1153,15 @@ namespace Game {
 		return it->second;
 	}
 
+	float Object::GetAbilityAttributeValue(const Ability& ability) const {
+		// An ability without its own scaling attribute scales with the caster's primary one.
+		auto scalingAttribute = utils::enum_wrapper { ability.GetScalingAttribute() };
+		if (scalingAttribute.value() == decltype(scalingAttribute)().bnot().value()) {
+			scalingAttribute = static_cast<AttributeType>(GetPrimaryAttribute());
+		}
+		return GetAttributeValue(scalingAttribute);
+	}
+
 	Cooldown Object::RemoveCooldown(uint32_t abilityId, uint32_t milliseconds) {
 		Cooldown cooldown;
 		if (auto it = mCooldowns.find(abilityId); it != mCooldowns.end()) {
@@ -1597,18 +1607,8 @@ if (health <= 0) {
 			return -10000;
 		}
 
-		// Get scaling attribute
-		auto scalingAttribute = utils::enum_wrapper { ability->GetScalingAttribute() };
-		if (scalingAttribute.value() == decltype(scalingAttribute)().bnot().value()) {
-			scalingAttribute = static_cast<AttributeType>(GetPrimaryAttribute());
-		}
-
 		const auto& self = shared_from_this();
-
-		// TODO: probably not use shared_from_this here somehow.
-		float attributeValue = GetAttributeValue(scalingAttribute);
-		// also check object player index?
-		if (GetMana() < ability->GetManaCost(self, rank, attributeValue)) {
+		if (GetMana() < CastPayment(*this, *ability, ability->GetId(), rank).GetCost().mana) {
 			return -9997;
 		}
 		

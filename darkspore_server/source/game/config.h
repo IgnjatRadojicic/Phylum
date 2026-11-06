@@ -30,6 +30,8 @@ namespace Game {
 		CONFIG_TEMPLATE_CREATURE_PATH,
 		CONFIG_TEMPLATE_CREATURE_PARTS_PATH,
 		CONFIG_TEST_MOB_HEALTH,
+		// 1 lets casts cost no mana, until orbs refill it as in the game
+		CONFIG_TEST_FREE_MANA,
 		CONFIG_END
 	};
 

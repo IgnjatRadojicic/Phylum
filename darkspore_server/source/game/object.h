@@ -389,6 +389,9 @@ namespace Game {
 			// Cooldown
 			bool HasCooldown(uint32_t abilityId) const;
 			Cooldown AddCooldown(uint32_t abilityId, uint32_t milliseconds);
+
+			// The attribute the ability scales with, as nAbility.GetAbilityAttributeValue gives it.
+			float GetAbilityAttributeValue(const Ability& ability) const;
 			Cooldown RemoveCooldown(uint32_t abilityId, uint32_t milliseconds);
 			Cooldown ScaleCooldown(uint32_t abilityId, float scale);
 

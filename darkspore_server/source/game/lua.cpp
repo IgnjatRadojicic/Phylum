@@ -687,21 +687,24 @@ namespace Game {
 		return mShouldPursue;
 	}
 
-	float Ability::GetManaCost(const ObjectPtr& object, int32_t rank, float value) const {
-		if (object && object->IsOverdriveCharged()) {
-			return 0.f;
+	AbilityCostData Ability::GetCostData(const ObjectPtr& object, int32_t rank) const {
+		AbilityCostData data;
+		data.basic = utils::enum_wrapper { mDescriptors }.test(Descriptors::IsBasic);
+
+		sol::state_view state(mLua.GetState());
+		sol::protected_function read = state["AbilityApi"]["CostData"];
+		sol::protected_function_result result = read(mSelf, object ? object->GetId() : 0, std::max(1, rank));
+		if (!result.valid()) {
+			sol::error error = result;
+			mLua.Trace("ERROR cost ability=" + std::to_string(mId) + " " + error.what());
+			return data;
 		}
 
-		sol::protected_function method = mSelf["GetManaCost"];
-		if (method != sol::nil) {
-			float cost = method.call<float>(mSelf, object, rank);
-			if (cost != 0.f) {
-				// TODO: figure out how "property" works in darkspore
-				return cost + (0.05f * value); // property[rank].something * value
-			}
-		}
-
-		return 0.f;
+		data.manaCost = result.get<float>(0);
+		data.manaCoefficient = result.get<float>(1);
+		data.cooldownSeconds = result.get<float>(2);
+		data.manual = result.get<bool>(3);
+		return data;
 	}
 
 	bool Ability::IsInRange(const ObjectPtr& object, const ObjectPtr& target, const glm::vec3& targetPosition, int32_t rank) const {
