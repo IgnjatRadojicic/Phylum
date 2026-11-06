@@ -452,8 +452,12 @@ namespace Game {
 			}
 		}
 
-		sol::table registered = mState["nModifier"]["registered"];
-		std::cout << "Game modifier scripts: " << registered.size() << " registered, " << failed << " failed." << std::endl;
+		// Keyed by name, so size() (array length) would always be 0.
+		size_t registered = 0;
+		for (const auto& _ : mState["nModifier"]["registered"].get<sol::table>()) {
+			++registered;
+		}
+		std::cout << "Game modifier scripts: " << registered << " registered, " << failed << " failed." << std::endl;
 	}
 
 	Instance& Lua::GetGame() {
