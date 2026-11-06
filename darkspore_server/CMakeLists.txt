@@ -82,6 +82,11 @@ CPMAddPackage(NAME rapidjson
 target_include_directories(recap_server PRIVATE "${rapidjson_SOURCE_DIR}/include")
 
 # OpenSSL
+if(MSVC)
+    # OpenSSL's Configure reads CC. The Ninja generator leaves a forward-slash path there,
+    # which cmd treats as a drive change, so nmake "runs" the compiler without compiling anything.
+    set(ENV{CC} cl)
+endif()
 CPMAddPackage(
     GIT_REPOSITORY https://github.com/jimmy-park/openssl-cmake.git
     GIT_TAG 9f0eb150763420789a38787554a839447ec5f88c

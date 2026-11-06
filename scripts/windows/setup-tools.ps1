@@ -3,7 +3,7 @@
     Installs everything needed to build the ReCap server on Windows into one folder.
 
 .DESCRIPTION
-    Needs no Visual Studio install. Downloads pinned, hash-checked versions of CMake,
+    Needs no Visual Studio install. Downloads pinned, hash-checked versions of CMake, Ninja,
     Strawberry Perl and NASM, then Microsoft's compiler and Windows SDK. Nothing is
     installed into Windows and nothing goes outside ToolsDir, except that unpacking the
     SDK uses Windows Installer, which may briefly use the system temp folder.
@@ -70,6 +70,9 @@ Install-Zip 'perl' 'https://github.com/StrawberryPerl/Perl-Dist-Strawberry/relea
     '6A081A811781C30ACA51DBC036AFD93092AF91E3297901F02C17043795A10690' 'perl\bin\perl.exe'
 Install-Zip 'nasm' 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/win64/nasm-2.16.03-win64.zip' `
     '3EE4782247BCB874378D02F7EAB4E294A84D3D15F3F6EE2DE2F47A46AA7226E6' 'nasm-2.16.03\nasm.exe'
+
+Install-Zip 'ninja' 'https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-win.zip' `
+    '07FC8261B42B20E71D1720B39068C2E14FFCEE6396B76FB7A795FB460B78DC65' 'ninja.exe'
 
 $msvc = Join-Path $ToolsDir 'msvc'
 if (Test-Path (Join-Path $msvc 'msvc\setup_x64.bat')) {
