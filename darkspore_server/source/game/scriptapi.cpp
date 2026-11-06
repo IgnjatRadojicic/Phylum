@@ -1,9 +1,13 @@
 
 // Include
 #include "lua.h"
+#include "scriptgaps.h"
 #include "scriptsource.h"
 
 #include "utils/functions.h"
+
+#include <fstream>
+#include <memory>
 
 // The game's scripts refer to objects by id and expect the original client's Lua API.
 // This file adapts those calls to the functions this server already has. It should only
@@ -41,6 +45,41 @@ namespace {
 			end
 			return loadstring(source, "@" .. path)
 		end)
+	)lua";
+
+	// A missing name reads as nil, and the script only fails later, somewhere else. Watching
+	// every engine table and the globals names the real gap. Values do not change.
+	constexpr const char* watchApi = R"lua(
+		local function watch(label, target)
+			local meta = getmetatable(target)
+			if meta == nil then
+				meta = {}
+				setmetatable(target, meta)
+			elseif type(meta) ~= "table" then
+				return
+			end
+
+			local fallback = meta.__index
+			meta.__index = function(self, key)
+				local value
+				if type(fallback) == "function" then
+					value = fallback(self, key)
+				elseif fallback ~= nil then
+					value = fallback[key]
+				end
+				if value == nil then
+					ScriptGaps.Record(label .. "." .. tostring(key))
+				end
+				return value
+			end
+		end
+
+		for name, value in pairs(_G) do
+			if type(value) == "table" and name:match("^n%u") then
+				watch(name, value)
+			end
+		end
+		watch("global", _G)
 	)lua";
 
 	// Each running ability is a coroutine, so its context follows it across waits.
@@ -215,6 +254,9 @@ namespace {
 					local method = object and object[name]
 					if method then
 						return method(object, ...)
+					end
+					if object then
+						ScriptGaps.Record("nGameObject." .. name)
 					end
 				end
 			end
@@ -406,9 +448,17 @@ namespace Game {
 			return ScriptSource::Read(path);
 		};
 
+		auto gapLog = std::make_shared<std::ofstream>("script-missing.txt", std::ios::app);
+		auto gaps = std::make_shared<ScriptGaps>(*gapLog);
+		sol::table scriptGaps = mState.create_named_table("ScriptGaps");
+		scriptGaps["Record"] = [gapLog, gaps](const std::string& name) {
+			gaps->Record(name);
+		};
+
 		LoadBuffer(setupApi);
 		LoadBuffer(castApi);
 		LoadBuffer(objectApi);
 		LoadBuffer(vectorApi);
+		LoadBuffer(watchApi);
 	}
 }

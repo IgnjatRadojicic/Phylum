@@ -32,7 +32,7 @@ Multiplayer, PvP and public hosting are out of scope.
 
 Make every hero's abilities work.
 
-- [ ] Log calls to functions the adapter does not have
+- [x] Log calls to functions the adapter does not have
 - [ ] Find the cause of the load crash, starting with the data sent at login
 - [ ] Build `ModifierManager`, proven first on one simple effect such as a slow
 - [ ] Work out the `ModifierCreated`, `ModifierUpdated` and `ModifierDeleted` packets

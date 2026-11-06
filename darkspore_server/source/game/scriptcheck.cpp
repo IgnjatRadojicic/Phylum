@@ -57,6 +57,17 @@ namespace Game {
 				return object
 			end
 
+			-- A failure usually comes from a nil handed back earlier. A stub is a limit of this
+			-- check, and a missing name is a real gap, so the trail keeps them apart.
+			local trail = {}
+			local missing = {}
+			local recordGap = ScriptGaps.Record
+			ScriptGaps.Record = function(name)
+				missing[name] = (missing[name] or 0) + 1
+				trail[#trail + 1] = "missing:" .. name
+				recordGap(name)
+			end
+
 			-- Engine functions cannot take fake objects, so record calls to them instead.
 			local stubbed = {}
 			local safeTables = { nBit = true, nUtil = true }
@@ -69,6 +80,7 @@ namespace Game {
 							local label = tableName .. "." .. name
 							value[name] = function()
 								stubbed[label] = (stubbed[label] or 0) + 1
+								trail[#trail + 1] = "stub:" .. label
 							end
 						end
 					end
@@ -103,6 +115,7 @@ namespace Game {
 				if ability.tick then
 					total = total + 1
 					calls = { animation = 0, damage = 0 }
+					trail = {}
 					file:write("RUN ", name, "\n")
 					file:flush()
 					local thread = coroutine.create(function()
@@ -123,12 +136,18 @@ namespace Game {
 					end
 					file:write(string.format("%s %s %s animation=%d damage=%d %s\n",
 						good and "PASS" or (ok and "IDLE" or "FAIL"), basic and "basic" or "ability", name, calls.animation, calls.damage, ok and "" or tostring(err)))
+					if not ok then
+						file:write("TRAIL ", name, " ", table.concat(trail, " ", math.max(1, #trail - 3)), "\n")
+					end
 				end
 			end
 
 			file:write(string.format("Abilities passed: %d of %d\n", passed, total))
 			for label, count in pairs(stubbed) do
 				file:write("STUB ", label, " ", count, "\n")
+			end
+			for label, count in pairs(missing) do
+				file:write("MISSING ", label, " ", count, "\n")
 			end
 			file:close()
 		)lua";
@@ -137,6 +156,10 @@ namespace Game {
 	// ScriptCheck
 	void ScriptCheck::WriteReport(const std::filesystem::path& reportPath) {
 		std::ofstream report(reportPath);
+
+		// A running server may hold this file open, so failing to remove it is not an error.
+		std::error_code ignored;
+		std::filesystem::remove("script-missing.txt", ignored);
 
 		// Script errors go to the console, so send them to the report while the check runs.
 		auto* consoleBuffer = std::cout.rdbuf(report.rdbuf());

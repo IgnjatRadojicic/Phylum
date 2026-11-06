@@ -125,7 +125,9 @@ CPMAddPackage(
 add_executable(recap_tests
     tests/main.cpp
     tests/scriptsource_test.cpp
-    source/game/scriptsource.cpp)
+    tests/scriptgaps_test.cpp
+    source/game/scriptsource.cpp
+    source/game/scriptgaps.cpp)
 target_include_directories(recap_tests PRIVATE source ${doctest_SOURCE_DIR})
 target_link_libraries(recap_tests PRIVATE lua)
 
