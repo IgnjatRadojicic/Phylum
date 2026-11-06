@@ -420,7 +420,7 @@ namespace {
 				sol::table guids = all();
 
 				size_t started = 0;
-				size_t refused = 0;
+				std::vector<uint32_t> refused;
 				std::vector<std::string> failures;
 
 				for (const auto& [_, value] : guids) {
@@ -450,7 +450,7 @@ namespace {
 					} else if (id != 0) {
 						++started;
 					} else {
-						++refused;
+						refused.push_back(guid);
 					}
 
 					auto& objects = mGame.GetObjectManager();
@@ -459,7 +459,10 @@ namespace {
 					objects.Update(0.05f);
 				}
 
-				mReport << "SCRIPTS started=" << started << " refused=" << refused << " failed=" << failures.size() << "\n";
+				mReport << "SCRIPTS started=" << started << " refused=" << refused.size() << " failed=" << failures.size() << "\n";
+				for (uint32_t guid : refused) {
+					mReport << "REFUSED " << guid << "\n";
+				}
 				for (const auto& failure : failures) {
 					std::string line = failure;
 					std::replace(line.begin(), line.end(), '\n', ' ');
