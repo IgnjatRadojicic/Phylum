@@ -91,6 +91,9 @@ namespace Game {
 			std::weak_ptr<Object> mOwner;
 			uint64_t mTicket = 0;
 
+			// A cast running on this thread, whose deactivate runs when the thread is freed.
+			sol::main_table mCastContext;
+
 			ResumeCondition mResumeCondition;
 
 			sol::thread mThread;

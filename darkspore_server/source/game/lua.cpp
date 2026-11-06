@@ -553,6 +553,9 @@ namespace Game {
 	}
 
 	void Lua::ReturnThreadToPool(LuaThread* thread) {
+		sol::main_table cast = std::move(thread->mCastContext);
+		thread->mCastContext = sol::main_table();
+
 		if (thread->mTicket != 0) {
 			mTrackedThreads.erase(thread->mTicket);
 			thread->mTicket = 0;
@@ -576,6 +579,12 @@ namespace Game {
 		} else {
 			thread->mValues.clear(); // Remove any stored values.
 			mThreadPool.push_back(thread);
+		}
+
+		// Last, because this thread is free again and the script can start others.
+		if (cast.valid()) {
+			sol::function endCast = mState["nAbility"]["EndCast"];
+			SpawnThread()->call<void>(endCast, sol::table(cast));
 		}
 		// CollectGarbage();
 	}

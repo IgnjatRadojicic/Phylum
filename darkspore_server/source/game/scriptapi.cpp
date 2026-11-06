@@ -149,6 +149,7 @@ namespace {
 			return function(self, object, target, cursorPosition, rank)
 				if object then
 					nAbility.BeginCast(self, object, target, cursorPosition, rank)
+					WatchCastEnd(currentCast())
 				end
 				return tick(self)
 			end
@@ -163,6 +164,16 @@ namespace {
 				ability.tick = castingTick(tick)
 			end
 			registerAbility(name, ability)
+		end
+
+		-- Runs however a cast ended, so what it started comes off even if its script failed
+		function nAbility.EndCast(context)
+			CastContext.Set(context)
+			local ability = context.ability
+			local deactivate = ability[nAbilityFns.Deactivate] or ability.deactivate
+			if deactivate then
+				deactivate(ability)
+			end
 		end
 
 		-- Scripts with no template set tick by its nAbilityFns number, after they register
@@ -963,6 +974,12 @@ namespace Game {
 		sol::table scriptGaps = mState.create_named_table("ScriptGaps");
 		scriptGaps["Record"] = [gapLog, gaps](const std::string& name) {
 			gaps->Record(name);
+		};
+
+		mState["WatchCastEnd"] = [this](sol::this_state L, sol::table context) {
+			if (auto thread = GetThread(L)) {
+				thread->mCastContext = sol::main_table(context);
+			}
 		};
 
 		mState["ScriptTrace"] = [this](const std::string& line) {

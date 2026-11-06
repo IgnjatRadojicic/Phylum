@@ -192,6 +192,7 @@ namespace {
 				CheckSecondCastRuns();
 				CheckDistanceCanBeRead();
 				CheckMeleeArcFindsTargets();
+				CheckFailedCastRunsDeactivate();
 				CheckDeactivateCanDeleteObjects(slow);
 				CheckDeactivateCanRequestItself();
 				CheckMarkedObjectsOutlastDeactivate();
@@ -593,6 +594,18 @@ namespace {
 				sol::optional<float> value = result;
 
 				Report("distance-can-be-read", value && *value == 5.f, "distance=" + std::to_string(value.value_or(-1.f)));
+			}
+
+			void CheckFailedCastRunsDeactivate() {
+				auto agent = Spawn();
+				const auto ability = mLua.GetAbility(utils::hash_id("ModifierCheckFails"));
+				ability->FindNumberedTick();
+
+				ability->Tick(agent, nullptr, glm::vec3(0.f), 1);
+
+				sol::table cast = mState["ModifierCheckCast"];
+				const uint32_t stopped = cast["stopped"];
+				Report("failed-cast-runs-deactivate", stopped == agent->GetId(), "stopped=" + std::to_string(stopped));
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.
