@@ -5,6 +5,7 @@
 #include "objectmanager.h"
 #include "lua.h"
 #include "modifiersystem.h"
+#include "damageevents.h"
 #include "serverevent.h"
 #include "catalyst.h"
 #include "scheduler.h"
@@ -97,6 +98,7 @@ namespace Game {
 		mObjectManager = std::make_unique<ObjectManager>(*this);
 		mLua = std::make_unique<Lua>(*this);
 		mModifiers = std::make_unique<ModifierSystem>(*this);
+		mDamageEvents = std::make_unique<DamageEvents>(*mModifiers);
 		mServer = std::make_unique<RakNet::Server>(*this);
 	}
 
@@ -120,6 +122,7 @@ namespace Game {
 		}
 
 		mServer.reset();
+		mDamageEvents.reset();
 		mModifiers.reset(); // Holds tables that belong to Lua
 		mLua.reset();
 		mObjectManager.reset();
@@ -245,6 +248,12 @@ namespace Game {
 
 	ModifierSystem& Instance::GetModifiers() {
 		return *mModifiers;
+	}
+
+	void Instance::ReportDamage(const DamageReport& hit) {
+		if (mDamageEvents) {
+			mDamageEvents->Report(hit);
+		}
 	}
 
 	Lua& Instance::GetLua() {
@@ -597,6 +606,16 @@ namespace Game {
 			combatEvent.mFlags = CombatEventFlags::Critical;
 		}
 		SendCombatEvent(combatEvent);
+
+		DamageReport hit;
+		hit.victim = target->GetId();
+		hit.attacker = attacker->GetId();
+		hit.amount = damage;
+		hit.descriptors = static_cast<uint32_t>(Descriptors::IsBasic);
+		hit.damageType = static_cast<uint32_t>(DamageType::Life);
+		hit.damageSource = static_cast<uint32_t>(DamageSource::Physical);
+		hit.ability = abilityId;
+		ReportDamage(hit);
 	}
 
 	void Instance::SwapCharacter(const PlayerPtr& player, uint32_t creatureIndex) {

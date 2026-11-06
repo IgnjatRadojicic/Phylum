@@ -3,6 +3,7 @@
 #define _GAME_MODIFIERSYSTEM_HEADER
 
 // Include
+#include "abilityevent.h"
 #include "attributestack.h"
 #include "modifiermanager.h"
 
@@ -21,9 +22,12 @@ namespace Game {
 	// ModifierSystem
 	// Runs modifiers in a game: ModifierManager's decisions become script calls, attribute changes
 	// and packets. Scripts reach it through the adapter in scriptapi.cpp.
-	class ModifierSystem {
+	class ModifierSystem : public AbilityEventSink {
 		public:
 			explicit ModifierSystem(Instance& game);
+
+			// Hands the event to each modifier running on the agent whose script handles it.
+			void SendEvent(uint32_t agent, const AbilityEvent& event) override;
 
 			// The context is the table a modifier's script functions run with. Returns the instance
 			// id, or zero if the request was refused.
@@ -69,7 +73,7 @@ namespace Game {
 			void Stack(uint32_t id);
 			void Finish(uint32_t id);
 
-			bool CallScript(const char* function, sol::table context);
+			bool CallScript(const char* function, sol::table context, sol::object argument = sol::lua_nil);
 			void SendUpdated(uint32_t id, bool restarted);
 			void Trace(const char* what, uint32_t guid, uint32_t id, uint32_t agent, uint32_t initiator);
 

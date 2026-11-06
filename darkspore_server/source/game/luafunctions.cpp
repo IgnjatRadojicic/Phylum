@@ -4,6 +4,7 @@
 
 #include "instance.h"
 #include "objectmanager.h"
+#include "damageevents.h"
 #include "serverevent.h"
 
 #include "utils/functions.h"
@@ -829,6 +830,16 @@ namespace LuaFunction {
 				}
 
 				game.SendCombatEvent(combatEvent);
+
+				// Which ability or modifier dealt it is not passed in, so those slots stay unknown.
+				Game::DamageReport hit;
+				hit.victim = object->GetId();
+				hit.attacker = attacker ? attacker->GetId() : 0;
+				hit.amount = std::get<1>(result);
+				hit.descriptors = static_cast<uint32_t>(descriptors);
+				hit.damageType = static_cast<uint32_t>(damageType);
+				hit.damageSource = static_cast<uint32_t>(damageSource);
+				game.ReportDamage(hit);
 				return result;
 			}
 

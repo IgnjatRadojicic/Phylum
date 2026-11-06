@@ -104,6 +104,8 @@ namespace Game {
 	class Lua;
 	class ModifierSystem;
 	struct ModifierInstance;
+	class DamageEvents;
+	struct DamageReport;
 
 	// Instance
 	class Instance {
@@ -141,6 +143,9 @@ namespace Game {
 			const ObjectManager& GetObjectManager() const;
 
 			ModifierSystem& GetModifiers();
+
+			// A hit that landed, for the scripts that react to damage.
+			void ReportDamage(const DamageReport& hit);
 
 			Lua& GetLua();
 			const Lua& GetLua() const;
@@ -227,6 +232,7 @@ namespace Game {
 			std::unique_ptr<ObjectManager> mObjectManager;
 			std::unique_ptr<Lua> mLua;
 			std::unique_ptr<ModifierSystem> mModifiers;
+			std::unique_ptr<DamageEvents> mDamageEvents;
 
 			std::unordered_map<uint32_t, MarkerPtr> mMarkers;
 			std::map<int64_t, PlayerPtr> mPlayers;

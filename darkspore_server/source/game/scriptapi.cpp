@@ -577,13 +577,13 @@ namespace {
 			end
 		end
 
-		-- The event reads as the modifier too, because handlers use their one argument as both
+		-- The event reads and writes as the modifier too, because handlers use their one argument as both
 		function ModifierApi.Stack(context)
 			CastContext.Set(context)
 			local modifier = context.ability
 			local handler = scriptFunction(modifier, nAbilityFns.HandleEvent, "handleEvent", "hasHandleEvent")
 			if handler then
-				local event = setmetatable({ eventType = nAbilityEventFlags.StackModifier }, { __index = modifier })
+				local event = setmetatable({ eventType = nAbilityEventFlags.StackModifier }, { __index = modifier, __newindex = modifier })
 				context.handled = handler(event) == true
 			end
 		end
@@ -603,6 +603,39 @@ namespace {
 
 		local function hasFlag(flags, flag)
 			return flag ~= nil and nBit.And(flags or 0, flag) ~= 0
+		end
+
+		-- An event from the server (see AbilityEvent in abilityevent.h), for a script that lists
+		-- its type in handledEvents. As with stacking, the event reads as the modifier too.
+		function ModifierApi.HandleEvent(context, data)
+			CastContext.Set(context)
+			local modifier = context.ability
+			if not hasFlag(modifier.handledEvents, data.eventType) then
+				return
+			end
+			local handler = scriptFunction(modifier, nAbilityFns.HandleEvent, "handleEvent", "hasHandleEvent")
+			if handler then
+				ScriptTrace("EVENT type=" .. data.eventType .. " modifier=" .. tostring(context.modifierId) .. " from=" .. tostring(data.guids[1]))
+				local event = setmetatable({ eventType = data.eventType, guids = data.guids, floats = data.floats, ints = data.ints },
+					{ __index = modifier, __newindex = modifier })
+				context.handled = handler(event) == true
+			end
+		end
+
+		function nAbility.CheckDescriptors_AnyMatch(descriptors, wanted)
+			return nBit.And(descriptors or 0, wanted or 0) ~= 0
+		end
+
+		function nAbility.GetAbilityEventGUIDData(event, slot)
+			return event and event.guids and event.guids[slot] or 0
+		end
+
+		function nAbility.GetAbilityEventFloatData(event, slot)
+			return event and event.floats and event.floats[slot] or 0
+		end
+
+		function nAbility.GetAbilityEventIntData(event, slot)
+			return event and event.ints and event.ints[slot] or 0
 		end
 
 		local function hasAnyFlag(flags, names)

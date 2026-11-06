@@ -2,6 +2,7 @@
 // Include
 #include "modifiercheck.h"
 
+#include "damageevents.h"
 #include "instance.h"
 #include "lua.h"
 #include "modifiersystem.h"
@@ -158,6 +159,31 @@ namespace {
 			return nUtil.SPID("ModifierCheckParent")
 		end
 
+		-- Writes down every damage event it is given.
+		ModifierCheckListener = { heard = {} }
+		nModifier.RegisterModifier("ModifierCheckListener", {
+			activationType = nActivationType.Unique,
+			handledEvents = nBit.Or(nAbilityEventFlags.TookDamage, nAbilityEventFlags.DealtDamage),
+			handleEvent = function(event)
+				local heard = ModifierCheckListener.heard
+				heard[#heard + 1] = {
+					type = nAbility.GetAbilityEventType(event),
+					other = nAbility.GetAbilityEventGUIDData(event, 1),
+					amount = nAbility.GetAbilityEventFloatData(event, 2)
+				}
+				return true
+			end
+		})
+
+		function ModifierCheckListenerGuid()
+			return nUtil.SPID("ModifierCheckListener")
+		end
+
+		function ModifierCheckHeard(index, field)
+			local entry = ModifierCheckListener.heard[index]
+			return entry and entry[field] or 0
+		end
+
 		function ModifierCheckBrokenGuid()
 			return nUtil.SPID("ModifierCheckBroken")
 		end
@@ -172,6 +198,7 @@ namespace {
 			nModifier.registered[nUtil.SPID("ModifierCheckProperty")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckBroken")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckParent")] = nil
+			nModifier.registered[nUtil.SPID("ModifierCheckListener")] = nil
 			nAbility.scripts.ModifierCheckWaits = nil
 			nAbility.scripts.ModifierCheckFails = nil
 			nAbility.scripts.ModifierCheckFinishes = nil
@@ -266,6 +293,8 @@ namespace {
 				CheckReusedThreadForgetsItsCast();
 				CheckReusedThreadHasPlainGlobals();
 				CheckChildThreadEndsWithIt();
+				CheckDamageReachesHandlers();
+				CheckThornsHitsMeleeAttackerBack();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
 				forget();
@@ -547,6 +576,58 @@ namespace {
 
 				Report("child-thread-ends-with-it", id != 0 && whileRunning > 1 && later == atEnd,
 					"whileRunning=" + std::to_string(whileRunning) + " atEnd=" + std::to_string(atEnd) + " later=" + std::to_string(later));
+			}
+
+			void CheckDamageReachesHandlers() {
+				auto victim = Spawn();
+				auto attacker = Spawn();
+
+				sol::protected_function listenerGuid = mState["ModifierCheckListenerGuid"];
+				const uint32_t guid = listenerGuid();
+				Request(victim, victim, guid);
+				Request(attacker, attacker, guid);
+
+				Game::DamageReport hit;
+				hit.victim = victim->GetId();
+				hit.attacker = attacker->GetId();
+				hit.amount = 25.f;
+				mGame.ReportDamage(hit);
+
+				sol::protected_function heard = mState["ModifierCheckHeard"];
+				const uint32_t firstType = heard(1, "type");
+				const uint32_t firstOther = heard(1, "other");
+				const float firstAmount = heard(1, "amount");
+				const uint32_t secondType = heard(2, "type");
+				const uint32_t secondOther = heard(2, "other");
+
+				const bool good = firstType == 1 && firstOther == attacker->GetId() && firstAmount == 25.f &&
+					secondType == 8192 && secondOther == victim->GetId();
+				Report("damage-reaches-handlers", good,
+					"took=" + std::to_string(firstType) + "/" + std::to_string(firstOther) + "/" + std::to_string(firstAmount) +
+					" dealt=" + std::to_string(secondType) + "/" + std::to_string(secondOther));
+			}
+
+			// The game's own thorns script, given a melee hit, hits the attacker back.
+			void CheckThornsHitsMeleeAttackerBack() {
+				auto victim = Spawn();
+				auto attacker = Spawn();
+
+				sol::protected_function spid = mState["nUtil"]["SPID"];
+				const uint32_t guid = spid("ThornsModifier");
+				const auto id = Request(victim, victim, guid);
+
+				const float before = attacker->GetHealth();
+				Game::DamageReport hit;
+				hit.victim = victim->GetId();
+				hit.attacker = attacker->GetId();
+				hit.amount = 100.f;
+				hit.descriptors = mState["nDescriptors"]["IsMelee"].get_or(0u);
+				mGame.ReportDamage(hit);
+				Wait(40);
+
+				const float after = attacker->GetHealth();
+				Report("thorns-hits-melee-attacker-back", id != 0 && after < before,
+					"id=" + std::to_string(id) + " attacker=" + std::to_string(before) + "->" + std::to_string(after));
 			}
 
 			void CheckFailedStartEndsIt() {

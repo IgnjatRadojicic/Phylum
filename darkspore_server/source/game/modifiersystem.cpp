@@ -237,7 +237,33 @@ namespace Game {
 		mManager.Remove(id);
 	}
 
-	bool ModifierSystem::CallScript(const char* function, sol::table context) {
+	void ModifierSystem::SendEvent(uint32_t agent, const AbilityEvent& event) {
+		sol::state_view state(mGame.GetLua().GetState());
+
+		sol::table data = state.create_table();
+		data["eventType"] = static_cast<uint32_t>(event.GetType());
+		sol::table guids = state.create_table();
+		sol::table floats = state.create_table();
+		sol::table ints = state.create_table();
+		for (size_t slot = 1; slot <= AbilityEvent::SlotCount; ++slot) {
+			guids[slot] = event.GetGUID(slot);
+			floats[slot] = event.GetFloat(slot);
+			ints[slot] = event.GetInt(slot);
+		}
+		data["guids"] = guids;
+		data["floats"] = floats;
+		data["ints"] = ints;
+
+		// A copy of the ids, because handlers can start and end modifiers.
+		for (const uint32_t id : mManager.GetAll(agent)) {
+			const auto it = mRuns.find(id);
+			if (it != mRuns.end()) {
+				CallScript("HandleEvent", sol::table(it->second.context), data);
+			}
+		}
+	}
+
+	bool ModifierSystem::CallScript(const char* function, sol::table context, sol::object argument) {
 		auto& lua = mGame.GetLua();
 
 		sol::state_view state(lua.GetState());
@@ -245,7 +271,7 @@ namespace Game {
 
 		// The result travels through the context, because the thread may yield or go back to the pool.
 		context["handled"] = false;
-		lua.SpawnThread()->call<void>(script, context);
+		lua.SpawnThread()->call<void>(script, context, argument);
 		return context.get_or("handled", false);
 	}
 

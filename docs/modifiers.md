@@ -70,7 +70,8 @@ Bound means the modifier blocks actions, not only movement.
 - `IsChainGame` means the campaign, as opposed to the arena. Immunities such as `ImmuneToSlow` only refuse a modifier in a chain game, so the adapter answers true.
 - The five hashed files in `lua/` are libraries no script can require by name, so they load at startup. `AutoDestructSpeedModifier` is in one.
 - Not every modifier is required by an ability, so the whole `Modifiers` folder loads at startup.
-- A handler takes one argument and uses it as the event, so it gets a table that also reads as the modifier.
+- A handler takes one argument and uses it as the event, so it gets a table that also reads and writes as the modifier.
+- A script lists the events it wants in `handledEvents`, a bit mask of `nAbilityEventFlags`. Stacking reaches the handler without it, as before.
 
 ## Lua traps
 
@@ -85,9 +86,11 @@ Bound means the modifier blocks actions, not only movement.
 - Which debuffs count as crowd control, and which are bound, is chosen from their names.
 - Refusing a fully resisted modifier is our choice, and the scripts do not show what EA's server did. A script with no duration still lasts until something removes it.
 - Durations too long for the packet stop at the largest signed 32 bit value, about 24.8 days, because we do not know if the client reads the field as signed. Cinematic modifiers use 100000000 seconds to mean forever, and what the client shows for that has not been checked.
-- A modifier's child threads are not stopped when it ends. Only `modifier_cryosboss_passive` starts one, and passives do not run yet.
+- Child threads started with `CreateThreadForObject` end with their modifier. Ones started with plain `nThread.Create` do not, and no modifier script does that.
 - Durations follow the client's order, which darkspin recovered. Which object supplies each attribute is chosen: the caster for `BuffDuration`, the target for the others. `DebuffDurationIncrease` is not used, and the client's diminishing returns are not done.
-- Only `StackModifier` reaches scripts. `TookDamage`, `DealtDamage` and the other events do not, so modifiers that react to them do nothing yet.
+- `TookDamage` and `DealtDamage` reach scripts (`DamageEvents`). Their data slots are read from how 134 script call sites use them, not from the engine: GUID 1 the other side, Float 2 the amount, Int 3 the descriptors, Int 4 the damage type, Int 5 the damage source, GUID 6 the modifier that did it, GUID 7 the ability. GUID 2, which one script reads for `DealtDamage`, is unknown and stays 0. Hits from scripts leave GUID 6 and 7 at 0, because `TakeDamage` is not told who dealt them.
+- A hit dealt while damage events are handled raises none of its own, so two thorns effects cannot hit each other back forever. The game's own rule is unknown.
+- The other events (`NearbyDeath`, `UsedAbility`, `Dodged`, `CrystalBonus` and so on) do not reach scripts yet.
 - Passive modifiers are not started for heroes and mobs.
 - `Default` deactivation keeps a modifier through death until its time is up or its object is destroyed.
 - Overdrive and the NPC affix asset are always 0.
