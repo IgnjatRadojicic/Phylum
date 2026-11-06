@@ -3,6 +3,7 @@
 #include "lua.h"
 
 #include "instance.h"
+#include "scriptsource.h"
 #include "objectmanager.h"
 #include "serverevent.h"
 
@@ -1750,7 +1751,7 @@ namespace Game {
 	}
 
 	sol::protected_function_result LuaBase::LoadFile(const std::string& path) {
-		return mState.safe_script_file(path, &LuaBase::ReportError);
+		return mState.safe_script(ScriptSource::Read(path), &LuaBase::ReportError, "@" + path);
 	}
 
 	sol::protected_function_result LuaBase::LoadBuffer(const std::string& buffer) {
@@ -1862,7 +1863,7 @@ namespace Game {
 		for (const auto& entry : std::filesystem::directory_iterator(dataPath)) {
 			const auto& path = entry.path();
 			if (entry.is_regular_file() && path.extension() == ".lua") {
-				auto result = mState.load_file(path.string());
+				auto result = mState.load(ScriptSource::Read(path), "@" + path.string());
 				if (!result.valid()) {
 					if (failed++ == 0) {
 						std::cout << std::endl;
@@ -1917,69 +1918,6 @@ namespace Game {
 		RegisterGameScriptApi();
 
 		LoadFile("data/serverdata/lua/global.lua");
-	}
-
-	void Lua::RegisterGameScriptApi() {
-		// The game's own scripts call nAbility, and much of it already exists on the server as Ability.
-		sol::table gameAbility = mState["nAbility"];
-
-		gameAbility["RegisterAbility"] = [this](sol::this_state L, const std::string& name, sol::table ability) {
-			if (auto [it, inserted] = mAbilities.try_emplace(utils::hash_id(name)); inserted) {
-				ability["id"] = it->first;
-				it->second = std::make_shared<Ability>(*this, std::move(ability), name, it->first);
-			}
-		};
-
-		const auto preload = [](const std::string& name, sol::variadic_args) -> uint32_t {
-			return utils::hash_id(name);
-		};
-		gameAbility["PreloadAnimation"] = preload;
-		gameAbility["PreloadAsset"] = preload;
-		gameAbility["PreloadModifier"] = preload;
-
-		LoadBuffer(R"lua(
-			setmetatable(nAbility, { __index = Ability })
-
-			nBit = nBit or {}
-			function nBit.Or(...)
-				local value = 0
-				for i = 1, select("#", ...) do
-					value = bit.bor(value, (select(i, ...)))
-				end
-				return value
-			end
-
-			function nBit.And(...)
-				local value = -1
-				for i = 1, select("#", ...) do
-					value = bit.band(value, (select(i, ...)))
-				end
-				return value
-			end
-
-			-- Modifiers register but have no effect yet
-			nModifier = nModifier or {}
-			nModifier.registered = {}
-			function nModifier.RegisterModifier(name, modifier)
-				nModifier.registered[name] = modifier
-			end
-			function nModifier.PreloadAsset(name)
-				return nUtil.GetAsset(name)
-			end
-
-			-- Scripts require files as "Folder!Name.lua"
-			table.insert(package.loaders, 2, function(name)
-				local folder, file = name:match("^([^!]+)!(.+)%.lua$")
-				if not file then
-					return nil
-				end
-				local directory = folder
-				if folder == "Lua" or folder:match("^0x") then
-					directory = "lua"
-				end
-				return loadfile("data/serverdata/" .. directory .. "/" .. file .. ".lua")
-			end)
-		)lua");
 	}
 
 	void Lua::Reload() {
