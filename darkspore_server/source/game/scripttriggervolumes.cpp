@@ -39,7 +39,7 @@ namespace Game {
 			const BoundingSphere area(volume.shape.GetCenter(), volume.shape.GetReach() + largestBodyRadius);
 			std::vector<uint32_t> inside;
 			for (const auto& object : objects.GetObjectsInRadius(area, {})) {
-				if (!object->IsTrigger() && volume.shape.Touches(object->GetPosition(), object->GetFootprintRadius())) {
+				if (!object->IsTrigger() && volume.shape.Touches(object->GetPosition(), object->GetBodyRadius())) {
 					inside.push_back(object->GetId());
 				}
 			}

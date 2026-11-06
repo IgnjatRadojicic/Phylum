@@ -384,6 +384,9 @@ namespace Game {
 			void SetExtent(const glm::vec3& extent);
 
 			float GetFootprintRadius() const;
+			// The radius of a round body that fits the noun's size: half its width, where the
+			// footprint reaches the corner of that square.
+			float GetBodyRadius() const;
 			glm::vec3 GetCenterPoint() const;
 
 			float GetCurrentSpeed() const;

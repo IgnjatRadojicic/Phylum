@@ -130,8 +130,11 @@ client (`ScriptTriggerVolumes`). What the client does (`Darkspore.exe`):
 - The functions run in the script that made the volume, so they can still ask about its cast.
 
 Approximate:
-- A body is a sphere of the object's footprint radius at its position. The physics used the
-  creature's real collision shape.
+- A body is a sphere at the object's position, of half the width of its size class: 2.25 m for
+  most bosses, 0.75 to 1 m for heroes. The physics used the creature's real collision shape.
+  The footprint radius reaches the corner of that square, about 40% further, which let bosses
+  touch volumes a metre early. Darkspin tests the centre point only, which would almost never
+  meet the 0.1 m fire wall.
 - The box sizes are half sizes, as physics box shapes take them. The firewall gives its scale as
   the length and 0.1 as the width and height.
 - A volume's own object counts like any other. Hostile auras skip it through their filter.

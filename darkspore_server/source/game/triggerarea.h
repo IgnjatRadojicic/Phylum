@@ -11,8 +11,8 @@ namespace Game {
 	// Where a script's trigger volume reaches: a sphere (nObjectManager.CreateTriggerVolume,
 	// AttachTriggerVolume) or a box (CreateTriggerVolumeBox). The client hands either one to its
 	// physics, which reports any body that touches it.
-	// Approximate: a body is a sphere of its footprint radius around its position, and the box
-	// sizes are half sizes, as physics box shapes take them.
+	// Approximate: a body is a sphere around its position, of the radius that fits its size class
+	// (Object::GetBodyRadius), and the box sizes are half sizes, as physics box shapes take them.
 	class TriggerArea {
 		public:
 			static TriggerArea Sphere(const glm::vec3& center, float radius);

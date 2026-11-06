@@ -15,6 +15,8 @@
 #include "utils/functions.h"
 #include "utils/log.h"
 
+#include <algorithm>
+
 // difficulty tuning
 
 // Game
@@ -966,6 +968,21 @@ namespace Game {
 				result = glm::length(glm::min(glm::abs(min), glm::abs(max)));
 			} else {
 				result = glm::sqrt(glm::dot(extent.x, extent.x) * 2) * 0.5f;
+			}
+		}
+
+		return result * GetScale();
+	}
+
+	float Object::GetBodyRadius() const {
+		float result = 0;
+		if (mNoun) {
+			const auto& [extent, scale] = Noun::GetExtents(mNoun->GetPresetExtents());
+			if (scale == 0) {
+				const auto size = mNoun->GetBoundingBox().GetSize();
+				result = std::min(size.x, size.y) * 0.5f;
+			} else {
+				result = extent.x * 0.5f;
 			}
 		}
 
