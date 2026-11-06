@@ -33,15 +33,34 @@ not built yet. Until they are, `TEST_FREE_MANA` set to 1 in `config.xml` makes e
 
 ## Cooldown
 
-Cooldown = ranked `cooldown` × (1 − `CooldownScale`), clamped to between none and the full cooldown.
-A basic attack's cooldown is also divided by 1 + `AttackSpeedScale`, as its waits are.
+The client works cooldowns out itself (`Darkspore.exe` 0x9dfc70, behind its `ResetAbilityCooldown`),
+and the server does the same (`AbilityCost`):
 
-Approximate:
+1. The ranked `cooldown`, randomly longer or shorter by up to the ranked `cooldownVariance` share of
+   it. One roll picks how much, another picks longer or shorter. Only enemy abilities set a variance.
+2. A basic attack's is divided by 1 + `AttackSpeedScale`, which never counts below -0.9.
+   Any other's is multiplied by 1 - `CooldownScale`. Overdrive adds 0.4 to `CooldownScale`.
+   A negative `CooldownScale` lengthens cooldowns.
 
-- **CooldownScale as a fraction off.** Overdrive adds 0.4 to it and calls that `cooldownReduction`,
-  so a positive value shortens cooldowns. Whether the engine takes it off as a fraction (0.4 means 40%
-  shorter) or divides by 1 + scale (29% shorter) is not known. The fraction reads closer to the name.
-- **No global cooldown.** `noGlobalCooldown` is read but nothing applies one.
+Scripts change running cooldowns with four functions. Each does what the client's does
+(`CooldownTable`):
+
+| Function | What it does |
+|---|---|
+| `ResetAbilityCooldown(agent, ability, target, rank)` | Starts the ability's full cooldown at that rank, from now |
+| `AddCooldownTime(agent, ability, seconds)` | Moves the end of a cooldown the ability already has |
+| `RemoveCooldownTime(agent, ability)` | Ends that cooldown now. Without an ability, ends every one |
+| `ScaleCooldownTime(agent, scale, ability)` | Keeps `scale` of what is left of a running cooldown. Without an ability, of every one |
+
+Each change is sent to the client as a cooldown update.
+
+Still approximate:
+
+- **No global cooldown.** The client has one (it stops `ScaleCooldownTime` from going below it),
+  but nothing here applies one yet.
+- **A player's cooldown** may go through one more client step (0x9de410) that is not read yet.
+- **The basic flag.** The client picks the attack speed rule by a flag on the ability; the server
+  uses the `IsBasic` descriptor, which should be the same thing.
 - **A refused cast** (still cooling down, or not enough mana) gets a reply with no cooldown and does
   not run. The client normally stops these itself, so this only happens around lag.
 - **Abilities with no script** keep the old fixed reply: 500 ms, and 2000 ms for the squad ability.

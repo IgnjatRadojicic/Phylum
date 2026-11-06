@@ -377,6 +377,47 @@ namespace {
 			end
 		end
 
+		-- Cooldown changes, as the client's own nAbility functions make them (see CooldownTable).
+		-- An ability is an id, or a name as the client also takes it.
+		local function cooldownAbility(ability)
+			if type(ability) == "string" then
+				return nUtil.SPID(ability)
+			end
+			return tonumber(ability)
+		end
+
+		local function cooldownAgent(agentId)
+			return agentId and agentId ~= kObjIDNone and nObjectManager.GetObject(agentId) or nil
+		end
+
+		function nAbility.ResetAbilityCooldown(agentId, ability, targetId, rank)
+			local agent, id = cooldownAgent(agentId), cooldownAbility(ability)
+			if agent and id then
+				agent:RestartCooldown(id, tonumber(rank) or 1)
+			end
+		end
+
+		function nAbility.AddCooldownTime(agentId, ability, seconds)
+			local agent, id = cooldownAgent(agentId), cooldownAbility(ability)
+			if agent and id then
+				agent:ShiftCooldown(id, (tonumber(seconds) or 0) * 1000)
+			end
+		end
+
+		function nAbility.RemoveCooldownTime(agentId, ability)
+			local agent = cooldownAgent(agentId)
+			if agent then
+				agent:ClearCooldown(cooldownAbility(ability))
+			end
+		end
+
+		function nAbility.ScaleCooldownTime(agentId, scale, ability)
+			local agent = cooldownAgent(agentId)
+			if agent then
+				agent:ScaleCooldown(tonumber(scale) or 1, cooldownAbility(ability))
+			end
+		end
+
 		-- Scripts read this back with GetAbilityEventType. Events do not reach anything yet.
 		function nAbility.CreateAbilityEvent(eventType)
 			return { eventType = eventType }
