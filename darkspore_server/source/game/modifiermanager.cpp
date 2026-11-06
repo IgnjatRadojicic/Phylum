@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 // Game
 namespace Game {
@@ -36,7 +37,9 @@ namespace Game {
 			seconds *= 1.f - rules.crowdControlReduction;
 		}
 
-		const auto duration = static_cast<uint32_t>(std::lround(std::max(seconds, 0.f) * 1000.f));
+		// Some scripts use 100000000 seconds to mean forever, which is more than the packet can carry.
+		constexpr double longest = std::numeric_limits<uint32_t>::max();
+		const auto duration = static_cast<uint32_t>(std::min(std::round(std::max(seconds, 0.f) * 1000.0), longest));
 		if (timed && duration == 0) {
 			return std::nullopt;
 		}

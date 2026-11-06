@@ -158,6 +158,12 @@ TEST_CASE("durations follow buffs, debuffs and the target's resistances") {
 	CHECK_FALSE(ResolveModifierDuration(4, dot).has_value());
 }
 
+TEST_CASE("a duration too long for the client stops at the longest it can hold") {
+	const ModifierDurationRules rules;
+
+	CHECK(ResolveModifierDuration(100000000, rules) == 0xFFFFFFFFu);
+}
+
 TEST_CASE("resistance cannot make a timed modifier last forever") {
 	ModifierDurationRules stun;
 	stun.isCrowdControl = true;
