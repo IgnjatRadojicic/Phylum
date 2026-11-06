@@ -2084,6 +2084,7 @@ namespace Game {
 		object["GetAttributeValue"] = sol::resolve<float(uint8_t) const>(&Object::GetAttributeValue);
 		object["SetAttributeValue"] = sol::resolve<void(uint8_t, float)>(&Object::SetAttributeValue);
 
+		object["GetPrimaryAttributeValue"] = &Object::GetPrimaryAttributeValue;
 		object["GetWeaponDamage"] = &LuaFunction::Object::GetWeaponDamage;
 
 		object["GetMarkerId"] = &Object::GetMarkerId;

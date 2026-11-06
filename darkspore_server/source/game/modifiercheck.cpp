@@ -167,6 +167,7 @@ namespace {
 				CheckFullyResistedIsRefused(slow);
 				CheckReusedIdKeepsItsChanges(slow);
 				CheckResetAnimationReachesTheClient();
+				CheckPrimaryAttributeCanBeRead();
 				CheckDeactivateCanDeleteObjects(slow);
 				CheckDeactivateCanRequestItself();
 				CheckMarkedObjectsOutlastDeactivate();
@@ -512,6 +513,15 @@ namespace {
 				reset(agent->GetId());
 
 				Report("reset-animation-reaches-the-client", Saw("SetAnimationState"), "");
+			}
+
+			void CheckPrimaryAttributeCanBeRead() {
+				auto agent = Spawn();
+
+				sol::protected_function primary = mState["nAttribute"]["GetPrimaryAttributeValue"];
+				sol::protected_function_result result = primary(agent->GetId());
+
+				Report("primary-attribute-can-be-read", result.valid(), "");
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.

@@ -419,6 +419,11 @@ namespace {
 			return object and object:GetAttributeValue(ModifierEngine.AttributeFromScript(attribute)) or 0
 		end
 
+		function nAttribute.GetPrimaryAttributeValue(id)
+			local object = get(id)
+			return object and object:GetPrimaryAttributeValue() or 0
+		end
+
 		nPlayer = nPlayer or {}
 		function nPlayer.IsPlayerControlledObject(id)
 			local object = get(id)
