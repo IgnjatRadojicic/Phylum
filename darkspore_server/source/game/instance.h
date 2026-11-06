@@ -113,6 +113,9 @@ namespace Game {
 			~Instance();
 
 			bool Start();
+
+			// Objects and scripts with no network, which is all a check needs.
+			void CreateWorld();
 			void Stop();
 
 			bool IsLevelLoaded() const;

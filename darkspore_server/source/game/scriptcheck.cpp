@@ -5,6 +5,7 @@
 #include "gamemanager.h"
 #include "instance.h"
 #include "lua.h"
+#include "projectileflightcheck.h"
 
 #include <fstream>
 #include <iostream>
@@ -203,12 +204,16 @@ namespace Game {
 		auto* consoleBuffer = std::cout.rdbuf(report.rdbuf());
 
 		const auto game = GameManager::CreateGame();
+		game->CreateWorld();
 		Lua lua(*game);
 		lua.SetGapLogPath(gapLogPath);
 		lua.Initialize();
 		lua.PreloadAbilities();
 
 		std::filesystem::remove("script-combat.txt");
+
+		// Runs first, because the ability test below replaces engine functions with stubs.
+		ProjectileFlightCheck::Run(*game, lua, "script-flight.txt");
 
 		for (const char* check : { listApi, testBasicAttacks }) {
 			sol::protected_function_result result = lua.LoadBuffer(check);

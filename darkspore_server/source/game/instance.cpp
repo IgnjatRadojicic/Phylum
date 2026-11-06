@@ -83,14 +83,18 @@ namespace Game {
 	bool Instance::Start() {
 		Stop();
 
-		mObjectManager = std::make_unique<ObjectManager>(*this);
-		mLua = std::make_unique<Lua>(*this);
+		CreateWorld();
 		mServer = std::make_unique<RakNet::Server>(*this);
 
 		mServer->start(mData.hostNetwork.exip.port);
 		mGameStartTime = utils::get_milliseconds();
 		mScriptsReady = false;
 		return true;
+	}
+
+	void Instance::CreateWorld() {
+		mObjectManager = std::make_unique<ObjectManager>(*this);
+		mLua = std::make_unique<Lua>(*this);
 	}
 
 	void Instance::Stop() {

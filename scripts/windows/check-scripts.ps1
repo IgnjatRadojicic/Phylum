@@ -35,6 +35,10 @@ if ($combat -notmatch 'Abilities passed: (\d+) of') { throw 'No ability count in
 $passed = [int]$Matches[1]
 if ($combat -notmatch 'MATH good') { throw 'Script maths test failed' }
 
+$flight = Get-Content (Join-Path $server 'script-flight.txt')
+$flight | ForEach-Object { Write-Host $_ }
+if (-not ($flight -match 'FLIGHT') -or ($flight -match ' wrong')) { throw 'Projectile flight test failed' }
+
 Write-Host "Registered $registered (baseline $($baseline.registered))"
 Write-Host "Abilities passed $passed (baseline $($baseline.abilitiesPassed))"
 if ($registered -lt $baseline.registered -or $passed -lt $baseline.abilitiesPassed) {
