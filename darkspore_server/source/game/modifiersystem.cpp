@@ -186,7 +186,8 @@ namespace Game {
 		const auto instance = mManager.Get(id);
 		const auto agent = instance ? instance->agent : 0;
 
-		// Attribute changes made while deactivating are not the modifier's to clean up.
+		// Kept while deactivating, so the script finds its context and can take off its own changes.
+		// Anything it adds then ends with it too, though no game script does that.
 		auto& ending = mRuns[id];
 		ending.context = run.context;
 		ending.changes = std::move(run.changes);
