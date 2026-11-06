@@ -321,3 +321,6 @@ ASALocalRun/
 
 # MSBuild Binary and Structured Log
 *.binlog
+
+# Tools from scripts/windows/setup-tools.ps1
+.tools/

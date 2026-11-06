@@ -28,3 +28,18 @@ The process of building the ReCap server with a Docker container can be executed
    ```bash
    ./build.sh
    ```
+
+## Windows
+Needs no Visual Studio install. From PowerShell, in `scripts/windows`:
+1. Download the tools. This accepts the Visual Studio license, and uses about 3 GB in `.tools`, or the folder given with `-ToolsDir`:
+   ```powershell
+   .\setup-tools.ps1 -AcceptMsvcLicense
+   ```
+2. Build:
+   ```powershell
+   .\build.ps1
+   ```
+3. To also install it into the game, close the server and pass the game's `DarksporeBin` folder. The old server is kept as `recap_server.previous.exe`:
+   ```powershell
+   .\build.ps1 -GameBin "C:\Program Files (x86)\Steam\steamapps\common\Darkspore\DarksporeBin"
+   ```
