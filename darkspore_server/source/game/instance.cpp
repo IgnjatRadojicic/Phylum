@@ -432,6 +432,11 @@ namespace Game {
 			for (const auto& object : mObjectManager->GetActiveObjects()) {
 				// Create object in client
 				SendObjectCreate(object);
+				if (mLua) {
+					const auto& at = object->GetPosition();
+					mLua->Trace(std::format("SPAWN object={} noun={} at={:.1f},{:.1f},{:.1f}", object->GetId(),
+						object->GetNoun() ? object->GetNoun()->GetName() : "-", at.x, at.y, at.z));
+				}
 
 				// Apply effects
 
