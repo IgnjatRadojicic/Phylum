@@ -16,6 +16,12 @@ namespace Game {
 	uint32_t ModifierSystem::Request(const ModifierSpec& spec, const ModifierDurationRules& rules, float seconds, uint32_t agent, uint32_t initiator, sol::table context) {
 		using Action = ModifierDecision::Action;
 
+		// A deactivate script can ask for a modifier on an agent that is on its way out.
+		const auto object = mGame.GetObjectManager().Get(agent);
+		if (!object || object->IsMarkedForDeletion()) {
+			return 0;
+		}
+
 		const auto duration = ResolveModifierDuration(seconds, rules);
 		if (!duration) {
 			return 0;
@@ -121,7 +127,11 @@ namespace Game {
 	}
 
 	void ModifierSystem::Start(uint32_t id, sol::table context) {
+		// The modifier this one replaced can end it from its deactivate script.
 		const auto instance = mManager.Get(id);
+		if (!instance) {
+			return;
+		}
 
 		// Abilities have instance numbers too, and they can equal this id.
 		context["instanceId"] = id;
@@ -162,6 +172,9 @@ namespace Game {
 			mManager.Remove(id);
 			return;
 		}
+
+		// A deactivate script that asks for this modifier again must not find the one that is ending.
+		mManager.MarkForDelete(id);
 
 		// Moved out first: deactivate scripts can request and end other modifiers.
 		auto run = std::move(it->second);

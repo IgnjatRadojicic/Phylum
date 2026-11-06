@@ -42,6 +42,9 @@ namespace {
 					nGameObject.MarkForDelete(id)
 				end
 				helper.objects = {}
+				if helper.requestAgain and helper.stops < 5 then
+					nModifier.RequestModifier(helper.requestAgain, helper.requestAgain, nUtil.SPID("ModifierCheckHelper"))
+				end
 			end
 		})
 
@@ -120,6 +123,7 @@ namespace {
 				CheckMissingIdMarksNothing(slow);
 				CheckFullyResistedIsRefused(slow);
 				CheckDeactivateCanDeleteObjects(slow);
+				CheckDeactivateCanRequestItself();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
 				forget();
@@ -353,6 +357,30 @@ namespace {
 				for (uint32_t left : Manager().GetAll(agent->GetId())) {
 					EndNow(left);
 				}
+			}
+
+			void CheckDeactivateCanRequestItself() {
+				auto agent = Spawn();
+				auto caster = Spawn();
+
+				sol::protected_function helperGuid = mState["ModifierCheckHelperGuid"];
+				const uint32_t guid = helperGuid();
+
+				sol::table helper = mState["ModifierCheckHelper"];
+				helper["stops"] = 0;
+
+				const auto agentId = agent->GetId();
+				const auto id = Request(agent, caster, guid);
+				helper["requestAgain"] = agentId;
+
+				agent->MarkForDeletion();
+				agent.reset();
+				mGame.GetObjectManager().Update(0.05f);
+				helper["requestAgain"] = sol::lua_nil;
+
+				const int stops = helper["stops"];
+				Report("deactivate-can-request-itself", id != 0 && stops == 1 && Manager().GetAll(agentId).empty(),
+					"stops=" + std::to_string(stops) + " left=" + std::to_string(Manager().GetAll(agentId).size()));
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.
