@@ -6,6 +6,9 @@
 #include "predefined.h"
 #include "character.h"
 #include "catalyst.h"
+#include "noun.h"
+
+#include <tuple>
 
 // Game
 namespace Game {
@@ -85,7 +88,9 @@ namespace Game {
 			uint8_t GetId() const;
 
 			uint32_t GetCurrentDeckIndex() const;
+			std::shared_ptr<PlayerClass> GetCreatureClass(uint8_t creatureIndex) const;
 			uint32_t GetAbilityId(uint8_t creatureIndex, uint8_t abilityIndex) const;
+			std::tuple<float, float> GetWeaponDamage(uint8_t creatureIndex) const;
 			uint32_t GetAbilityRank(uint8_t creatureIndex, uint8_t abilityIndex) const;
 			bool IsAbilityLocked(uint8_t abilityIndex) const;
 

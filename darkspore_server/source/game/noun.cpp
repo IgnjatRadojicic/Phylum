@@ -273,7 +273,16 @@ namespace Game {
 
 	uint32_t PlayerClass::GetAbility(PlayerAbility ability) const {
 		const auto index = static_cast<uint8_t>(ability);
-		return index < mAbilities.size() ? utils::hash_id(mAbilities[index]) : 0;
+		if (index >= mAbilities.size() || mAbilities[index].empty()) {
+			return 0;
+		}
+
+		// Names the asset parser could not resolve are stored as the raw numeric id.
+		const auto& name = mAbilities[index];
+		if (name.find_first_not_of("0123456789") == std::string::npos) {
+			return static_cast<uint32_t>(std::stoul(name));
+		}
+		return utils::hash_id(name);
 	}
 
 	const glm::vec3& PlayerClass::GetSharedAbilityOffset() const {

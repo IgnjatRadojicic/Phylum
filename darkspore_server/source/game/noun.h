@@ -243,6 +243,9 @@ namespace Game {
 
 			uint32_t GetAbility(PlayerAbility ability) const;
 
+			float GetWeaponMinDamage() const { return mWeaponMinDamage; }
+			float GetWeaponMaxDamage() const { return mWeaponMaxDamage; }
+
 			const glm::vec3& GetSharedAbilityOffset() const;
 
 			Homeworld GetHomeworld() const;

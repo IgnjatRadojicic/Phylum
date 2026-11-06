@@ -85,40 +85,60 @@ namespace Game {
 		return mCurrentDeckIndex;
 	}
 
+	std::shared_ptr<PlayerClass> Player::GetCreatureClass(uint8_t creatureIndex) const {
+		if (creatureIndex >= 3) {
+			creatureIndex = 0;
+		}
+
+		const auto& creatureIds = mSquad->GetCreatureIds();
+		const auto& creature = mUser->GetCreatureById(creatureIds[creatureIndex]);
+		if (!creature) {
+			return nullptr;
+		}
+
+		const auto& noun = NounDatabase::Instance().Get(creature->GetNoun());
+		if (!noun) {
+			return nullptr;
+		}
+		return noun->GetPlayerClassData();
+	}
+
 	uint32_t Player::GetAbilityId(uint8_t creatureIndex, uint8_t abilityIndex) const {
-		// TODO: rewrite creature stuff
+		// creature_templates.json has no ability data, the real ids live in the player classes.
+		// specialAbility1 is the basic attack on every hero class.
 		switch (abilityIndex) {
 			case 0: case 2: case 3: {
-				if (creatureIndex >= 3) {
-					creatureIndex = 0;
-				}
-
-				const auto& creatureIds = mSquad->GetCreatureIds();
-				const auto& creature = mUser->GetCreatureById(creatureIds[creatureIndex]);
-				if (!creature) {
+				const auto playerClass = GetCreatureClass(creatureIndex);
+				if (!playerClass) {
 					return 0;
 				}
 
 				switch (abilityIndex) {
-					case 0: return creature->GetAbility(0);
-					case 2: return creature->GetAbility(1);
-					case 3: return creature->GetAbility(3);
+					case 0: return playerClass->GetAbility(PlayerAbility::Special1);
+					case 2: return playerClass->GetAbility(PlayerAbility::Special2);
+					case 3: return playerClass->GetAbility(PlayerAbility::Special3);
 				}
-
 				break;
 			}
 
 			case 6: case 7: case 8: {
-				const auto& creatureIds = mSquad->GetCreatureIds();
-				const auto& creature = mUser->GetCreatureById(creatureIds[abilityIndex - 6]);
-				if (creature) {
-					return creature->GetAbility(2);
+				const auto playerClass = GetCreatureClass(abilityIndex - 6);
+				if (playerClass) {
+					return playerClass->GetAbility(PlayerAbility::Passive);
 				}
 				break;
 			}
 		}
 
 		return 0;
+	}
+
+	std::tuple<float, float> Player::GetWeaponDamage(uint8_t creatureIndex) const {
+		const auto playerClass = GetCreatureClass(creatureIndex);
+		if (!playerClass) {
+			return { 0.f, 0.f };
+		}
+		return { playerClass->GetWeaponMinDamage(), playerClass->GetWeaponMaxDamage() };
 	}
 
 	uint32_t Player::GetAbilityRank(uint8_t creatureIndex, uint8_t abilityIndex) const {
