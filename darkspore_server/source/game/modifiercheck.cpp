@@ -168,6 +168,7 @@ namespace {
 				CheckReusedIdKeepsItsChanges(slow);
 				CheckResetAnimationReachesTheClient();
 				CheckPrimaryAttributeCanBeRead();
+				CheckHashedModulesLoad();
 				CheckDeactivateCanDeleteObjects(slow);
 				CheckDeactivateCanRequestItself();
 				CheckMarkedObjectsOutlastDeactivate();
@@ -522,6 +523,12 @@ namespace {
 				sol::protected_function_result result = primary(agent->GetId());
 
 				Report("primary-attribute-can-be-read", result.valid(), "");
+			}
+
+			// This ability requires a module that only exists under the hash of its name.
+			void CheckHashedModulesLoad() {
+				sol::object ability = mState["nAbility"]["scripts"]["LightningRogueActive"];
+				Report("hashed-modules-load", ability.is<sol::table>(), "");
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.

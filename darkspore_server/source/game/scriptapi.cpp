@@ -10,6 +10,7 @@
 
 #include "utils/functions.h"
 
+#include <format>
 #include <fstream>
 #include <memory>
 
@@ -51,6 +52,10 @@ namespace {
 				directory = "lua"
 			end
 			local path = "data/serverdata/" .. directory .. "/" .. file .. ".lua"
+			if not io.open(path) then
+				-- Many files only exist under the hash of their name
+				path = "data/serverdata/" .. directory .. "/" .. HashedScriptName(file) .. ".lua"
+			end
 			local source = io.open(path) and ReadGameScript(path)
 			if not source then
 				return nil
@@ -908,6 +913,11 @@ namespace Game {
 
 		mState["ReadGameScript"] = [](const std::string& path) {
 			return ScriptSource::Read(path);
+		};
+
+		// In C++ because Lua's own formatting cannot hold a hash this large on Windows.
+		mState["HashedScriptName"] = [](const std::string& name) {
+			return std::format("0x{:08X}", utils::hash_id(name));
 		};
 
 		auto gapLog = std::make_shared<std::ofstream>(mGapLogPath, std::ios::app);
