@@ -704,6 +704,7 @@ namespace Game {
 		data.manaCoefficient = result.get<float>(1);
 		data.cooldownSeconds = result.get<float>(2);
 		data.manual = result.get<bool>(3);
+		data.cooldownVariance = result.get<float>(4);
 		return data;
 	}
 

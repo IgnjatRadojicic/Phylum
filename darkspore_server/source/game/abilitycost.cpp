@@ -7,7 +7,7 @@
 
 // Game
 namespace Game {
-	CastCost AbilityCost::For(const AbilityCostData& data, const CasterStats& caster) {
+	CastCost AbilityCost::For(const AbilityCostData& data, const CasterStats& caster, const CooldownRoll& roll) {
 		CastCost cost;
 		cost.manual = data.manual;
 
@@ -15,11 +15,15 @@ namespace Game {
 			cost.mana = std::max(0.f, data.manaCost + data.manaCoefficient * caster.attributeValue);
 		}
 
-		float seconds = std::max(0.f, data.cooldownSeconds);
-		seconds *= std::clamp(1.f - caster.cooldownScale, 0.f, 1.f);
+		const float base = std::max(0.f, data.cooldownSeconds);
+		const float variance = roll.amount * data.cooldownVariance * base;
+		float seconds = roll.direction < 0.5f ? base + variance : base - variance;
 		if (data.basic) {
 			seconds /= std::max(-0.9f, caster.attackSpeedScale) + 1.f;
+		} else {
+			seconds *= 1.f - caster.cooldownScale;
 		}
+		seconds = std::max(0.f, seconds);
 		cost.cooldownMs = static_cast<uint32_t>(std::lround(seconds * 1000.f));
 
 		return cost;

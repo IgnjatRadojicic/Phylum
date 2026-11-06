@@ -6,6 +6,8 @@
 #include "lua.h"
 #include "object.h"
 
+#include "utils/functions.h"
+
 // Game
 namespace Game {
 	CastPayment::CastPayment(Object& caster, const Ability& ability, uint32_t abilityId, int32_t rank) :
@@ -17,7 +19,11 @@ namespace Game {
 		stats.attackSpeedScale = caster.GetAttributeValue(AttributeType::AttackSpeedScale);
 		stats.overdrive = caster.IsOverdriveCharged();
 
-		mCost = AbilityCost::For(ability.GetCostData(caster.shared_from_this(), rank), stats);
+		CooldownRoll roll;
+		roll.amount = utils::random::get<float>(0.f, 1.f);
+		roll.direction = utils::random::get<float>(0.f, 1.f);
+
+		mCost = AbilityCost::For(ability.GetCostData(caster.shared_from_this(), rank), stats, roll);
 		if (Config::GetBool(ConfigKey::CONFIG_TEST_FREE_MANA)) {
 			mCost.mana = 0;
 		}

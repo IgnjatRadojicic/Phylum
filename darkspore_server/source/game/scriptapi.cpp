@@ -285,7 +285,8 @@ namespace {
 			return manaCost or 0,
 				GetRankedValueHelper(ability.manaCoefficient or 0, rank) or 0,
 				GetRankedValueHelper(ability.cooldown or 0, rank) or 0,
-				manual
+				manual,
+				GetRankedValueHelper(ability.cooldownVariance or 0, rank) or 0
 		end
 
 		function nAbility.GetAbilityAttributeValue(agentId, abilityId)
