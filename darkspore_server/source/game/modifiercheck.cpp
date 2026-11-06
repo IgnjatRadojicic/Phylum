@@ -82,6 +82,24 @@ namespace {
 			nModifier.RequestModifier(agent, agent, nUtil.SPID("ModifierCheckProperty"), nil, 1, 8)
 		end
 
+		-- Abilities for the checks, set up the way scripts with no template do it.
+		ModifierCheckCast = { casts = 0, stopped = 0 }
+		local waits = {}
+		nAbility.RegisterAbility("ModifierCheckWaits", waits)
+		waits[nAbilityFns.Tick] = function()
+			ModifierCheckCast.casts = ModifierCheckCast.casts + 1
+			nThread.WaitForXSeconds(0.05)
+		end
+
+		local fails = {}
+		nAbility.RegisterAbility("ModifierCheckFails", fails)
+		fails[nAbilityFns.Tick] = function()
+			error("this ability fails on purpose")
+		end
+		fails[nAbilityFns.Deactivate] = function()
+			ModifierCheckCast.stopped = nAbility.GetAgentID()
+		end
+
 		function ModifierCheckHelperGuid()
 			return nUtil.SPID("ModifierCheckHelper")
 		end
@@ -90,6 +108,8 @@ namespace {
 			nModifier.registered[nUtil.SPID("ModifierCheckHelper")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckWitness")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckProperty")] = nil
+			nAbility.scripts.ModifierCheckWaits = nil
+			nAbility.scripts.ModifierCheckFails = nil
 		end
 
 		-- An ability has an instance number of its own, which can equal a modifier's id.
@@ -169,6 +189,7 @@ namespace {
 				CheckResetAnimationReachesTheClient();
 				CheckPrimaryAttributeCanBeRead();
 				CheckHashedModulesLoad();
+				CheckSecondCastRuns();
 				CheckDeactivateCanDeleteObjects(slow);
 				CheckDeactivateCanRequestItself();
 				CheckMarkedObjectsOutlastDeactivate();
@@ -529,6 +550,20 @@ namespace {
 			void CheckHashedModulesLoad() {
 				sol::object ability = mState["nAbility"]["scripts"]["LightningRogueActive"];
 				Report("hashed-modules-load", ability.is<sol::table>(), "");
+			}
+
+			void CheckSecondCastRuns() {
+				auto agent = Spawn();
+				const auto ability = mLua.GetAbility(utils::hash_id("ModifierCheckWaits"));
+				ability->FindNumberedTick();
+
+				ability->Tick(agent, nullptr, glm::vec3(0.f), 1);
+				ability->Tick(agent, nullptr, glm::vec3(0.f), 1);
+				Wait(120);
+
+				sol::table cast = mState["ModifierCheckCast"];
+				const int casts = cast["casts"];
+				Report("second-cast-runs", casts == 2, "casts=" + std::to_string(casts));
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.

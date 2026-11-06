@@ -802,7 +802,7 @@ namespace RakNet {
 						if (!scripted) {
 							mGame.GetLua().Trace("NOT-RUN ability=" + std::to_string(combatData.abilityId) + " index=" + std::to_string(command.ability.index));
 						}
-						if (!scripted && command.ability.index == 0) {
+						if (!scripted && command.ability.index == 0 && !mGame.GetLua().GetAbility(combatData.abilityId)) {
 							mGame.WeaponAttack(object, command.ability.targetId, combatData.abilityId, weaponDamage);
 						}
 					}

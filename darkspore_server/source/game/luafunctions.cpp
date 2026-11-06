@@ -1558,9 +1558,10 @@ namespace Game {
 			auto& objectManager = mGame.GetObjectManager();
 			auto object = LuaGetObject(objectManager, objectValue);
 			if (object) {
+				// Whatever the object is running stays the one that a cancel stops.
 				thread = object->GetLuaThread();
 				if (thread && thread->is_waiting()) {
-					return;
+					thread = SpawnThread();
 				} else {
 					thread = SpawnThreadFor(object);
 				}

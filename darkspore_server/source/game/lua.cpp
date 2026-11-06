@@ -763,17 +763,8 @@ namespace Game {
 			return false;
 		}
 
-		LuaThread* thread;
-		if (object) {
-			thread = object->GetLuaThread();
-			if (thread && thread->is_waiting()) {
-				return false;
-			} else {
-				thread = mLua.SpawnThreadFor(object);
-			}
-		} else {
-			thread = mLua.SpawnThread();
-		}
+		// A script can run long after its hero is free, while a shot flies, so it never blocks a new cast.
+		LuaThread* thread = object ? mLua.SpawnThreadFor(object) : mLua.SpawnThread();
 
 		thread->call<void>(mEnvironment, mTickFn, mSelf, object, target, cursorPosition, rank);
 		return true;
