@@ -38,17 +38,19 @@ Make every hero's abilities work.
 - [x] Build `ModifierManager`, proven first on one simple effect such as a slow
 - [x] Work out the `ModifierCreated`, `ModifierUpdated` and `ModifierDeleted` packets
 - [x] Implement `AddAttributeModifier` and the `nModifier` functions (see `docs/modifiers.md` for what is still approximate)
-- [ ] Send modifiers the ability events beyond stacking, such as `TookDamage` and `DealtDamage`
-- [ ] Start hero and mob passive modifiers
-- [ ] Stop a modifier's child threads when it ends, which `modifier_cryosboss_passive` needs
+- [x] Send modifiers the ability events beyond stacking, such as `TookDamage` and `DealtDamage`
+- [x] Start hero and mob passive modifiers
+- [x] Stop a modifier's child threads when it ends, which `modifier_cryosboss_passive` needs
 - [ ] Check whether stat changes made by abilities stick after an interrupted cast
-- [ ] Clear a pooled Lua thread's old cast context, so a reused thread cannot read it
+- [x] Clear a pooled Lua thread's old cast context, so a reused thread cannot read it
 - [x] Reconstruct how attribute changes combine (the order is approximate, see `docs/modifiers.md`)
 - [x] Fix projectile abilities (see `docs/projectiles.md` for what is still approximate)
 - [ ] Implement `CreateThreadForObject` and the remaining `nAbility` functions
 - [ ] Work out `TransformVector`, and replace adapter placeholders such as `IsPet`
-- [ ] Apply cooldowns and mana from scripts, instead of the fixed reply cooldown
-- [ ] Apply armour, resistances and damage types in `TakeDamage`
+- [x] Apply cooldowns and mana from scripts, instead of the fixed reply cooldown
+- [x] Apply armour, resistances and damage types in `TakeDamage` (see `docs/damage.md` for what is still approximate)
+- [ ] Build hero stats as the client does: class base, part stats and primary stat shares, and the weapon's damage range
+- [ ] Raise the remaining ability events, such as `Dodged`, `NearbyDeath` and `UsedAbility`
 
 Done when: every hero's abilities run in play, effects apply and expire, and loading is reliable.
 
