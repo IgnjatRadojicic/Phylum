@@ -18,6 +18,12 @@ namespace Game {
 		read("DodgePercentCap", numbers.dodgePercentCap);
 		read("ResistPercentCap", numbers.resistPercentCap);
 		read("CriticalDamageBonus", numbers.criticalDamageBonus);
+		read("PrimaryAttributeIgnoreAmount", numbers.primaryAttributeIgnoreAmount);
+		read("HealthPerPointofStrength", numbers.healthPerStrength);
+		read("PhysicalDefensePerPointofDexterity", numbers.physicalDefensePerDexterity);
+		read("CritRatingPerPointofDexterity", numbers.critRatingPerDexterity);
+		read("EnergyDefensePerPointofMind", numbers.energyDefensePerMind);
+		read("ManaPerPointofMind", numbers.manaPerMind);
 		return numbers;
 	}
 

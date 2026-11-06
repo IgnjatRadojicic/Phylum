@@ -18,6 +18,14 @@ namespace Game {
 		float dodgePercentCap = 0.8f; // nTuning.DodgePercentCap
 		float resistPercentCap = 0.8f; // nTuning.ResistPercentCap
 		float criticalDamageBonus = 2.f; // A critical hit's damage multiplier
+		float primaryAttributeIgnoreAmount = 8.f; // Primary points that add nothing to healing
+
+		// What one point of a primary stat adds (see StatShares)
+		float healthPerStrength = 5.f;
+		float physicalDefensePerDexterity = 6.f;
+		float critRatingPerDexterity = 4.f;
+		float energyDefensePerMind = 6.f;
+		float manaPerMind = 1.f;
 
 		// Reads the <magicnumbers> root of the game's file.
 		static MagicNumbers FromXml(const pugi::xml_node& root);

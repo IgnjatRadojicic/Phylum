@@ -14,29 +14,6 @@
 #include "utils/functions.h"
 #include "utils/log.h"
 
-// magic numbers
-constexpr std::array<float, 19> magicNumbers {
-	1.f, // DamagePerPointOfStrength
-	1.f, // DamagePerPointOfDexterity
-	1.f, // DamagePerPointOfMind
-	5.f, // HealthPerPointofStrength
-	6.f, // PhysicalDefensePerPointofDexterity
-	4.f, // CritRatingPerPointofDexterity
-	6.f, // EnergyDefensePerPointofMind
-	1.f, // ManaPerPointofMind
-	6.f, // DefenseRatingDecreaseMultiplier
-	1.05f, // DefenseRatingDecreaseBase
-	6.f, // CriticalRatingDecreaseMultiplier
-	1.05f, // CriticalRatingDecreaseBase
-	2.f, // CriticalDamageBonus
-	8.f, // PrimaryAttributeIgnoreAmount
-	0.5f, // LeechEffectivenessForAoE
-	1.f, // LeechEffectivenessForAbilities
-	1.f, // LeechEffectivenessForBasics
-	0.8f, // DodgePercentCap
-	0.8f // ResistPercentCap
-};
-
 // difficulty tuning
 
 // Game
@@ -1523,7 +1500,7 @@ namespace Game {
 				if (attackerOwner) {
 					attackerPlayerIndex = attackerOwner->GetPlayerIndex();
 					if (attackerPlayerIndex != 0xFF) {
-						healCoefficient *= attackerOwner->GetPrimaryAttributeValue() - magicNumbers[13];
+						healCoefficient *= attackerOwner->GetPrimaryAttributeValue() - MagicNumbers::Game().primaryAttributeIgnoreAmount;
 					}
 				}
 
@@ -1537,7 +1514,7 @@ namespace Game {
 			if (!ignoreCritical) {
 				critical = CheckCritical(attackerAttributes);
 				if (critical) {
-					value *= magicNumbers[12];
+					value *= MagicNumbers::Game().criticalDamageBonus;
 				}
 			}
 		}

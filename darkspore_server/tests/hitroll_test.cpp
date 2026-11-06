@@ -61,15 +61,19 @@ TEST_CASE("a critical hit does the bonus from MagicNumbers plus any increase") {
 	CHECK(HitRoll::CriticalMultiplier(2.f, -5.f) == 1.f);
 }
 
-TEST_CASE("MagicNumbers reads the caps and the critical bonus") {
+TEST_CASE("MagicNumbers reads the caps, the critical bonus and the per-point values") {
 	pugi::xml_document document;
 	document.load_string("<magicnumbers><DodgePercentCap>0.75</DodgePercentCap>"
-		"<ResistPercentCap>0.6</ResistPercentCap><CriticalDamageBonus>3</CriticalDamageBonus></magicnumbers>");
+		"<ResistPercentCap>0.6</ResistPercentCap><CriticalDamageBonus>3</CriticalDamageBonus>"
+		"<HealthPerPointofStrength>4</HealthPerPointofStrength><ManaPerPointofMind>2</ManaPerPointofMind></magicnumbers>");
 	const auto numbers = Game::MagicNumbers::FromXml(document.child("magicnumbers"));
 
 	CHECK(numbers.dodgePercentCap == doctest::Approx(0.75f));
 	CHECK(numbers.resistPercentCap == doctest::Approx(0.6f));
 	CHECK(numbers.criticalDamageBonus == doctest::Approx(3.f));
+	CHECK(numbers.healthPerStrength == doctest::Approx(4.f));
+	CHECK(numbers.manaPerMind == doctest::Approx(2.f));
+	CHECK(numbers.physicalDefensePerDexterity == doctest::Approx(6.f));
 
 	const auto defaults = Game::MagicNumbers::FromXml(pugi::xml_node());
 	CHECK(defaults.criticalDamageBonus == doctest::Approx(2.f));
