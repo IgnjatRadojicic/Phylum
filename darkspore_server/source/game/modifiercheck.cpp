@@ -9,6 +9,7 @@
 #include "object.h"
 #include "objectmanager.h"
 #include "passivemodifiers.h"
+#include "scripttriggervolumes.h"
 
 #include "sporenet/user.h"
 
@@ -301,6 +302,7 @@ namespace {
 				CheckMobPassiveStartsOnce();
 				CheckKillObjectEndsPassive();
 				CheckDronePassiveSpawnsDrone();
+				CheckAuraSlowsEnemyInside();
 				CheckLineFindsMobOnIt();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
@@ -703,6 +705,53 @@ namespace {
 				}
 				Report("drone-passive-spawns-drone", id != 0 && drones == 1 && owned == 1,
 					"id=" + std::to_string(id) + " drones=" + std::to_string(drones) + " owned=" + std::to_string(owned));
+			}
+
+			bool HasModifier(const Game::ObjectPtr& object, uint32_t guid) {
+				for (uint32_t id : Manager().GetAll(object->GetId())) {
+					const auto instance = Manager().Get(id);
+					if (instance && instance->spec.guid == guid && !instance->markedForDelete) {
+						return true;
+					}
+				}
+				return false;
+			}
+
+			// The game's Zelem slow aura puts its slow on an enemy inside its trigger volume and takes
+			// it off when the enemy leaves. The volume goes with the aura's agent. The aura has no
+			// filter, so whether its own agent is slowed only shows what the server decided (see
+			// ScriptTriggerVolumes) and is not checked.
+			void CheckAuraSlowsEnemyInside() {
+				auto* volumes = mGame.GetTriggerVolumes();
+				const size_t volumesBefore = volumes ? volumes->Count() : 0;
+
+				// Away from the other checks' mobs, which sit at the origin.
+				const glm::vec3 spot(500.f, 500.f, 0.f);
+				auto agent = Spawn();
+				auto enemy = Spawn();
+				agent->SetTeam(1);
+				enemy->SetTeam(2);
+				agent->SetPosition(spot);
+				enemy->SetPosition(spot + glm::vec3(5.f, 0.f, 0.f));
+
+				sol::protected_function spid = mState["nUtil"]["SPID"];
+				const uint32_t slow = spid("ZelemSlow");
+				const auto id = Request(agent, agent, spid("ZelemSlowAura"));
+				Wait(100);
+				const bool inside = HasModifier(enemy, slow);
+				const bool agentSlowed = HasModifier(agent, slow);
+
+				enemy->SetPosition(spot + glm::vec3(60.f, 0.f, 0.f));
+				Wait(100);
+				const bool outside = HasModifier(enemy, slow);
+
+				agent->MarkForDeletion();
+				Wait(100);
+				const size_t volumesAfter = volumes ? volumes->Count() : 0;
+
+				Report("aura-slows-enemy-inside", id != 0 && inside && !outside && volumesAfter == volumesBefore,
+					"id=" + std::to_string(id) + " inside=" + std::to_string(inside) + " agent=" + std::to_string(agentSlowed) +
+					" outside=" + std::to_string(outside) + " volumes=" + std::to_string(volumesBefore) + "->" + std::to_string(volumesAfter));
 			}
 
 			// The game's own thorns script, given a melee hit, hits the attacker back.

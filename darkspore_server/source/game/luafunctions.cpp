@@ -7,6 +7,7 @@
 #include "castpayment.h"
 #include "damageevents.h"
 #include "serverevent.h"
+#include "scripttriggervolumes.h"
 
 #include "utils/functions.h"
 #include "utils/log.h"
@@ -214,9 +215,40 @@ namespace LuaFunction {
 		return game.GetObjectManager().GetTrigger(id);
 	}
 
-	auto nObjectManager_CreateTriggerVolume(sol::this_state L, glm::vec3 position, float radius) {
-		auto& game = LuaGetGame(L);
-		return game.GetObjectManager().CreateTrigger(position, radius);
+	// Trigger volumes for scripts (ScriptTriggerVolumes). A missing callback comes as false.
+	Game::ScriptTriggerCallbacks LuaTriggerCallbacks(const sol::object& enter, const sol::object& exit, const sol::object& stay) {
+		auto callback = [](const sol::object& value) {
+			return value.is<sol::function>() ? sol::main_function(value.as<sol::function>()) : sol::main_function();
+		};
+		return { callback(enter), callback(exit), callback(stay) };
+	}
+
+	uint32_t AddTriggerVolume(sol::this_state L, const Game::TriggerArea& shape, Game::ScriptTriggerCallbacks callbacks, uint32_t ownerId = 0) {
+		auto* volumes = LuaGetGame(L).GetTriggerVolumes();
+		return volumes ? volumes->Add(shape, std::move(callbacks), ownerId) : 0u;
+	}
+
+	// The volume's handle, or 0 when there is no such object.
+	auto nObjectManager_AttachTriggerVolume(sol::this_state L, uint32_t ownerId, float radius, sol::object enter, sol::object exit, sol::object stay) {
+		const auto owner = LuaGetGame(L).GetObjectManager().Get(ownerId);
+		if (!owner) {
+			return 0u;
+		}
+		const auto shape = Game::TriggerArea::Sphere(owner->GetPosition(), radius);
+		return AddTriggerVolume(L, shape, LuaTriggerCallbacks(enter, exit, stay), ownerId);
+	}
+
+	auto nObjectManager_CreateTriggerVolume(sol::this_state L, glm::vec3 position, float radius, sol::object enter, sol::object exit, sol::object stay) {
+		return AddTriggerVolume(L, Game::TriggerArea::Sphere(position, radius), LuaTriggerCallbacks(enter, exit, stay));
+	}
+
+	auto nObjectManager_CreateTriggerVolumeBox(sol::this_state L, glm::vec3 position, glm::vec3 halfSize, glm::vec3 facing, sol::object enter, sol::object exit, sol::object stay) {
+		return AddTriggerVolume(L, Game::TriggerArea::Box(position, halfSize, facing), LuaTriggerCallbacks(enter, exit, stay));
+	}
+
+	auto nObjectManager_DestroyTriggerVolume(sol::this_state L, uint32_t volume) {
+		auto* volumes = LuaGetGame(L).GetTriggerVolumes();
+		return volumes && volumes->Remove(volume);
 	}
 
 	auto nObjectManager_GetObjectsInRadius(sol::this_state L, glm::vec3 position, float radius, sol::table objectTypes) {
@@ -2066,7 +2098,10 @@ namespace Game {
 		objectManager["CreateObject"] = &LuaFunction::nObjectManager_CreateObject;
 
 		objectManager["GetTrigger"] = &LuaFunction::nObjectManager_GetTrigger;
+		objectManager["AttachTriggerVolume"] = &LuaFunction::nObjectManager_AttachTriggerVolume;
 		objectManager["CreateTriggerVolume"] = &LuaFunction::nObjectManager_CreateTriggerVolume;
+		objectManager["CreateTriggerVolumeBox"] = &LuaFunction::nObjectManager_CreateTriggerVolumeBox;
+		objectManager["DestroyTriggerVolume"] = &LuaFunction::nObjectManager_DestroyTriggerVolume;
 
 		objectManager["GetObjectsInRadius"] = &LuaFunction::nObjectManager_GetObjectsInRadius;
 		objectManager["GetObjectsAlongLine"] = &LuaFunction::nObjectManager_GetObjectsAlongLine;

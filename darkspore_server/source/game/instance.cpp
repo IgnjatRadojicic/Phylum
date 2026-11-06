@@ -8,6 +8,7 @@
 #include "castpayment.h"
 #include "damageevents.h"
 #include "passivemodifiers.h"
+#include "scripttriggervolumes.h"
 #include "serverevent.h"
 #include "catalyst.h"
 #include "scheduler.h"
@@ -100,6 +101,9 @@ namespace Game {
 		mObjectManager = std::make_unique<ObjectManager>(*this);
 		mLua = std::make_unique<Lua>(*this);
 		mModifiers = std::make_unique<ModifierSystem>(*this);
+		mTriggerVolumes = std::make_unique<ScriptTriggerVolumes>([this](const sol::main_function& callback, uint32_t volume, uint32_t objectId) {
+			mLua->CallCoroutine<void>(nullptr, sol::function(callback), volume, objectId);
+		});
 		mDamageEvents = std::make_unique<DamageEvents>(*mModifiers);
 		mServer = std::make_unique<RakNet::Server>(*this);
 	}
@@ -126,6 +130,7 @@ namespace Game {
 		mServer.reset();
 		mDamageEvents.reset();
 		mModifiers.reset(); // Holds tables that belong to Lua
+		mTriggerVolumes.reset(); // Holds Lua functions
 		mLua.reset();
 		mObjectManager.reset();
 	}
@@ -250,6 +255,10 @@ namespace Game {
 
 	ModifierSystem& Instance::GetModifiers() {
 		return *mModifiers;
+	}
+
+	ScriptTriggerVolumes* Instance::GetTriggerVolumes() {
+		return mTriggerVolumes.get();
 	}
 
 	void Instance::ReportDamage(const DamageReport& hit) {

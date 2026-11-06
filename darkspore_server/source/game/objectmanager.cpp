@@ -4,6 +4,7 @@
 #include "instance.h"
 #include "modifiersystem.h"
 #include "lua.h"
+#include "scripttriggervolumes.h"
 
 #include "utils/functions.h"
 #include "utils/log.h"
@@ -321,6 +322,11 @@ namespace Game {
 			}
 		}
 
+		auto* triggerVolumes = mGame.GetTriggerVolumes();
+		if (triggerVolumes) {
+			triggerVolumes->Update(*this);
+		}
+
 		if (!mMarkedObjects.empty()) {
 			auto& lua = mGame.GetLua();
 
@@ -328,6 +334,10 @@ namespace Game {
 			// more objects too, so the list can grow and move while this runs.
 			for (size_t index = 0; index < mMarkedObjects.size(); ++index) {
 				const auto object = mMarkedObjects[index];
+				// As its physics body goes, so trigger volume scripts still find it.
+				if (triggerVolumes) {
+					triggerVolumes->OnObjectRemoved(object->GetId());
+				}
 				mGame.GetModifiers().OnAgentDestroyed(object->GetId());
 			}
 

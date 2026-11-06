@@ -97,3 +97,42 @@ Not used yet:
 `nLocomotion.GetClosestSpawnPosition` gives back the position it is asked about. The game moves it to
 the nearest free spot on the navigation mesh, which the server does not have yet (Stage 2).
 
+
+## Trigger volumes
+
+Auras, charges, healing zones, thin ice and fire walls use trigger volumes: a shape that calls a
+script when something touches it. About 30 of the game's scripts make them through `nObjectManager`:
+
+| Function | Arguments |
+|---|---|
+| `AttachTriggerVolume` | object, radius, enter, exit, stay. The sphere moves with the object. |
+| `CreateTriggerVolume` | x, y, z, radius, enter, exit, stay. |
+| `CreateTriggerVolumeBox` | x, y, z, width, length, height, facing x, y, z, enter, exit, stay. |
+| `DetachTriggerVolume` | object, volume. Ends the volume. |
+| `DestroyTriggerVolume` | volume. |
+
+Each one returns the volume's handle, and enter, exit and stay may each be left out.
+
+In the client a volume is a physics phantom, not a game object, so the server never sends one to a
+client (`ScriptTriggerVolumes`). What the client does (`Darkspore.exe`):
+
+- Enter runs once when an object starts touching the volume, exit once when it stops, and stay on
+  each tick in between, but only when the script gave a stay function (0xa24f90, 0xa16810,
+  0xa168a0, 0xa16960).
+- Each one gets the volume's handle and the object's id (0xa15f00).
+- Any object counts. The hero-only rules and "once only" are settings for triggers placed in a
+  level, and scripts cannot set them (0xa16130, 0xa161d0).
+- The true or false a callback returns only matters for those once-only triggers. A script volume
+  ignores it, so an aura that turns a target down on the way in does not try again until the
+  target leaves and comes back.
+- Detaching or destroying a volume calls nothing: the client drops its functions first (0xa15d10).
+- An object that leaves the world exits every volume it is in first (0xa270a0).
+- The functions run in the script that made the volume, so they can still ask about its cast.
+
+Approximate:
+- A body is a sphere of the object's footprint radius at its position. The physics used the
+  creature's real collision shape.
+- The box sizes are half sizes, as physics box shapes take them. The firewall gives its scale as
+  the length and 0.1 as the width and height.
+- A volume's own object counts like any other. Hostile auras skip it through their filter.
+- A volume goes when its object does. The client may keep it until the script detaches it.

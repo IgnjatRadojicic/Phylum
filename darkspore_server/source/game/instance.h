@@ -103,6 +103,7 @@ namespace Game {
 	class ObjectManager;
 	class Lua;
 	class ModifierSystem;
+	class ScriptTriggerVolumes;
 	struct ModifierInstance;
 	class DamageEvents;
 	struct DamageReport;
@@ -143,6 +144,7 @@ namespace Game {
 			const ObjectManager& GetObjectManager() const;
 
 			ModifierSystem& GetModifiers();
+			ScriptTriggerVolumes* GetTriggerVolumes();
 
 			// A hit that landed, for the scripts that react to damage.
 			void ReportDamage(const DamageReport& hit);
@@ -247,6 +249,7 @@ namespace Game {
 			std::unique_ptr<ObjectManager> mObjectManager;
 			std::unique_ptr<Lua> mLua;
 			std::unique_ptr<ModifierSystem> mModifiers;
+			std::unique_ptr<ScriptTriggerVolumes> mTriggerVolumes;
 			std::unique_ptr<DamageEvents> mDamageEvents;
 
 			std::unordered_map<uint32_t, MarkerPtr> mMarkers;

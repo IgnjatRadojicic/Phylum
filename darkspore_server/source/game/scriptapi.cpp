@@ -1050,6 +1050,60 @@ namespace {
 			return x or 0, y or 0, z or 0
 		end
 
+		-- Trigger volumes (ScriptTriggerVolumes). The client calls a volume's enter, exit and stay
+		-- functions with its handle and the object's id, in the script that made it, so they can
+		-- still ask about their own cast. A missing function goes to the engine as false.
+		local function inMakersCast(callback)
+			if type(callback) ~= "function" then
+				return false
+			end
+			local cast = CastContext.Get()
+			return function(...)
+				CastContext.Set(cast)
+				return callback(...)
+			end
+		end
+
+		local function volumeOrNil(volume)
+			return volume ~= 0 and volume or nil
+		end
+
+		local attachTriggerVolume = nObjectManager.AttachTriggerVolume
+		function nObjectManager.AttachTriggerVolume(id, radius, enter, exit, stay)
+			if not id or id == kObjIDNone then
+				return nil
+			end
+			return volumeOrNil(attachTriggerVolume(id, tonumber(radius) or 0,
+				inMakersCast(enter), inMakersCast(exit), inMakersCast(stay)))
+		end
+
+		local createTriggerVolume = nObjectManager.CreateTriggerVolume
+		function nObjectManager.CreateTriggerVolume(x, y, z, radius, enter, exit, stay)
+			return volumeOrNil(createTriggerVolume(vector(x or 0, y or 0, z or 0), tonumber(radius) or 0,
+				inMakersCast(enter), inMakersCast(exit), inMakersCast(stay)))
+		end
+
+		-- (x, y, z, width, length, height, facing x, y, z, enter, exit, stay). The firewall gives
+		-- its scale as the length.
+		local createTriggerVolumeBox = nObjectManager.CreateTriggerVolumeBox
+		function nObjectManager.CreateTriggerVolumeBox(x, y, z, width, length, height, fx, fy, fz, enter, exit, stay)
+			return volumeOrNil(createTriggerVolumeBox(vector(x or 0, y or 0, z or 0),
+				vector(width or 0, length or 0, height or 0), vector(fx or 0, fy or 0, fz or 0),
+				inMakersCast(enter), inMakersCast(exit), inMakersCast(stay)))
+		end
+
+		local destroyTriggerVolume = nObjectManager.DestroyTriggerVolume
+		function nObjectManager.DestroyTriggerVolume(volume)
+			if volume then
+				destroyTriggerVolume(volume)
+			end
+		end
+
+		-- The client ends the volume here as DestroyTriggerVolume does (Darkspore.exe 0xa00930).
+		function nObjectManager.DetachTriggerVolume(_, volume)
+			nObjectManager.DestroyTriggerVolume(volume)
+		end
+
 		function nObjectManager.RemoveObjectById(id)
 			local object = get(id)
 			if object then
