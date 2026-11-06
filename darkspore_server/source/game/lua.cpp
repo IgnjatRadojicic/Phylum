@@ -622,7 +622,8 @@ namespace Game {
 		}
 
 		if (sol::optional<bool> hasTick = mSelf["hasTick"]; hasTick.value_or(false)) {
-			if (sol::object value = mSelf["tick"]; value.is<sol::function>()) {
+			// castTick wraps the script's tick with the cast setup (see scriptapi.cpp).
+			if (sol::object value = mSelf["castTick"]; value.is<sol::function>()) {
 				mEnvironment.set_on(value);
 				mTickFn = value.as<sol::function>();
 			}

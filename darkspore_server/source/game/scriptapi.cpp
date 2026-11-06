@@ -144,7 +144,11 @@ namespace {
 			}
 		end
 
-		-- A script can call its own tick to reuse it, which is not a new cast
+		-- The server starts a cast through ability.castTick, which sets up the cast
+		-- and then runs the script's tick. It is kept apart from ability.tick because
+		-- scripts call self:tick() themselves: many numbered ticks are just
+		-- "return self:tick()", handing over to their template's tick, and would
+		-- call themselves forever if ability.tick were replaced by the wrapper.
 		local function castingTick(tick)
 			return function(self, object, target, cursorPosition, rank)
 				if object then
@@ -161,7 +165,7 @@ namespace {
 			nAbility.scripts[name] = ability
 			local tick = ability.tick
 			if tick then
-				ability.tick = castingTick(tick)
+				ability.castTick = castingTick(tick)
 			end
 			registerAbility(name, ability)
 		end
@@ -176,12 +180,12 @@ namespace {
 			end
 		end
 
-		-- Scripts with no template set tick by its nAbilityFns number, after they register
+		-- Some scripts set tick by its nAbilityFns number, after they register
 		function nAbility.NumberedTick(ability)
 			local tick = ability[nAbilityFns.Tick]
 			if tick then
-				ability.tick = castingTick(tick)
-				return ability.tick
+				ability.castTick = castingTick(tick)
+				return ability.castTick
 			end
 		end
 

@@ -166,10 +166,27 @@ namespace Game {
 			end
 			table.sort(names)
 
+			-- Abilities with both a named tick and a numbered one. The server runs the
+			-- named one; a numbered tick that is more than "return self:tick()" would
+			-- mean the two disagree about what the ability does.
+			local both, differing = 0, {}
+			for _, name in ipairs(names) do
+				local ability = nAbility.scripts[name]
+				local numbered = ability[nAbilityFns.Tick]
+				if ability.tick and numbered and numbered ~= ability.tick then
+					both = both + 1
+					local ok, code = pcall(string.dump, numbered)
+					if not ok or #code > 200 then
+						differing[#differing + 1] = name
+					end
+				end
+			end
+			file:write("TICKS both=", both, " numbered-does-more=", #differing, " ", table.concat(differing, " "), "\n")
+
 			for _, name in ipairs(names) do
 				local ability = nAbility.scripts[name]
 				local basic = ability.descriptors and nBit.And(ability.descriptors, nDescriptors.IsBasic) ~= 0
-				if ability.tick then
+				if ability.castTick then
 					total = total + 1
 					calls = { animation = 0, damage = 0, projectile = 0 }
 					trail = {}
@@ -178,7 +195,7 @@ namespace Game {
 					file:write("RUN ", name, "\n")
 					file:flush()
 					local thread = coroutine.create(function()
-						ability.tick(ability, agent, target, { x = 1, y = 0, z = 0 }, 1)
+						ability.castTick(ability, agent, target, { x = 1, y = 0, z = 0 }, 1)
 					end)
 					-- A crash in native code cannot be caught, so leave a trail of what was called.
 					debug.sethook(thread, function()
