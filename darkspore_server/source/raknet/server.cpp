@@ -758,6 +758,9 @@ namespace RakNet {
 					
 					Read<ActionCommandAbilityData>(mInStream, command.ability);
 					
+					// Scripts place shots with this, so it has to be where the hero faces now.
+					object->SetOrientation(command.data.orientation);
+
 					std::cout << "Target ID: " << command.ability.targetId << std::endl;
 					std::cout << "Ability Index: " << command.ability.index << std::endl;
 
