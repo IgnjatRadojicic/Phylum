@@ -19,6 +19,7 @@ class Installer {
 
 		static void LoadDarksporeData(std::string darksporeInstallPath, std::string darksporeInstallVersion);
 		static void RunCommand(const std::string& cmd);
+		static void CopyScripts(const std::filesystem::path& source, const std::filesystem::path& destination);
 		static void MergeDirectories(const std::filesystem::path& source, const std::filesystem::path& destination);
 };
 

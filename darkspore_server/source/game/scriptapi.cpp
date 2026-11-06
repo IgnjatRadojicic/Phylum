@@ -11,23 +11,7 @@
 namespace {
 	constexpr const char* setupApi = R"lua(
 		setmetatable(nAbility, { __index = Ability })
-
-		nBit = nBit or {}
-		function nBit.Or(...)
-			local value = 0
-			for i = 1, select("#", ...) do
-				value = bit.bor(value, (select(i, ...)))
-			end
-			return value
-		end
-
-		function nBit.And(...)
-			local value = -1
-			for i = 1, select("#", ...) do
-				value = bit.band(value, (select(i, ...)))
-			end
-			return value
-		end
+		setmetatable(nLocomotion, { __index = Locomotion })
 
 		-- Modifiers register but have no effect yet
 		nModifier = nModifier or {}
@@ -157,6 +141,10 @@ namespace {
 		end
 
 		-- Cooldowns are sent by the server's ability reply for now
+		function nDebug.IsAbilityDebugEnabled()
+			return false
+		end
+
 		function nAbility.PayCooldownAndMana() end
 		function nAbility.DebugDrawDamageArc() end
 		function nDebug.Assert() end
@@ -289,6 +277,22 @@ namespace Game {
 		gameAbility["PreloadAnimation"] = preload;
 		gameAbility["PreloadAsset"] = preload;
 		gameAbility["PreloadModifier"] = preload;
+
+		sol::table bitOperations = mState.create_named_table("nBit");
+		bitOperations["Or"] = [](sol::variadic_args values) {
+			uint32_t result = 0;
+			for (uint32_t value : values) {
+				result |= value;
+			}
+			return result;
+		};
+		bitOperations["And"] = [](sol::variadic_args values) {
+			uint32_t result = 0xFFFFFFFF;
+			for (uint32_t value : values) {
+				result &= value;
+			}
+			return result;
+		};
 
 		mState["ReadGameScript"] = [](const std::string& path) {
 			return ScriptSource::Read(path);

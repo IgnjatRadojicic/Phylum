@@ -172,7 +172,7 @@ namespace Game {
 			void MoveObject(const ObjectPtr& object, const Locomotion& locomotionData);
 
 			// Abilities / Combat / Etc
-			void UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData);
+			bool UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData);
 			void WeaponAttack(const ObjectPtr& attacker, uint32_t targetId, uint32_t abilityId, const std::tuple<float, float>& damageRange);
 			void SwapCharacter(const PlayerPtr& player, uint32_t creatureIndex);
 			void InteractWithObject(const PlayerPtr& player, uint32_t objectId);

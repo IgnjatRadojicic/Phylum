@@ -9,13 +9,14 @@
 // Game
 namespace Game {
 	// ScriptSource
-	// Reads the game's decompiled Lua scripts and repairs what the decompiler got wrong.
+	// Reads the game's compiled Lua scripts. The game was built for 32 bit with float numbers,
+	// so its bytecode has to be converted before this build of Lua can load it.
 	class ScriptSource {
 		public:
 			static std::string Read(const std::filesystem::path& path);
 
-			// The decompiler writes "L3_9 = L1_7(L2_8)" for a call that assigns L1, L2 and L3.
-			static std::string RestoreMultipleAssignments(const std::string& source);
+			static bool IsGameBytecode(const std::string& data);
+			static std::string ConvertBytecode(const std::string& data);
 	};
 }
 

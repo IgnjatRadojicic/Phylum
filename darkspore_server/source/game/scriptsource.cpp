@@ -2,79 +2,145 @@
 // Include
 #include "scriptsource.h"
 
-#include <cctype>
-#include <cstdio>
+#include <cstdint>
+#include <cstring>
 #include <fstream>
-#include <optional>
 #include <sstream>
+#include <stdexcept>
 
 // Game
 namespace Game {
 	namespace {
-		// A decompiled local: L<register>_<unique>
-		struct Local {
-			int reg = 0;
-			int unique = 0;
-			size_t end = 0;
+		// Lua 5.1 header: signature, version, format, little endian, then the sizes of
+		// int, size_t, instruction and number, then whether numbers are integers.
+		constexpr char gameHeader[] = "\x1bLuaQ\x00\x01\x04\x04\x04\x04\x00";
+		constexpr size_t headerSize = 12;
+
+		enum class ConstantType : uint8_t {
+			Nil = 0,
+			Boolean = 1,
+			Number = 3,
+			String = 4
 		};
 
-		std::optional<Local> ReadLocal(const std::string& line, size_t start) {
-			if (start >= line.size() || line[start] != 'L') {
-				return std::nullopt;
-			}
+		class BytecodeConverter {
+			public:
+				explicit BytecodeConverter(const std::string& data) : mData(data) {}
 
-			size_t position = start + 1;
-			auto readNumber = [&line, &position]() -> std::optional<int> {
-				const size_t first = position;
-				int value = 0;
-				while (position < line.size() && std::isdigit(static_cast<unsigned char>(line[position]))) {
-					value = value * 10 + (line[position++] - '0');
+				std::string Convert() {
+					mPosition = headerSize;
+
+					mOutput.assign(gameHeader, headerSize);
+					mOutput[8] = static_cast<char>(sizeof(size_t));
+					mOutput[10] = static_cast<char>(sizeof(double));
+
+					ConvertFunction();
+					if (mPosition != mData.size()) {
+						throw std::runtime_error("bytecode has data left over");
+					}
+					return std::move(mOutput);
 				}
-				return position == first ? std::nullopt : std::optional<int>(value);
-			};
 
-			const auto reg = readNumber();
-			if (!reg || position >= line.size() || line[position++] != '_') {
-				return std::nullopt;
-			}
+			private:
+				template<typename T>
+				T Read() {
+					Require(sizeof(T));
 
-			const auto unique = readNumber();
-			if (!unique) {
-				return std::nullopt;
-			}
-			return Local { *reg, *unique, position };
-		}
+					T value;
+					std::memcpy(&value, mData.data() + mPosition, sizeof(T));
+					mPosition += sizeof(T);
+					return value;
+				}
 
-		std::string RestoreLine(const std::string& line) {
-			const size_t start = line.find_first_not_of(" \t");
-			if (start == std::string::npos) {
-				return line;
-			}
+				template<typename T>
+				void Write(T value) {
+					mOutput.append(reinterpret_cast<const char*>(&value), sizeof(T));
+				}
 
-			const auto target = ReadLocal(line, start);
-			if (!target || line.compare(target->end, 3, " = ") != 0) {
-				return line;
-			}
+				void Require(size_t count) const {
+					if (count > mData.size() - mPosition) {
+						throw std::runtime_error("bytecode ended early");
+					}
+				}
 
-			const auto function = ReadLocal(line, target->end + 3);
-			if (!function || function->end >= line.size() || line[function->end] != '(') {
-				return line;
-			}
+				void Copy(size_t count) {
+					Require(count);
+					mOutput.append(mData, mPosition, count);
+					mPosition += count;
+				}
 
-			// Registers in a call's results are consecutive and declared together.
-			const int count = target->reg - function->reg;
-			if (count <= 0 || target->unique - function->unique != count) {
-				return line;
-			}
+				int32_t CopyCount() {
+					const auto count = Read<int32_t>();
+					Write(count);
+					return count;
+				}
 
-			std::string result = line.substr(0, start);
-			for (int i = 0; i <= count; ++i) {
-				char name[32];
-				std::snprintf(name, sizeof(name), "%sL%d_%d", i == 0 ? "" : ", ", function->reg + i, function->unique + i);
-				result += name;
-			}
-			return result + line.substr(target->end);
-		}
+				void ConvertString() {
+					const auto size = Read<uint32_t>();
+					Write(static_cast<size_t>(size));
+					Copy(size);
+				}
+
+				void ConvertConstants() {
+					for (int32_t count = CopyCount(); count > 0; --count) {
+						const auto type = static_cast<ConstantType>(Read<uint8_t>());
+						Write(type);
+
+						switch (type) {
+							case ConstantType::Nil:
+								break;
+
+							case ConstantType::Boolean:
+								Copy(1);
+								break;
+
+							case ConstantType::Number:
+								Write(static_cast<double>(Read<float>()));
+								break;
+
+							case ConstantType::String:
+								ConvertString();
+								break;
+
+							default:
+								throw std::runtime_error("bytecode has an unknown constant");
+						}
+					}
+				}
+
+				void ConvertDebugInfo() {
+					Copy(static_cast<size_t>(CopyCount()) * sizeof(uint32_t)); // line numbers
+
+					for (int32_t count = CopyCount(); count > 0; --count) { // locals
+						ConvertString();
+						Copy(2 * sizeof(int32_t));
+					}
+
+					for (int32_t count = CopyCount(); count > 0; --count) { // upvalues
+						ConvertString();
+					}
+				}
+
+				void ConvertFunction() {
+					ConvertString(); // source name
+					Copy(2 * sizeof(int32_t)); // first and last line
+					Copy(4); // upvalue count, parameter count, vararg flag, stack size
+					Copy(static_cast<size_t>(CopyCount()) * sizeof(uint32_t)); // instructions
+
+					ConvertConstants();
+
+					for (int32_t count = CopyCount(); count > 0; --count) {
+						ConvertFunction();
+					}
+
+					ConvertDebugInfo();
+				}
+
+			private:
+				const std::string& mData;
+				std::string mOutput;
+				size_t mPosition = 0;
+		};
 	}
 
 	// ScriptSource
@@ -82,26 +148,16 @@ namespace Game {
 		std::ifstream file(path, std::ios::binary);
 		std::stringstream buffer;
 		buffer << file.rdbuf();
-		return RestoreMultipleAssignments(buffer.str());
+
+		std::string data = buffer.str();
+		return IsGameBytecode(data) ? ConvertBytecode(data) : data;
 	}
 
-	std::string ScriptSource::RestoreMultipleAssignments(const std::string& source) {
-		std::string result;
-		result.reserve(source.size());
+	bool ScriptSource::IsGameBytecode(const std::string& data) {
+		return data.size() >= headerSize && std::memcmp(data.data(), gameHeader, headerSize) == 0;
+	}
 
-		size_t start = 0;
-		while (start < source.size()) {
-			size_t end = source.find('\n', start);
-			if (end == std::string::npos) {
-				end = source.size();
-			}
-
-			result += RestoreLine(source.substr(start, end - start));
-			if (end < source.size()) {
-				result += '\n';
-			}
-			start = end + 1;
-		}
-		return result;
+	std::string ScriptSource::ConvertBytecode(const std::string& data) {
+		return BytecodeConverter(data).Convert();
 	}
 }

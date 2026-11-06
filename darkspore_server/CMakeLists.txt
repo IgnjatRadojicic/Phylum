@@ -21,7 +21,7 @@ file(GLOB_RECURSE RECAP_SOURCES "${CMAKE_CURRENT_LIST_DIR}/source/*.cpp")
 add_definitions(-D_WIN32_WINNT=0x0601 -D_CRT_SECURE_NO_WARNINGS -DWIN32_LEAN_AND_MEAN -DNOMINMAX)
 add_definitions(-DBOOST_NETWORK_ENABLE_HTTPS -DBOOST_ASIO_DISABLE_CONCEPTS)
 add_definitions(-DRAPIDJSON_HAS_STDSTRING)
-add_definitions(-DSOL_STRINGS_ARE_NUMBERS=1 -DSOL_SAFE_FUNCTION=1 -DSOL_LUAJIT=1 -DSOL_EXCEPTIONS_SAFE_PROPAGATION=1)
+add_definitions(-DSOL_STRINGS_ARE_NUMBERS=1 -DSOL_SAFE_FUNCTION=1 -DSOL_EXCEPTIONS_SAFE_PROPAGATION=1)
 
 add_executable(recap_server ${RECAP_HEADERS} ${RECAP_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RECAP_HEADERS} ${RECAP_SOURCES})
@@ -97,43 +97,23 @@ CPMAddPackage(
             "OPENSSL_CONFIGURE_VERBOSE ON")
 target_link_libraries(recap_server PRIVATE OpenSSL::SSL OpenSSL::Crypto OpenSSL::applink)
 
-# LuaJIT
+# Lua
+# The game's compiled scripts are Lua 5.1 bytecode, which only standard Lua 5.1 can run.
 CPMAddPackage(
-    NAME luajit
-    GIT_REPOSITORY https://github.com/LuaJIT/LuaJIT.git
-    GIT_TAG 8271c643c21d1b2f344e339f559f2de6f3663191
-    VERSION 2.1.0-beta3
+    NAME lua
+    VERSION 5.1.5
+    URL https://www.lua.org/ftp/lua-5.1.5.tar.gz
+    URL_HASH SHA256=2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333
     DOWNLOAD_ONLY YES)
-if(luajit_ADDED)
-    add_library(luajit STATIC IMPORTED)
-    file(GLOB_RECURSE LUAJIT_SOURCES "${luajit_SOURCE_DIR}/src/*.h" "${luajit_SOURCE_DIR}/src/*.c")
-
-    if(MSVC)
-        include(cmake/get_findvcvars.cmake)
-        find_package(Vcvars)
-        if(Vcvars_FOUND)
-            set(LUAJIT_BUILD_COMMAND ${Vcvars_LAUNCHER} ${luajit_SOURCE_DIR}/src/msvcbuild.bat static)
-        else()
-            # No Visual Studio install to find: use the compiler environment that is already active
-            set(LUAJIT_BUILD_COMMAND cmd /c ${luajit_SOURCE_DIR}/src/msvcbuild.bat static)
-        endif()
-        set(LUAJIT_BUILD_OUTPUT ${luajit_SOURCE_DIR}/src/lua51.lib)
-    else()
-        set(LUAJIT_BUILD_COMMAND make)
-        set(LUAJIT_BUILD_OUTPUT ${luajit_SOURCE_DIR}/src/libluajit.a)
-    endif()
-
-    set_target_properties(luajit PROPERTIES IMPORTED_LOCATION ${LUAJIT_BUILD_OUTPUT})
-    add_custom_command(
-        OUTPUT ${LUAJIT_BUILD_OUTPUT}
-        COMMAND ${LUAJIT_BUILD_COMMAND}
-        DEPENDS ${LUAJIT_SOURCES}
-        WORKING_DIRECTORY ${luajit_SOURCE_DIR}/src
-        VERBATIM)
-    add_custom_target(luajit-build DEPENDS ${LUAJIT_BUILD_OUTPUT})
-    add_dependencies(luajit luajit-build)
-    target_include_directories(luajit SYSTEM INTERFACE $<BUILD_INTERFACE:${luajit_SOURCE_DIR}/src>)
-    target_link_libraries(recap_server PRIVATE luajit)
+if(lua_ADDED)
+    file(GLOB LUA_SOURCES "${lua_SOURCE_DIR}/src/*.c")
+    list(REMOVE_ITEM LUA_SOURCES
+        "${lua_SOURCE_DIR}/src/lua.c"
+        "${lua_SOURCE_DIR}/src/luac.c"
+        "${lua_SOURCE_DIR}/src/print.c")
+    add_library(lua STATIC ${LUA_SOURCES})
+    target_include_directories(lua SYSTEM PUBLIC $<BUILD_INTERFACE:${lua_SOURCE_DIR}/src>)
+    target_link_libraries(recap_server PRIVATE lua)
 endif()
 
 # Sol
