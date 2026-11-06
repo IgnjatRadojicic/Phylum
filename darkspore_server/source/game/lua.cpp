@@ -1668,6 +1668,11 @@ namespace Game {
 		mCoroutine = sol::coroutine(mThread.thread_state(), sol::ref_index(func.registry_index()));
 	}
 
+	void LuaThread::renew() {
+		mCoroutine = sol::nil;
+		mThread = sol::thread::create(mLua.GetState());
+	}
+
 	void LuaThread::post_call() {
 		if (!is_waiting()) {
 			mLua.ReturnThreadToPool(this);
@@ -1978,6 +1983,14 @@ namespace Game {
 	}
 
 	void Lua::ReturnThreadToPool(LuaThread* thread) {
+		// A Lua thread that failed can never run again. Objects may still point at this
+		// LuaThread, so it stays and only its Lua state is replaced.
+		if (lua_status(thread->lua_state()) > LUA_YIELD) {
+			mThreads.erase(thread->lua_state());
+			thread->renew();
+			mThreads.emplace(thread->lua_state(), thread);
+		}
+
 		constexpr size_t MAX_LUA_THREADS = 256;
 		if (mThreads.size() > MAX_LUA_THREADS) {
 			mThreads.erase(mThreads.find(thread->lua_state()));

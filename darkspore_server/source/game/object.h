@@ -324,6 +324,10 @@ namespace Game {
 			bool HasAttributeData() const;
 			const std::unique_ptr<Attributes>& GetAttributeData() const;
 
+			// What a projectile fights with, taken from its caster at launch.
+			const AttributesPtr& GetAttributeSnapshot() const;
+			void SetAttributeSnapshot(const AttributesPtr& snapshot);
+
 			bool HasLootData() const;
 			const std::unique_ptr<LootData>& CreateLootData();
 			const std::unique_ptr<LootData>& GetLootData() const;
@@ -522,6 +526,7 @@ namespace Game {
 			BoundingBox mBoundingBox;
 
 			std::unordered_map<uint32_t, std::shared_ptr<Modifier>> mModifiers;
+			AttributesPtr mAttributeSnapshot;
 			std::map<uint32_t, Cooldown> mCooldowns;
 
 			std::unique_ptr<EffectList> mEffects;

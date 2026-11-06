@@ -199,8 +199,8 @@ namespace LuaFunction {
 
 		auto object = game.GetObjectManager().Create(noun);
 		if (object) {
-			game.SendObjectUpdate(object); // create and update the object
 			object->SetPosition(position);
+			game.SendObjectUpdate(object); // create and update the object
 		}
 
 		return object;
@@ -709,6 +709,10 @@ namespace LuaFunction {
 			const auto& game = LuaGetGame(L);
 			const auto& object = LuaGetObject(game.GetObjectManager(), objectValue);
 
+			if (object && object->GetAttributeSnapshot()) {
+				return object->GetAttributeSnapshot();
+			}
+
 			Game::AttributesPtr attributes;
 			if (object && object->HasAttributeData()) {
 				attributes = std::make_shared<Game::Attributes>(*object->GetAttributeData());
@@ -722,9 +726,8 @@ namespace LuaFunction {
 			auto& game = LuaGetGame(L);
 
 			const auto& object = LuaGetObject(game.GetObjectManager(), objectValue);
-			if (object) {
-				// attributes = std::make_shared<Game::Attributes>(*object->GetAttributeData());
-				// attributes->SetOwnerObject(object);
+			if (object && attributeSnapshotValue.is<Game::AttributesPtr>()) {
+				object->SetAttributeSnapshot(attributeSnapshotValue.as<Game::AttributesPtr>());
 			}
 		}
 

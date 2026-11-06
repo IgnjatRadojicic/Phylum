@@ -886,10 +886,8 @@ LAB_009ef634:
 			}
 		}
 
+		// The client flies its own copy, so this position is only for finding hits.
 		mObject->SetPositionSimulated(mObject->GetPosition() + movementSpeed);
-		if (mObject->IsDirty()) {
-			mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
-		}
 
 		const auto& angularVelocity = mObject->GetAngularVelocity();
 		if (angularVelocity != glm::zero<glm::vec3>()) {

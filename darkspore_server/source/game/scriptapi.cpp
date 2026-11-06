@@ -381,7 +381,7 @@ namespace {
 			end
 			local direction = x and vec3.new(x, y, z) or nil
 			local attacker = nAbility.GetCaster() or target
-			return target:TakeDamage(attacker, snapshot, damage, damageType or 0, damageSource or 0, coefficient or 0, descriptors or 0, multiplier, direction)
+			return target:TakeDamage(attacker, snapshot or false, damage, damageType or 0, damageSource or 0, coefficient or 0, descriptors or 0, multiplier, direction)
 		end
 
 		nAttribute = nAttribute or {}
@@ -484,6 +484,7 @@ namespace {
 				end
 			end
 		end
+		nGameObject.SetTargetPosition = nLocomotion.SetTargetPosition
 	)lua";
 }
 
@@ -510,6 +511,10 @@ namespace Game {
 		gameAbility["PreloadAnimation"] = preload;
 		gameAbility["PreloadAsset"] = preload;
 		gameAbility["PreloadModifier"] = preload;
+
+		// Scripts keep an asset as an id and hand it back to the engine.
+		sol::table util = mState["nUtil"];
+		util["GetAsset"] = preload;
 
 		sol::table bitOperations = mState.create_named_table("nBit");
 		bitOperations["Or"] = [](sol::variadic_args values) {

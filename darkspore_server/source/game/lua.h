@@ -76,6 +76,7 @@ namespace Game {
 
 		private:
 			void create(const sol::function& func);
+			void renew();
 			void post_call();
 		
 		private:

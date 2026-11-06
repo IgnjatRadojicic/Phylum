@@ -841,6 +841,14 @@ namespace Game {
 		return mAttributes;
 	}
 
+	const AttributesPtr& Object::GetAttributeSnapshot() const {
+		return mAttributeSnapshot;
+	}
+
+	void Object::SetAttributeSnapshot(const AttributesPtr& snapshot) {
+		mAttributeSnapshot = snapshot;
+	}
+
 	bool Object::HasLootData() const {
 		return static_cast<bool>(mLootData);
 	}

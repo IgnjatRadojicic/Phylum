@@ -84,7 +84,6 @@ namespace Game {
 		Stop();
 
 		CreateWorld();
-		mServer = std::make_unique<RakNet::Server>(*this);
 
 		mServer->start(mData.hostNetwork.exip.port);
 		mGameStartTime = utils::get_milliseconds();
@@ -95,6 +94,7 @@ namespace Game {
 	void Instance::CreateWorld() {
 		mObjectManager = std::make_unique<ObjectManager>(*this);
 		mLua = std::make_unique<Lua>(*this);
+		mServer = std::make_unique<RakNet::Server>(*this);
 	}
 
 	void Instance::Stop() {
@@ -1009,7 +1009,10 @@ namespace Game {
 				if (object->IsPlayerControlled()) {
 					mServer->SendObjectPlayerMove(client, object, *locomotion);
 				} else {
-					if (locomotion->GetGoalFlags() & 0x20) {
+					// The client flies a projectile itself from its parameters.
+					const auto movementType = object->GetMovementType();
+					const bool isProjectile = movementType == MovementType::Projectile || movementType == MovementType::HomingProjectile;
+					if (!isProjectile && (locomotion->GetGoalFlags() & 0x20)) {
 						mServer->SendObjectTeleport(client, object, object->GetPosition(), locomotion->GetFacing());
 					} else {
 #if 0 // If unreliable update
