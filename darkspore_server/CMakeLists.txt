@@ -96,6 +96,7 @@ target_link_libraries(recap_server PRIVATE OpenSSL::SSL OpenSSL::Crypto OpenSSL:
 CPMAddPackage(
     NAME luajit
     GIT_REPOSITORY https://github.com/LuaJIT/LuaJIT.git
+    GIT_TAG 8271c643c21d1b2f344e339f559f2de6f3663191
     VERSION 2.1.0-beta3
     DOWNLOAD_ONLY YES)
 if(luajit_ADDED)
@@ -104,8 +105,13 @@ if(luajit_ADDED)
 
     if(MSVC)
         include(cmake/get_findvcvars.cmake)
-        find_package(Vcvars REQUIRED)
-        set(LUAJIT_BUILD_COMMAND ${Vcvars_LAUNCHER} ${luajit_SOURCE_DIR}/src/msvcbuild.bat static)
+        find_package(Vcvars)
+        if(Vcvars_FOUND)
+            set(LUAJIT_BUILD_COMMAND ${Vcvars_LAUNCHER} ${luajit_SOURCE_DIR}/src/msvcbuild.bat static)
+        else()
+            # No Visual Studio install to find: use the compiler environment that is already active
+            set(LUAJIT_BUILD_COMMAND cmd /c ${luajit_SOURCE_DIR}/src/msvcbuild.bat static)
+        endif()
         set(LUAJIT_BUILD_OUTPUT ${luajit_SOURCE_DIR}/src/lua51.lib)
     else()
         set(LUAJIT_BUILD_COMMAND make)
@@ -170,7 +176,7 @@ endif()
 CPMAddPackage(
     NAME raknet
     VERSION 3.902
-    URL http://www.jenkinssoftware.com/raknet/downloads/RakNet-3.902.zip
+    URL https://web.archive.org/web/2020id_/http://www.jenkinssoftware.com/raknet/downloads/RakNet-3.902.zip
     URL_HASH SHA256=8c45d0c25a77ef095e060bcbbc01e198eb98a7a1f713fdf067bfe01a919e4274
     DOWNLOAD_ONLY YES)
 if(raknet_ADDED)
