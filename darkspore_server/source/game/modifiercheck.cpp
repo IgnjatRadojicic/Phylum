@@ -642,8 +642,6 @@ namespace {
 					Report("line-finds-mob-on-it", false, "no mob");
 					return;
 				}
-				Wait(40); // New objects reach the spatial index on the next update
-
 				const auto at = mob->GetPosition();
 				sol::protected_function along = mState["nObjectManager"]["GetObjectsAlongLine"];
 				auto countOn = [&](float sideways) -> size_t {
@@ -658,7 +656,12 @@ namespace {
 					return found;
 				};
 
-				const size_t onLine = countOn(0);
+				// New objects reach the spatial index on a later update, which can take a few.
+				size_t onLine = 0;
+				for (int waited = 0; waited < 500 && onLine == 0; waited += 20) {
+					Wait(20);
+					onLine = countOn(0);
+				}
 				const size_t beside = countOn(20);
 				Report("line-finds-mob-on-it", onLine == 1 && beside == 0,
 					"on=" + std::to_string(onLine) + " beside=" + std::to_string(beside));
