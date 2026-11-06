@@ -98,25 +98,28 @@ namespace {
 	auto LuaGetProjectileParameters(const sol::table& value) {
 		Game::ProjectileParameters parameters;
 
-		if (sol::object eventData = value["direction"]; eventData.is<glm::vec3>()) { parameters.mDirection = eventData.as<glm::vec3>(); }
+		// Scripts give a direction as a plain list of three numbers
+		if (sol::optional<sol::table> direction = value["mDirection"]; direction) {
+			parameters.mDirection = glm::vec3(direction->get_or<float>(1, 0), direction->get_or<float>(2, 0), direction->get_or<float>(3, 0));
+		}
 
-		parameters.mJinkInfo = value.get_or<uint32_t>("jinkInfo", 0);
+		parameters.mJinkInfo = value.get_or<uint32_t>("mJinkInfo", 0);
 
-		parameters.mSpeed = value.get_or<float>("speed", 0);
-		parameters.mAcceleration = value.get_or<float>("acceleration", 0);
-		parameters.mRange = value.get_or<float>("range", 0);
-		parameters.mSpinRate = value.get_or<float>("spinRate", 0);
-		parameters.mHomingDelay = value.get_or<float>("homingDelay", 0);
-		parameters.mTurnRate = value.get_or<float>("turnRate", 0);
-		parameters.mTurnAcceleration = value.get_or<float>("turnAcceleration", 0);
-		parameters.mEccentricity = value.get_or<float>("eccentricity", 0);
-		parameters.mCombatantSweepHeight = value.get_or<float>("combatantSweepHeight", 0);
+		parameters.mSpeed = value.get_or<float>("mSpeed", 0);
+		parameters.mAcceleration = value.get_or<float>("mAcceleration", 0);
+		parameters.mRange = value.get_or<float>("mRange", 0);
+		parameters.mSpinRate = value.get_or<float>("mSpinRate", 0);
+		parameters.mHomingDelay = value.get_or<float>("mHomingDelay", 0);
+		parameters.mTurnRate = value.get_or<float>("mTurnRate", 0);
+		parameters.mTurnAcceleration = value.get_or<float>("mTurnAcceleration", 0);
+		parameters.mEccentricity = value.get_or<float>("mEccentricity", 0);
+		parameters.mCombatantSweepHeight = value.get_or<float>("mCombatantSweepHeight", 0);
 
-		parameters.mProjectileFlags = value.get_or<uint8_t>("projectileFlags", 0);
+		parameters.mProjectileFlags = value.get_or<uint8_t>("mProjectileFlags", 0);
 
-		parameters.mPiercing = value.get_or<bool>("piercing", 0);
-		parameters.mIgnoreGroundCollide = value.get_or<bool>("ignoreGroundCollide", 0);
-		parameters.mIgnoreCreatureCollide = value.get_or<bool>("ignoreCreatureCollide", 0);
+		parameters.mPiercing = value.get_or<bool>("mPiercing", 0);
+		parameters.mIgnoreGroundCollide = value.get_or<bool>("mIgnoreGroundCollide", 0);
+		parameters.mIgnoreCreatureCollide = value.get_or<bool>("mIgnoreCreatureCollide", 0);
 
 		return parameters;
 	}
@@ -1709,10 +1712,7 @@ namespace Game {
 				local_28.z = (pLVar1->projectile_parameters).direction.z * local_28.z;
 				bVar2 = FUN_00a33800(&local_1c, object, &local_28);
 				*/
-				const auto& object = locomotion->GetObject();
-				if (object->IsColliding()) {
-					locomotion->SetExpectedGeoCollision(object->GetPosition());
-				}
+				// Ground collision needs the level's geometry, which the server cannot test yet. Shots end at their range.
 			};
 
 			const auto ProjectileFlagsOne = [=](const Game::ObjectPtr& projectile, const Game::ObjectPtr& target) {
@@ -1745,7 +1745,7 @@ namespace Game {
 					const auto& projectileCenter = projectile->GetCenterPoint();
 					const auto& targetCenter = target->GetCenterPoint();
 
-					auto delta = projectileCenter - targetCenter;
+					auto delta = targetCenter - projectileCenter;
 					auto deltaLength = glm::length(delta);
 
 					projectile->SetLinearVelocity(glm::normalize(delta) * parameters.mSpeed);
@@ -1790,15 +1790,6 @@ namespace Game {
 				auto& parameters = locomotion->GetProjectileParameters();
 				parameters = LuaGetProjectileParameters(projectileParametersTable);
 
-				const auto& owner = projectile->GetOwnerObject();
-				if (owner) {
-					parameters.mRange *= 1.f + owner->GetAttributeValue(Game::AttributeType::RangeIncrease);
-					/*
-					owner->GetAttributeValue(Game::AttributeType::ProjectileSpeedIncrease)
-					projectile->GetAttributeValue(Game::AttributeType::MovementSpeedBuff)
-					*/
-				}
-
 				projectile->SetLinearVelocity(parameters.mDirection * parameters.mSpeed);
 				projectile->SetAngularVelocity(parameters.mDirection * parameters.mSpinRate);
 
@@ -1830,40 +1821,40 @@ namespace Game {
 					CalculateExpectedGeoCollision(locomotion, parameters);
 				}
 
+				// Scripts take one result at a time: the creature hit or 0, whether the shot hit
+				// the ground, where it is, and how much range it has left.
 				thread->set_resume_condition([&objectManager, id = projectile->GetId(), position = projectile->GetPosition(), range = parameters.mRange](lua_State* L, sol::variadic_results& results) {
+					const auto finish = [&](uint32_t hitId, bool hitGround, const glm::vec3& at, float remaining) {
+						results.push_back({ L, sol::in_place, hitId });
+						results.push_back({ L, sol::in_place, hitGround });
+						results.push_back({ L, sol::in_place, at });
+						results.push_back({ L, sol::in_place, std::max(remaining, 0.f) });
+						return true;
+					};
+
 					const Game::ObjectPtr& object = objectManager.Get(id);
 					if (!object) {
-						results.push_back({ L, sol::in_place, Game::ObjectPtr() });
-						results.push_back({ L, sol::in_place, true });
-						results.push_back({ L, sol::in_place, true });
-						results.push_back({ L, sol::in_place, glm::zero<glm::vec3>() });
-						results.push_back({ L, sol::in_place, 0 });
-						return true;
+						return finish(0, false, position, 0);
 					}
 
-					auto delta = position - object->GetPosition();
-					auto distance = range - glm::length(delta);
-					if (distance > 0) {
-						const auto& locomotionData = object->GetLocomotionData();
+					const auto& locomotionData = object->GetLocomotionData();
+					const float remaining = range - glm::length(position - object->GetPosition());
 
-						bool hasCollidedWithCreature = locomotionData->HasCollidedWithCreature();
-						bool hasCollided = locomotionData->HasCollided();
-						if (!hasCollidedWithCreature && !hasCollided) {
-							return false;
-						}
-
-						results.push_back({ L, sol::in_place, Game::ObjectPtr() });
-						results.push_back({ L, sol::in_place, hasCollidedWithCreature });
-						results.push_back({ L, sol::in_place, hasCollided });
-					} else {
-						results.push_back({ L, sol::in_place, Game::ObjectPtr() });
-						results.push_back({ L, sol::in_place, false });
-						results.push_back({ L, sol::in_place, false });
+					Game::SweepHit hit;
+					if (locomotionData->TakeProjectileHit(hit)) {
+						return finish(hit.id, false, hit.position, remaining);
 					}
 
-					results.push_back({ L, sol::in_place, object->GetPosition() });
-					results.push_back({ L, sol::in_place, distance });
-					return true;
+					if (locomotionData->HasCollided()) {
+						return finish(0, true, object->GetPosition(), remaining);
+					}
+
+					if (remaining > 0) {
+						return false;
+					}
+
+					object->SetLinearVelocity(glm::zero<glm::vec3>());
+					return finish(0, false, object->GetPosition(), 0);
 				});
 			}
 

@@ -17,6 +17,14 @@ namespace {
 		setmetatable(nAbility, { __index = Ability })
 		setmetatable(nLocomotion, { __index = Locomotion })
 
+		nProjectileFlags = { kHoming = 1 }
+
+		-- Approximate: objects move every 50 milliseconds, give or take a little
+		nTimeManager = {}
+		function nTimeManager.GetSimTimeDt()
+			return 0.05
+		end
+
 		-- Modifiers register but have no effect yet
 		nModifier = nModifier or {}
 		nModifier.registered = {}
@@ -91,6 +99,15 @@ namespace {
 
 		local function currentCast()
 			return casts[running()]
+		end
+
+		-- A thread started by an ability belongs to the same cast.
+		function nThread.CreateThreadForObject(id, callback, ...)
+			local cast = currentCast()
+			nThread.Create(id, function(...)
+				casts[running()] = cast
+				return callback(...)
+			end, ...)
 		end
 
 		function nAbility.BeginCast(ability, object, target, cursorPosition, rank)
@@ -304,6 +321,20 @@ namespace {
 			end
 		end
 
+		function nGameObject.MarkForDelete(id)
+			local object = get(id)
+			if object then
+				object:MarkForDeletion()
+			end
+		end
+
+		function nGameObject.SetOwnerID(id, ownerId)
+			local object = get(id)
+			if object then
+				object:SetOwnerObject(get(ownerId))
+			end
+		end
+
 		function nGameObject.GetHitPoints(id)
 			local object = get(id)
 			return object and object:GetHealth() or 0
@@ -423,6 +454,16 @@ namespace {
 			return circleIntersectsArc(vector(x, y, z), radius, ...)
 		end
 
+		-- Scripts give the agent first and read the position as three numbers
+		nThread.EngineWaitForProjectile = nThread.WaitForProjectile
+		function nThread.WaitForProjectile(agent, projectile, parameters, target, validator)
+			local hitId, hitGround, position, remaining = nThread.EngineWaitForProjectile(projectile, parameters, target, validator)
+			if hitId == 0 then
+				hitId = kObjIDNone
+			end
+			return hitId, hitGround, position.x, position.y, position.z, remaining
+		end
+
 		local transformVector = nMathUtil.TransformVector
 		function nMathUtil.TransformVector(x, y, z, orientationX, orientationY, orientationZ, orientationW)
 			local orientation = quat.new(orientationW or 1, orientationX or 0, orientationY or 0, orientationZ or 0)
@@ -448,6 +489,10 @@ namespace {
 
 // Game
 namespace Game {
+	void Lua::SetGapLogPath(const std::string& path) {
+		mGapLogPath = path;
+	}
+
 	void Lua::RegisterGameScriptApi() {
 		sol::table gameAbility = mState["nAbility"];
 
@@ -486,7 +531,7 @@ namespace Game {
 			return ScriptSource::Read(path);
 		};
 
-		auto gapLog = std::make_shared<std::ofstream>("script-missing.txt", std::ios::app);
+		auto gapLog = std::make_shared<std::ofstream>(mGapLogPath, std::ios::app);
 		auto gaps = std::make_shared<ScriptGaps>(*gapLog);
 		sol::table scriptGaps = mState.create_named_table("ScriptGaps");
 		scriptGaps["Record"] = [gapLog, gaps](const std::string& name) {

@@ -185,6 +185,7 @@ namespace Game {
 			AbilityPtr GetAbility(uint32_t abilityId);
 
 			void RegisterGameScriptApi();
+			void SetGapLogPath(const std::string& path);
 
 			sol::table GetPrivateTable(uint32_t id) const;
 			sol::table CreatePrivateTable(uint32_t id);
@@ -224,6 +225,8 @@ namespace Game {
 
 		private:
 			Instance& mGame;
+
+			std::string mGapLogPath = "script-missing.txt";
 
 			std::unordered_map<lua_State*, LuaThread*> mThreads;
 			std::unordered_map<uint32_t, AbilityPtr> mAbilities;

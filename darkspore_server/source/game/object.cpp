@@ -1048,7 +1048,7 @@ namespace Game {
 			case CollisionShape::Sphere: {
 				localSphere.center = mBoundingBox.center;
 				localSphere.radius = collisionVolume.GetSphereRadius();
-				mManager.GetObjectsInRadius(localSphere, types);
+				result = mManager.GetObjectsInRadius(localSphere, types);
 
 				// Line of sight for sphere
 				break;
@@ -1057,7 +1057,7 @@ namespace Game {
 			case CollisionShape::Box: {
 				localBox.center = mBoundingBox.center;
 				localBox.extent = collisionVolume.GetBoxExtents();
-				mManager.GetObjectsInRegion(localBox, types);
+				result = mManager.GetObjectsInRegion(localBox, types);
 
 				// Line of sight for box
 				break;

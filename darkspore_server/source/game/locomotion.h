@@ -4,10 +4,13 @@
 
 // Include
 #include "predefined.h"
+#include "projectilesweep.h"
 
 #include <glm/glm.hpp>
 
 #include <cstdint>
+#include <deque>
+#include <unordered_set>
 #include <vector>
 #include <bitset>
 #include <memory>
@@ -157,6 +160,9 @@ namespace Game {
 			bool HasCollidedWithCreature() const;
 			void SetHasCollidedWithCreature(bool hasCollided);
 
+			// Gives the next creature this projectile hit, if one is waiting.
+			bool TakeProjectileHit(SweepHit& hit);
+
 			bool HasCollided() const;
 			void SetHasCollided(bool hasCollided);
 
@@ -191,7 +197,10 @@ namespace Game {
 			void WriteReflection(RakNet::BitStream& stream) const;
 
 		private:
-			bool CollideWithCreature(const glm::vec3& position, glm::vec3& collisionPosition);
+			bool CanHit(const ObjectPtr& collidingObject) const;
+			float GetProjectileRadius() const;
+			std::vector<SweepHit> SweepCreatures(const glm::vec3& from, const glm::vec3& to);
+			void SteerToTarget();
 
 			void Projectile(float value);
 			void OrbitOwner(float value);
@@ -230,6 +239,9 @@ namespace Game {
 
 			bool mHasCollidedWithCreature = false;
 			bool mHasCollided = false;
+
+			std::deque<SweepHit> mPendingHits;
+			std::unordered_set<uint32_t> mHitIds;
 
 			std::bitset<LocomotionDataBits::Count> mDataBits;
 	};

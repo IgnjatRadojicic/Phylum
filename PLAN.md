@@ -23,7 +23,7 @@ Multiplayer, PvP and public hosting are out of scope.
 | Original script bytecode on Lua 5.1 | Done |
 | Script adapter | Working, some placeholders remain |
 | Ability scripts registered | 451, with 23 failing |
-| Abilities passing the self-check | 226 of 277 |
+| Abilities passing the self-check | 235 of 277 |
 | Basic attacks in play | Working |
 | Client crash while loading a level | Open, hits about half of recent loads |
 | Client crash on the vote screen | Open |

@@ -2,6 +2,8 @@
 // Include
 #include "locomotion.h"
 #include "object.h"
+#include "objectmanager.h"
+#include "instance.h"
 
 #include "raknet/types.h"
 
@@ -9,6 +11,10 @@
 
 // internal floats
 constexpr size_t TEST_VALUE = 0x37800000U;
+
+// Approximate: how far from a mob's centre a shot still counts, and how far to look for mobs.
+constexpr float smallestTargetRadius = 0.5f;
+constexpr float largestTargetRadius = 15.f;
 
 // unknown functions
 namespace {
@@ -164,6 +170,8 @@ namespace Game {
 			}
 
 			case MovementType::HomingProjectile: {
+				SteerToTarget();
+				Projectile(deltaTime);
 				break;
 			}
 
@@ -738,62 +746,96 @@ LAB_009ef634:
 		reflector.end();
 	}
 
-	bool Locomotion::CollideWithCreature(const glm::vec3& position, glm::vec3& collisionPosition) {
-		const auto TestCollision = [this](const ObjectPtr& collidingObject) {
-			if (collidingObject->GetAttributeValue(AttributeType::Incorporeal) <= 0 && collidingObject->GetAttributeValue(AttributeType::Intangible) == 0) {
-				const auto collidingId = collidingObject->GetId();
-				if (mTargetId == collidingId) {
-					return true;
-				}
+	bool Locomotion::CanHit(const ObjectPtr& collidingObject) const {
+		if (collidingObject->GetAttributeValue(AttributeType::Incorporeal) <= 0 && collidingObject->GetAttributeValue(AttributeType::Intangible) == 0) {
+			const auto collidingId = collidingObject->GetId();
+			if (mTargetId == collidingId) {
+				return true;
+			}
 
-				if (mObject->GetOwnerObject() == collidingObject) {
-					return false;
-				}
+			if (mObject->GetOwnerObject() == collidingObject) {
+				return false;
+			}
 
-				const auto& noun = mObject->GetNoun();
-				if (noun) {
-					const auto& projectile = noun->GetProjectileData();
-					if (projectile) {
-						switch (projectile->GetTargetType()) {
-							case TargetType::Enemies: return mObject->GetTeam() != collidingObject->GetTeam();
-							case TargetType::Allies: return mObject->GetTeam() == collidingObject->GetTeam();
-							case TargetType::Any: return true;
-							case TargetType::None: return false;
-						}
+			const auto& noun = mObject->GetNoun();
+			if (noun) {
+				const auto& projectile = noun->GetProjectileData();
+				if (projectile) {
+					switch (projectile->GetTargetType()) {
+						case TargetType::Enemies: return mObject->GetTeam() != collidingObject->GetTeam();
+						case TargetType::Allies: return mObject->GetTeam() == collidingObject->GetTeam();
+						case TargetType::Any: return true;
+						case TargetType::None: return false;
 					}
 				}
 			}
-			return false;
-		};
-
-		if (mProjectileParameters.mIgnoreCreatureCollide) {
-			return false;
 		}
+		return false;
+	}
 
+	float Locomotion::GetProjectileRadius() const {
 		const auto& noun = mObject->GetNoun();
 		if (!noun) {
-			return false;
+			return 0;
 		}
 
-		const auto& projectileData = noun->GetProjectileData();
-		if (!projectileData) {
-			return false;
+		const auto& projectile = noun->GetProjectileData();
+		if (!projectile) {
+			return 0;
 		}
 
-		const auto& creatureCollisionVolume = projectileData->GetCreatureCollisionVolume();
-		if (!creatureCollisionVolume) {
-			return false;
+		const auto& volume = projectile->GetCreatureCollisionVolume();
+		if (!volume) {
+			return 0;
 		}
 
-		const auto& collidingObjects = mObject->GetCollidingObjectsWith(*creatureCollisionVolume, { NounType::Creature });
-		for (const auto& collidingObject : collidingObjects) {
-			if (TestCollision(collidingObject)) {
-				return true;
+		if (volume->GetShape() == CollisionShape::Sphere) {
+			return volume->GetSphereRadius();
+		}
+
+		const auto& extents = volume->GetBoxExtents();
+		return std::max(extents.x, extents.y) * 0.5f;
+	}
+
+	std::vector<SweepHit> Locomotion::SweepCreatures(const glm::vec3& from, const glm::vec3& to) {
+		if (mProjectileParameters.mIgnoreCreatureCollide) {
+			return {};
+		}
+
+		const float radius = GetProjectileRadius();
+		const BoundingSphere area((from + to) * 0.5f, glm::length(to - from) * 0.5f + radius + largestTargetRadius);
+
+		std::vector<SweepTarget> targets;
+		for (const auto& object : mObject->GetGame().GetObjectManager().GetObjectsInRadius(area, { NounType::Creature })) {
+			if (!mHitIds.contains(object->GetId()) && CanHit(object)) {
+				targets.push_back({ object->GetId(), object->GetPosition(), std::max(object->GetFootprintRadius(), smallestTargetRadius) });
 			}
 		}
 
-		// Some other tests im not sure about yet.
-		return false;
+		return ProjectileSweep(from, to, radius, mTargetId).Find(targets);
+	}
+
+	bool Locomotion::TakeProjectileHit(SweepHit& hit) {
+		if (mPendingHits.empty()) {
+			return false;
+		}
+
+		hit = mPendingHits.front();
+		mPendingHits.pop_front();
+		return true;
+	}
+
+	// Approximate: turns straight at the target, ignoring turn rate and homing delay.
+	void Locomotion::SteerToTarget() {
+		const auto& target = mObject->GetGame().GetObjectManager().Get(mTargetId);
+		if (!target) {
+			return;
+		}
+
+		const auto toTarget = target->GetCenterPoint() - mObject->GetCenterPoint();
+		if (toTarget != glm::zero<glm::vec3>()) {
+			mObject->SetLinearVelocity(glm::normalize(toTarget) * mProjectileParameters.mSpeed);
+		}
 	}
 
 	void Locomotion::Projectile(float value) {
@@ -817,12 +859,16 @@ LAB_009ef634:
 			movementSpeed = mObject->GetLinearVelocity() * acceleration;
 		}
 
-		glm::vec3 collisionPosition;
-		if (CollideWithCreature(collisionPosition, collisionPosition)) {
+		// A normal shot stops at its first hit. A piercing shot keeps every hit, and scripts take
+		// them one at a time, so they wait here.
+		const auto position = mObject->GetPosition();
+		for (const auto& hit : SweepCreatures(position, position + movementSpeed)) {
+			mHitIds.insert(hit.id);
+			mPendingHits.push_back(hit);
 			mHasCollidedWithCreature = true;
-			// mCollisionPosition = position;
 			if (!mProjectileParameters.mPiercing) {
-				mObject->SetPositionSimulated(mExpectedGeoCollision);
+				mObject->SetPositionSimulated(hit.position);
+				mObject->SetLinearVelocity(glm::zero<glm::vec3>());
 				return;
 			}
 		}

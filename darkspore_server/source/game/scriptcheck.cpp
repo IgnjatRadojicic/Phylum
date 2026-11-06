@@ -42,6 +42,8 @@ namespace Game {
 				function object:GetCenterPoint() return { x = x, y = 0, z = 1 } end
 				function object:GetOrientation() return { x = 0, y = 0, z = 0, w = 1 } end
 				function object:SetOrientation() end
+				function object:SetOwnerObject() end
+				function object:MarkForDeletion() end
 				function object:GetSharedAbilityOffset() return 0 end
 				function object:SetTeam() end
 				function object:SetStealthType() end
@@ -115,6 +117,26 @@ namespace Game {
 			nThread.WaitUntilTime = function() end
 			nThread.WaitForXSeconds = function() end
 
+			-- Scripts run the launch as a thread. Here it runs at once, inside the ability.
+			nThread.Create = function(_, callback, ...)
+				callback(...)
+			end
+
+			-- Answers as the engine does: one hit, then the shot runs out of range. A script that
+			-- keeps waiting after that would hang a real projectile thread, so it fails here.
+			local projectileWaits = 0
+			nThread.EngineWaitForProjectile = function()
+				projectileWaits = projectileWaits + 1
+				calls.projectile = calls.projectile + 1
+				if projectileWaits > 20 then
+					error("projectile loop never ended")
+				end
+				if projectileWaits == 1 then
+					return 2, false, { x = 1, y = 0, z = 0 }, 5
+				end
+				return 0, false, { x = 2, y = 0, z = 0 }, 0
+			end
+
 			local file = io.open("script-combat.txt", "w")
 			file:write("MATH ", mathGood and "good" or "wrong", "\n")
 			local passed, total = 0, 0
@@ -129,8 +151,9 @@ namespace Game {
 				local basic = ability.descriptors and nBit.And(ability.descriptors, nDescriptors.IsBasic) ~= 0
 				if ability.tick then
 					total = total + 1
-					calls = { animation = 0, damage = 0 }
+					calls = { animation = 0, damage = 0, projectile = 0 }
 					trail = {}
+					projectileWaits = 0
 					file:write("RUN ", name, "\n")
 					file:flush()
 					local thread = coroutine.create(function()
@@ -172,15 +195,16 @@ namespace Game {
 	void ScriptCheck::WriteReport(const std::filesystem::path& reportPath) {
 		std::ofstream report(reportPath);
 
-		// A running server may hold this file open, so failing to remove it is not an error.
-		std::error_code ignored;
-		std::filesystem::remove("script-missing.txt", ignored);
+		// The check has its own file, so a run never mixes with what a live server logged.
+		constexpr const char* gapLogPath = "script-check-missing.txt";
+		std::filesystem::remove(gapLogPath);
 
 		// Script errors go to the console, so send them to the report while the check runs.
 		auto* consoleBuffer = std::cout.rdbuf(report.rdbuf());
 
 		const auto game = GameManager::CreateGame();
 		Lua lua(*game);
+		lua.SetGapLogPath(gapLogPath);
 		lua.Initialize();
 		lua.PreloadAbilities();
 
