@@ -799,6 +799,9 @@ namespace RakNet {
 
 						const bool scripted = mGame.UseAbility(object, combatData);
 						std::cout << "Ability ran as script: " << scripted << std::endl;
+						if (!scripted) {
+							mGame.GetLua().Trace("NOT-RUN ability=" + std::to_string(combatData.abilityId) + " index=" + std::to_string(command.ability.index));
+						}
 						if (!scripted && command.ability.index == 0) {
 							mGame.WeaponAttack(object, command.ability.targetId, combatData.abilityId, weaponDamage);
 						}

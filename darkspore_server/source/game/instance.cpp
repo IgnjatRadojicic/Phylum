@@ -1048,6 +1048,11 @@ namespace Game {
 			return;
 		}
 
+		if (object->IsPlayerControlled()) {
+			mLua->Trace("ANIM object=" + std::to_string(object->GetId()) + " state=" + std::to_string(state) +
+				" overlay=" + std::to_string(overlay) + " scale=" + std::to_string(scale));
+		}
+
 		const auto timestamp = GetTime();
 		if (!overlay) {
 			object->mLastAnimationState = state;
