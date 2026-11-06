@@ -13,6 +13,7 @@
 
 #include <glm/gtx/norm.hpp>
 #include <glm/gtx/compatibility.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #include <algorithm>
 #include <filesystem>
@@ -257,6 +258,23 @@ namespace LuaFunction {
 		}
 
 		return result;
+	}
+
+	// The new creature's id, or 0. A direction turns it to face that way, taking +Y as forward
+	// (approximate); without one it keeps the default orientation.
+	auto nObjectManager_CreateCreature(sol::this_state L, uint32_t nounId, glm::vec3 position, sol::optional<glm::vec3> direction) {
+		auto& game = LuaGetGame(L);
+
+		glm::quat orientation = glm::identity<glm::quat>();
+		if (direction) {
+			const glm::vec3 flat(direction->x, direction->y, 0.f);
+			if (glm::length(flat) > 0.0001f) {
+				orientation = glm::rotation(glm::vec3(0.f, 1.f, 0.f), glm::normalize(flat));
+			}
+		}
+
+		const auto object = game.SpawnCreature(nounId, position, orientation);
+		return object ? object->GetId() : 0u;
 	}
 
 	auto nObjectManager_GetObjectsInRadius_SortedByDistance(sol::this_state L, glm::vec3 position, float radius, sol::table objectTypes) {
@@ -2052,6 +2070,7 @@ namespace Game {
 
 		objectManager["GetObjectsInRadius"] = &LuaFunction::nObjectManager_GetObjectsInRadius;
 		objectManager["GetObjectsAlongLine"] = &LuaFunction::nObjectManager_GetObjectsAlongLine;
+		objectManager["CreateCreature"] = &LuaFunction::nObjectManager_CreateCreature;
 		objectManager["GetObjectsInRadius_SortedByDistance"] = &LuaFunction::nObjectManager_GetObjectsInRadius_SortedByDistance;
 	}
 

@@ -131,6 +131,8 @@ namespace Game {
 			nObjectManager.GetObjectsInRadius = function() return { 2 } end
 			nObjectManager.GetObjectsInRadius_SortedByDistance = function() return { 2 } end
 			nObjectManager.CreateObject = function() return 2 end
+			nObjectManager.CreateCreature = function() return 2 end
+			nLocomotion.GetClosestSpawnPosition = function(_, x, y, z) return x, y, z end
 			nMathUtil.RotateVectorByAxisAngle = function(x, y, z) return x, y, z end
 			nMathUtil.TransformVector = function(x, y, z) return x, y, z end
 			nMathUtil.CircleIntersectsArc = function() return true end

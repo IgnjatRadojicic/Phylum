@@ -591,6 +591,21 @@ namespace Game {
 		return { true, duration };
 	}
 
+	ObjectPtr Instance::SpawnCreature(uint32_t nounId, const glm::vec3& position, const glm::quat& orientation) {
+		const auto& object = mObjectManager->Create(nounId);
+		if (!object) {
+			mLua->Trace(std::format("SPAWN failed noun={:#010x}", nounId));
+			return nullptr;
+		}
+
+		object->SetPosition(position);
+		object->SetOrientation(orientation);
+		SendObjectCreate(object);
+		mLua->Trace(std::format("SPAWN object={} noun={} at={:.1f},{:.1f},{:.1f} by script", object->GetId(),
+			object->GetNoun() ? object->GetNoun()->GetName() : "-", position.x, position.y, position.z));
+		return object;
+	}
+
 	bool Instance::UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData) {
 		if (!object) {
 			return false;

@@ -1023,6 +1023,25 @@ namespace {
 			return toIds(alongLine(vector(x1, y1, z1), vector(x2, y2, z2), radius, type(types) == "table" and types or {}))
 		end
 
+		-- CreateCreature(noun, creatureId, x, y, z, [value, dx, dy, dz, extra]). The noun is a name or
+		-- the id nUtil.GetAsset gives. The client reads the creature id as a 64-bit number, uses the
+		-- value only when it is not 0, and the extra only for a player's creature; none is used here yet.
+		local createCreature = nObjectManager.CreateCreature
+		function nObjectManager.CreateCreature(noun, creatureId, x, y, z, value, dx, dy, dz, extra)
+			local nounId = type(noun) == "string" and nUtil.SPID(noun) or tonumber(noun)
+			if not nounId then
+				return kObjIDNone
+			end
+			local direction = dx and vector(dx, dy, dz) or nil
+			local id = createCreature(nounId, vector(x, y, z), direction)
+			return id ~= 0 and id or kObjIDNone
+		end
+
+		-- Without a navigation mesh there is no better spot to offer, so the asked one is given back.
+		function nLocomotion.GetClosestSpawnPosition(noun, x, y, z)
+			return x or 0, y or 0, z or 0
+		end
+
 		function nObjectManager.RemoveObjectById(id)
 			local object = get(id)
 			if object then

@@ -300,6 +300,7 @@ namespace {
 				CheckThornsHitsMeleeAttackerBack();
 				CheckMobPassiveStartsOnce();
 				CheckKillObjectEndsPassive();
+				CheckDronePassiveSpawnsDrone();
 				CheckLineFindsMobOnIt();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
@@ -679,6 +680,26 @@ namespace {
 				const auto left = Manager().GetAll(mob->GetId()).size();
 				Report("kill-object-ends-passive", called && mob->GetHealth() <= 0 && left == 0,
 					"health=" + std::to_string(mob->GetHealth()) + " left=" + std::to_string(left));
+			}
+
+			// The nomad drone passive makes its drone with nObjectManager.CreateCreature and gives it an owner.
+			void CheckDronePassiveSpawnsDrone() {
+				auto agent = Spawn();
+				sol::protected_function spid = mState["nUtil"]["SPID"];
+				const auto id = Request(agent, agent, spid("NomadWithDronePassive"));
+				Wait(100);
+
+				const uint32_t droneNoun = utils::hash_id("NomadDrone.Noun");
+				size_t drones = 0;
+				size_t owned = 0;
+				for (const auto& object : mGame.GetObjectManager().GetActiveObjects()) {
+					if (object->GetNoun() && object->GetNoun()->GetId() == droneNoun) {
+						++drones;
+						owned += object->GetOwnerObject() == agent;
+					}
+				}
+				Report("drone-passive-spawns-drone", id != 0 && drones == 1 && owned == 1,
+					"id=" + std::to_string(id) + " drones=" + std::to_string(drones) + " owned=" + std::to_string(owned));
 			}
 
 			// The game's own thorns script, given a melee hit, hits the attacker back.

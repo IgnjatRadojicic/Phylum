@@ -220,6 +220,9 @@ namespace Game {
 			void AddEffect();
 
 			bool SendObjectCreate(const ObjectPtr& object);
+
+			// A creature a script asks for (nObjectManager.CreateCreature), shown to every client.
+			ObjectPtr SpawnCreature(uint32_t nounId, const glm::vec3& position, const glm::quat& orientation);
 			void SendObjectDelete(const ObjectPtr& object);
 			void SendObjectDelete(const std::vector<ObjectPtr>& objects);
 			void SendObjectUpdate(const ObjectPtr& object);

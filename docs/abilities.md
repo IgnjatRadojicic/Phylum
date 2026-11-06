@@ -75,3 +75,25 @@ Still approximate:
 - `nAbility.GetAbilityAttributeValue(agent, ability)` gives the attribute described above.
 - Still missing: `RemoveCooldownTime`, `ResetAbilityCooldown`, `AddCooldownTime` and
   `ScaleCooldownTime`.
+
+## Creatures from scripts
+
+Pets, drones, summons, clones and boss adds come from `nObjectManager.CreateCreature`. It reads its
+arguments the way the client's own version does (`Darkspore.exe` 0xa0aa00):
+
+`CreateCreature(noun, creatureId, x, y, z, [value, dx, dy, dz, extra])`
+
+- `noun` is a noun name such as `NomadDrone.Noun`, or the id `nUtil.GetAsset` gives for one.
+- `x, y, z` is where it appears. The new creature is shown to every client, and its passive starts.
+- `dx, dy, dz` turns it to face that way. Which way the engine counts as forward is not known,
+  so +Y is taken as forward (approximate, only how it looks).
+- The return value is the new creature's id, or `kObjIDNone`. Scripts then give it an owner and team.
+
+Not used yet:
+- `creatureId`, which the client reads as a 64-bit number. Every hero script passes `"0"`.
+- `value`, which the client only uses when it is not 0.
+- `extra`, which the client only reads for a player's creature.
+
+`nLocomotion.GetClosestSpawnPosition` gives back the position it is asked about. The game moves it to
+the nearest free spot on the navigation mesh, which the server does not have yet (Stage 2).
+
