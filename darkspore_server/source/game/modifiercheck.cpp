@@ -31,6 +31,28 @@ namespace {
 			end)
 		end
 
+		-- A modifier for the checks: its deactivate does what real ones do.
+		ModifierCheckHelper = { objects = {}, stops = 0 }
+		nModifier.RegisterModifier("ModifierCheckHelper", {
+			activationType = nActivationType.Unique,
+			deactivate = function()
+				local helper = ModifierCheckHelper
+				helper.stops = helper.stops + 1
+				for _, id in ipairs(helper.objects) do
+					nGameObject.MarkForDelete(id)
+				end
+				helper.objects = {}
+			end
+		})
+
+		function ModifierCheckHelperGuid()
+			return nUtil.SPID("ModifierCheckHelper")
+		end
+
+		function ModifierCheckForgetHelper()
+			nModifier.registered[nUtil.SPID("ModifierCheckHelper")] = nil
+		end
+
 		function ModifierCheckImmunityDetails(agent, guid)
 			local modifier = nModifier.registered[guid]
 			return "number=" .. tostring(nAttributeType.ImmuneToSlow)
@@ -79,6 +101,10 @@ namespace {
 				CheckDeathEndsIt(slow);
 				CheckScriptCanEndIt(slow);
 				CheckDestroyedAgentLeavesNothing(slow);
+				CheckDeactivateCanDeleteObjects(slow);
+
+				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
+				forget();
 				RunEveryScript();
 			}
 
@@ -224,6 +250,40 @@ namespace {
 				Wait(120);
 
 				Report("destroyed-agent-leaves-nothing", id != 0 && !Manager().Get(id) && Manager().GetAll(agentId).empty(), "");
+			}
+
+			void CheckDeactivateCanDeleteObjects(uint32_t slow) {
+				auto agent = Spawn();
+				auto caster = Spawn();
+
+				sol::protected_function helperGuid = mState["ModifierCheckHelperGuid"];
+				const uint32_t guid = helperGuid();
+
+				// Enough that adding them moves the list being walked to a new block of memory.
+				std::vector<uint32_t> ids;
+				sol::table objects = mState["ModifierCheckHelper"]["objects"];
+				for (int index = 1; index <= 64; ++index) {
+					const auto object = Spawn();
+					objects[index] = object->GetId();
+					ids.push_back(object->GetId());
+				}
+
+				// An object deleted during cleanup needs cleaning up too.
+				const auto carrierId = ids.front();
+				Request(mGame.GetObjectManager().Get(carrierId), caster, slow);
+
+				const auto agentId = agent->GetId();
+				const auto id = Request(agent, caster, guid);
+				agent->MarkForDeletion();
+				agent.reset();
+				mGame.GetObjectManager().Update(0.05f);
+
+				const auto left = std::count_if(ids.begin(), ids.end(), [this](uint32_t object) {
+					return mGame.GetObjectManager().Get(object) != nullptr;
+				});
+				const auto leaked = Manager().GetAll(carrierId).size();
+				Report("deactivate-can-delete-objects", id != 0 && left == 0 && leaked == 0 && Manager().GetAll(agentId).empty(),
+					"left=" + std::to_string(left) + " leaked=" + std::to_string(leaked));
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.

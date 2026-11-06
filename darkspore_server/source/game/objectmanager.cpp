@@ -299,22 +299,27 @@ namespace Game {
 		if (!mMarkedObjects.empty()) {
 			auto& lua = mGame.GetLua();
 
-			// Before the objects go, because deactivate scripts still reach for them.
-			for (const auto& object : mMarkedObjects) {
-				mGame.GetModifiers().OnAgentDestroyed(object->GetId());
+			// Deactivate scripts can mark more objects, so each round works on its own list.
+			while (!mMarkedObjects.empty()) {
+				std::vector<ObjectPtr> marked;
+				marked.swap(mMarkedObjects);
+
+				// Before the objects go, because deactivate scripts still reach for them.
+				for (const auto& object : marked) {
+					mGame.GetModifiers().OnAgentDestroyed(object->GetId());
+				}
+
+				mGame.SendObjectDelete(marked);
+				for (const auto& object : marked) {
+					mActiveObjects.erase(object);
+
+					auto id = object->GetId();
+					lua.RemovePrivateTable(id);
+
+					mObjects.erase(id);
+					mOpenObjectIds.push_back(id);
+				}
 			}
-
-			mGame.SendObjectDelete(mMarkedObjects);
-			for (const auto& object : mMarkedObjects) {
-				mActiveObjects.erase(object);
-
-				auto id = object->GetId();
-				lua.RemovePrivateTable(id);
-
-				mObjects.erase(id);
-				mOpenObjectIds.push_back(id);
-			}
-			mMarkedObjects.clear();
 
 			// Cleanup removed private tables
 			lua.CollectGarbage();
