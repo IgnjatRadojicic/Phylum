@@ -243,6 +243,9 @@ namespace Game {
 
 			uint32_t GetAbility(PlayerAbility ability) const;
 
+			// The name in mpClassAttributes, which is a modifier for heroes with a passive.
+			uint32_t GetPassiveModifier() const;
+
 			float GetWeaponMinDamage() const { return mWeaponMinDamage; }
 			float GetWeaponMaxDamage() const { return mWeaponMaxDamage; }
 
@@ -253,6 +256,7 @@ namespace Game {
 
 		private:
 			std::shared_ptr<ClassAttributes> mAttributes;
+			uint32_t mPassiveModifier = 0;
 
 			std::array<std::string, 5> mAbilities;
 

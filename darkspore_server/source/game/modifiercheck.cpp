@@ -8,6 +8,7 @@
 #include "modifiersystem.h"
 #include "object.h"
 #include "objectmanager.h"
+#include "passivemodifiers.h"
 
 #include "sporenet/user.h"
 
@@ -253,6 +254,8 @@ namespace {
 	)lua";
 
 	constexpr const char* mobNounName = "ZelemBasicHybrid.Noun";
+	// Its AI definition names ZelemBasicMeleePassive, which needs no function the server lacks.
+	constexpr const char* passiveNounName = "ZelemBasicMelee.Noun";
 	constexpr int longestSlowMs = 15000;
 	constexpr float mobHealth = 100000;
 
@@ -295,6 +298,7 @@ namespace {
 				CheckChildThreadEndsWithIt();
 				CheckDamageReachesHandlers();
 				CheckThornsHitsMeleeAttackerBack();
+				CheckMobPassiveStartsOnce();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
 				forget();
@@ -605,6 +609,27 @@ namespace {
 				Report("damage-reaches-handlers", good,
 					"took=" + std::to_string(firstType) + "/" + std::to_string(firstOther) + "/" + std::to_string(firstAmount) +
 					" dealt=" + std::to_string(secondType) + "/" + std::to_string(secondOther));
+			}
+
+			// ZelemBasicMelee's AI definition names its passive, which no script requests.
+			void CheckMobPassiveStartsOnce() {
+				auto mob = mGame.GetObjectManager().Create(utils::hash_id(passiveNounName));
+				if (!mob || !mob->GetNoun()) {
+					Report("mob-passive-starts-once", false, "no ZelemBasicMelee noun");
+					return;
+				}
+
+				Game::PassiveModifiers passives(mLua);
+				const uint32_t first = passives.Start(mob);
+				const uint32_t second = passives.Start(mob);
+
+				const auto running = Manager().GetAll(mob->GetId());
+				const bool isPassive = running.size() == 1 &&
+					Manager().Get(running.front())->spec.guid == utils::hash_id("ZelemBasicMeleePassive");
+				Report("mob-passive-starts-once", isPassive && first != 0 && second == 0,
+					"running=" + std::to_string(running.size()) + " second=" + std::to_string(second) +
+					" named=" + std::to_string(Game::PassiveModifiers::NamedBy(*mob->GetNoun())) +
+					" ai=" + std::to_string(mob->GetNoun()->GetAIDefinition() != nullptr));
 			}
 
 			// The game's own thorns script, given a melee hit, hits the attacker back.

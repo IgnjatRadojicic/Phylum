@@ -628,6 +628,30 @@ namespace {
 			end
 		end
 
+		-- A class's always-on modifier (see PassiveModifiers in passivemodifiers.h). Some class
+		-- data names something that is no modifier, which is left alone.
+		function ModifierApi.StartPassive(agent, guid)
+			local skip = not nModifier.registered[guid] and "unregistered"
+				or ModifierEngine.GetFirst(agent, guid) ~= 0 and "running"
+			if skip then
+				ScriptTrace("PASSIVE agent=" .. agent .. " guid=" .. guid .. " skipped=" .. skip)
+				return 0
+			end
+			-- A request keeps its cast context per coroutine, so it needs one. A plain one,
+			-- not the object's own thread, so nothing that cancels the object's cast reaches it.
+			local request = coroutine.create(function()
+				return nModifier.RequestModifier(agent, agent, guid, nil, 1)
+			end)
+			local ok, id = coroutine.resume(request)
+			CastContext.Forget(request)
+			if not ok then
+				error(id)
+			end
+			id = (id and id ~= kObjIDNone) and id or 0
+			ScriptTrace("PASSIVE agent=" .. agent .. " guid=" .. guid .. " id=" .. id)
+			return id
+		end
+
 		function nAbility.CheckDescriptors_AnyMatch(descriptors, wanted)
 			return nBit.And(descriptors or 0, wanted or 0) ~= 0
 		end

@@ -6,6 +6,7 @@
 #include "lua.h"
 #include "modifiersystem.h"
 #include "damageevents.h"
+#include "passivemodifiers.h"
 #include "serverevent.h"
 #include "catalyst.h"
 #include "scheduler.h"
@@ -1003,8 +1004,18 @@ namespace Game {
 
 		object->SetFlags(flags | Object::Created);
 		object->ResetUpdateBits();
+
+		// Once the client knows the object and where it is: a passive's packets name it, and
+		// some passives place things around it when they start.
+		StartPassive(object);
 #endif
 		return true;
+	}
+
+	void Instance::StartPassive(const ObjectPtr& object) {
+		if (mLua && mScriptsReady) {
+			PassiveModifiers(*mLua).Start(object);
+		}
 	}
 
 	void Instance::SendObjectDelete(const ObjectPtr& object) {

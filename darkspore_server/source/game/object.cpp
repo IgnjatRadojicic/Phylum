@@ -1651,29 +1651,8 @@ if (health <= 0) {
 			mCombatantData->mCorpseState = CorpseState::Alive;
 		}
 
-		// If we have a noun then...
-		if (!mNoun) {
-			return;
-		}
-
-		// Restart any passive ability
-		if (IsPlayerControlled()) {
-			const auto& playerClassData = mNoun->GetPlayerClassData();
-			if (playerClassData) {
-				const auto abilityId = playerClassData->GetAbility(PlayerAbility::Passive);
-				if (abilityId != 0) {
-					// RequestModifier(abilityId, etc);
-				}
-			}
-		} else {
-			const auto& aiDefinition = mNoun->GetAIDefinition();
-			if (aiDefinition) {
-				const auto abilityId = aiDefinition->GetPassiveAbility();
-				if (abilityId != 0) {
-					// RequestModifier(abilityId, etc);
-				}
-			}
-		}
+		// Passives usually end on death, so it starts again.
+		GetGame().StartPassive(shared_from_this());
 	}
 
 	// Interactable data

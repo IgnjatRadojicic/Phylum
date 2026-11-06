@@ -147,6 +147,9 @@ namespace Game {
 			// A hit that landed, for the scripts that react to damage.
 			void ReportDamage(const DamageReport& hit);
 
+			// Starts the always-on modifier the object's class names, if it has one.
+			void StartPassive(const ObjectPtr& object);
+
 			Lua& GetLua();
 			const Lua& GetLua() const;
 

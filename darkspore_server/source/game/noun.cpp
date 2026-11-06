@@ -264,7 +264,15 @@ namespace Game {
 		auto classAttributesName = utils::xml_get_text_node(node, "mpClassAttributes");
 		if (!classAttributesName.empty()) {
 			mAttributes = NounDatabase::Instance().GetClassAttributes(utils::hash_id(classAttributesName));
+
+			// Some heroes name a modifier here instead (SoulRavagerPassive, GraspingDead...),
+			// which is their passive. Whether it is one is only known once scripts are loaded.
+			mPassiveModifier = utils::hash_id(classAttributesName);
 		}
+	}
+
+	uint32_t PlayerClass::GetPassiveModifier() const {
+		return mPassiveModifier;
 	}
 
 	const std::shared_ptr<ClassAttributes>& PlayerClass::GetAttributes() const {
