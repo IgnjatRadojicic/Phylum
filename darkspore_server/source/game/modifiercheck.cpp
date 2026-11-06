@@ -48,12 +48,25 @@ namespace {
 			end
 		})
 
+		-- Runs after the helper's deactivate has marked its object, and looks back at the first object.
+		nModifier.RegisterModifier("ModifierCheckWitness", {
+			activationType = nActivationType.Unique,
+			deactivate = function()
+				ModifierCheckHelper.sawFirst = nObjectManager.IsValidObject(ModifierCheckHelper.first)
+			end
+		})
+
+		function ModifierCheckWitnessGuid()
+			return nUtil.SPID("ModifierCheckWitness")
+		end
+
 		function ModifierCheckHelperGuid()
 			return nUtil.SPID("ModifierCheckHelper")
 		end
 
 		function ModifierCheckForgetHelper()
 			nModifier.registered[nUtil.SPID("ModifierCheckHelper")] = nil
+			nModifier.registered[nUtil.SPID("ModifierCheckWitness")] = nil
 		end
 
 		-- An ability has an instance number of its own, which can equal a modifier's id.
@@ -132,6 +145,7 @@ namespace {
 				CheckReusedIdKeepsItsChanges(slow);
 				CheckDeactivateCanDeleteObjects(slow);
 				CheckDeactivateCanRequestItself();
+				CheckMarkedObjectsOutlastDeactivate();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
 				forget();
@@ -412,6 +426,34 @@ namespace {
 
 				Report("reused-id-keeps-its-changes", reused->GetId() == otherId && Strength(reused) == before + 5,
 					"reused=" + std::to_string(reused->GetId() == otherId) + " before=" + std::to_string(before) + " after=" + std::to_string(Strength(reused)));
+			}
+
+			void CheckMarkedObjectsOutlastDeactivate() {
+				auto first = Spawn();
+				auto second = Spawn();
+
+				sol::protected_function helperGuid = mState["ModifierCheckHelperGuid"];
+				sol::protected_function witnessGuid = mState["ModifierCheckWitnessGuid"];
+				const uint32_t helperId = helperGuid();
+				const uint32_t witnessId = witnessGuid();
+
+				sol::table helper = mState["ModifierCheckHelper"];
+				sol::table objects = helper["objects"];
+				objects[1] = second->GetId();
+				helper["first"] = first->GetId();
+				helper["sawFirst"] = sol::lua_nil;
+
+				Request(first, first, helperId);
+				Request(second, second, witnessId);
+
+				// Only the first object is marked here. Its deactivate marks the second.
+				first->MarkForDeletion();
+				first.reset();
+				second.reset();
+				mGame.GetObjectManager().Update(0.05f);
+
+				const bool sawFirst = helper.get_or("sawFirst", false);
+				Report("marked-objects-outlast-deactivate", sawFirst, "sawFirst=" + std::to_string(sawFirst));
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.
