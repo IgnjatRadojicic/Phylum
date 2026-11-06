@@ -98,19 +98,22 @@ namespace Game {
 
 		// A modifier takes its changes with it when it ends, even if its script never does.
 		if (auto it = mRuns.find(id); it != mRuns.end()) {
-			it->second.changes.push_back({ object, handle });
+			it->second.changes.push_back({ target, handle });
 		}
 		return handle;
 	}
 
 	void ModifierSystem::RemoveAttributeChange(uint32_t object, uint32_t handle, uint32_t id) {
-		if (const auto target = mGame.GetObjectManager().Get(object)) {
-			target->RemoveAttributeChange(handle);
+		const auto target = mGame.GetObjectManager().Get(object);
+		if (!target) {
+			return;
 		}
 
+		target->RemoveAttributeChange(handle);
+
 		if (auto it = mRuns.find(id); it != mRuns.end()) {
-			std::erase_if(it->second.changes, [object, handle](const auto& change) {
-				return change.object == object && change.handle == handle;
+			std::erase_if(it->second.changes, [&target, handle](const auto& change) {
+				return change.object.lock() == target && change.handle == handle;
 			});
 		}
 	}
@@ -194,7 +197,7 @@ namespace Game {
 		CallScript("Stop", sol::table(run.context));
 
 		for (const auto& change : mRuns[id].changes) {
-			if (const auto object = mGame.GetObjectManager().Get(change.object)) {
+			if (const auto object = change.object.lock()) {
 				object->RemoveAttributeChange(change.handle);
 			}
 		}

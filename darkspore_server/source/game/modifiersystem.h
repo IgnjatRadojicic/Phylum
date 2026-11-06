@@ -9,12 +9,14 @@
 #include <sol/sol.hpp>
 
 #include <cstdint>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
 // Game
 namespace Game {
 	class Instance;
+	class Object;
 
 	// ModifierSystem
 	// Runs modifiers in a game: ModifierManager's decisions become script calls, attribute changes
@@ -44,8 +46,9 @@ namespace Game {
 			sol::object GetContext(uint32_t id, sol::this_state L) const;
 
 		private:
+			// Held by reference, because object ids are used again once an object has gone.
 			struct AttributeChange {
-				uint32_t object = 0;
+				std::weak_ptr<Object> object;
 				uint32_t handle = 0;
 			};
 

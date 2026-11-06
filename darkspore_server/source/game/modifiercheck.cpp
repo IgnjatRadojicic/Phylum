@@ -71,6 +71,13 @@ namespace {
 			end)
 		end
 
+		function ModifierCheckChangeInside(running, object)
+			nThread.Create(object, function()
+				CastContext.Set(ModifierEngine.GetContext(running))
+				nAttribute.AddAttributeModifier(object, nAttributeType.Strength, 5)
+			end)
+		end
+
 		function ModifierCheckImmunityDetails(agent, guid)
 			local modifier = nModifier.registered[guid]
 			return "number=" .. tostring(nAttributeType.ImmuneToSlow)
@@ -122,6 +129,7 @@ namespace {
 				CheckAbilityChangeOutlivesModifier(slow);
 				CheckMissingIdMarksNothing(slow);
 				CheckFullyResistedIsRefused(slow);
+				CheckReusedIdKeepsItsChanges(slow);
 				CheckDeactivateCanDeleteObjects(slow);
 				CheckDeactivateCanRequestItself();
 
@@ -381,6 +389,29 @@ namespace {
 				const int stops = helper["stops"];
 				Report("deactivate-can-request-itself", id != 0 && stops == 1 && Manager().GetAll(agentId).empty(),
 					"stops=" + std::to_string(stops) + " left=" + std::to_string(Manager().GetAll(agentId).size()));
+			}
+
+			void CheckReusedIdKeepsItsChanges(uint32_t slow) {
+				auto agent = Spawn();
+				auto caster = Spawn();
+				auto other = Spawn();
+
+				const auto otherId = other->GetId();
+				const auto id = Request(agent, caster, slow);
+				sol::protected_function change = mState["ModifierCheckChangeInside"];
+				change(id, otherId);
+
+				other->MarkForDeletion();
+				other.reset();
+				mGame.GetObjectManager().Update(0.05f);
+
+				auto reused = Spawn();
+				const float before = Strength(reused);
+				reused->AddAttributeChange(static_cast<uint8_t>(Game::AttributeType::Strength), 5, Game::AttributeOp::Add);
+				EndNow(id);
+
+				Report("reused-id-keeps-its-changes", reused->GetId() == otherId && Strength(reused) == before + 5,
+					"reused=" + std::to_string(reused->GetId() == otherId) + " before=" + std::to_string(before) + " after=" + std::to_string(Strength(reused)));
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.
