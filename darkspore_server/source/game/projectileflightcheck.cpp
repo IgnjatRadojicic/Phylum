@@ -207,15 +207,16 @@ namespace Game {
 			target->SetTeam(enemyTeam);
 
 			const float startingHealth = target->GetHealth();
+			// A second cast while this one runs is allowed since d0348b7, so only
+			// the cast itself and the hit are checked.
 			const bool cast = ability->Tick(caster, target, target->GetPosition(), 1);
-			const bool castBlocked = !ability->Tick(caster, target, target->GetPosition(), 1);
 			for (int ticks = 0; ticks < 300 && target->GetHealth() >= startingHealth; ++ticks) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(20));
 				game.Update();
 			}
 
-			const bool good = cast && castBlocked && target->GetHealth() < startingHealth;
-			report << "FLIGHT script-" << abilityName << (good ? " good" : " wrong") << " secondCastBlocked=" << castBlocked
+			const bool good = cast && target->GetHealth() < startingHealth;
+			report << "FLIGHT script-" << abilityName << (good ? " good" : " wrong") << " cast=" << cast
 				<< " health=" << startingHealth << "->" << target->GetHealth() << "\n";
 		}
 
