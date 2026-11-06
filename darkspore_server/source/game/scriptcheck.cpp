@@ -48,6 +48,7 @@ namespace Game {
 				function object:MarkForDeletion() end
 				function object:GetSharedAbilityOffset() return 0 end
 				function object:SetTeam() end
+				function object:SetVisible() end
 				function object:SetStealthType() end
 				function object:SetAttributeSnapshot() end
 				function object:AddEffect() return 1 end

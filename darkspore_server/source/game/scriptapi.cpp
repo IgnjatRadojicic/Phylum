@@ -505,6 +505,14 @@ namespace {
 		nGameObject.GetIsStealthed = forward("IsStealthed", false)
 		nGameObject.KillObject = forward("Kill")
 
+		-- The client keeps one flag for it and reads the value as Lua truth.
+		function nGameObject.SetIsVisible(id, visible)
+			local object = id and id ~= kObjIDNone and nObjectManager.GetObject(id) or nil
+			if object then
+				object:SetVisible(visible and true or false)
+			end
+		end
+
 		-- Scripts never read these four values, only hand them back to the functions here.
 		function nGameObject.GetOrientation(id)
 			local object = get(id)
