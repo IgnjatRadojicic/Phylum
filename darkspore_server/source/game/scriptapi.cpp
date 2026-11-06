@@ -279,6 +279,9 @@ namespace {
 		end
 
 		function nAbility.PayCooldownAndMana() end
+
+		-- The server never holds a hero in place, because timeImmobilized is always 0
+		function nAbility.ReleaseAgent() end
 		function nAbility.DebugDrawDamageArc() end
 		function nDebug.Assert() end
 		function nDebug.LogToConsole() end
