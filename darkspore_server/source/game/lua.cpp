@@ -1955,7 +1955,10 @@ namespace Game {
 				if not file then
 					return nil
 				end
-				local directory = folder == "Abilities" and "Abilities" or "lua"
+				local directory = folder
+				if folder == "Lua" or folder:match("^0x") then
+					directory = "lua"
+				end
 				return loadfile("data/serverdata/" .. directory .. "/" .. file .. ".lua")
 			end)
 		)lua");

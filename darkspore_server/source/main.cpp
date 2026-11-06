@@ -11,6 +11,7 @@
 #include "game/config.h"
 #include "game/noun.h"
 #include "game/lua.h"
+#include "game/scriptcheck.h"
 
 #include "utils/net.h"
 
@@ -35,6 +36,7 @@
 Application* Application::sApplication = nullptr;
 
 bool Application::sVerboseTimestamps = false;
+bool Application::sCheckScripts = false;
 
 std::string Application::darksporeInstallPath = "../..";
 std::string Application::darksporeInstallVersion = "5.3.0.127";
@@ -53,6 +55,8 @@ Application& Application::InitApp(int argc, char* argv[]) {
                 strcmp(argv[i], "-v") == 0) {
                 std::cout << RECAP_VERSION_STRING << std::endl;
                 exit(0);
+            } else if (strcmp(argv[i], "--check-scripts") == 0) {
+                sCheckScripts = true;
             } else if (strcmp(argv[i], "--darkspore-path") == 0) {
                 i++;
                 darksporeInstallPath = std::string(argv[i]);
@@ -62,6 +66,7 @@ Application& Application::InitApp(int argc, char* argv[]) {
                 std::cout << "Options:\n";
                 std::cout << "  --timestamps, -ts    Timestamp log\n";
                 std::cout << "  --version, -v        Display server version\n";
+                std::cout << "  --check-scripts      Load every ability script, write script-report.txt and exit\n";
                 std::cout << "  --help, -h           Shows this help\n";
                 exit(0);
             }
@@ -101,6 +106,13 @@ bool Application::OnInit() {
 
 	// Config
 	Game::Config::Load("config.xml");
+
+	if (sCheckScripts) {
+		(void)Game::NounDatabase::Instance();
+		Game::GlobalLua::Instance().Initialize();
+		Game::ScriptCheck::WriteReport("script-report.txt");
+		exit(0);
+	}
 
 	// Scheduler
 	mScheduler = std::make_unique<Scheduler>();

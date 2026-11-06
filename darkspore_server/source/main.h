@@ -17,6 +17,7 @@ class Application {
 	private:
 		Application();
 		static bool sVerboseTimestamps;
+		static bool sCheckScripts;
 		static std::string darksporeInstallPath;
 		static std::string darksporeInstallVersion;
 		
