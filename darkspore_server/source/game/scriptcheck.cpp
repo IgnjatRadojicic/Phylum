@@ -5,6 +5,7 @@
 #include "gamemanager.h"
 #include "instance.h"
 #include "lua.h"
+#include "modifiercheck.h"
 #include "projectileflightcheck.h"
 
 #include <fstream>
@@ -115,6 +116,8 @@ namespace Game {
 			nMathUtil.RotateVectorByAxisAngle = function(x, y, z) return x, y, z end
 			nMathUtil.TransformVector = function(x, y, z) return x, y, z end
 			nMathUtil.CircleIntersectsArc = function() return true end
+			-- Waits do nothing here, so a modifier that loops would never end. ModifierCheck runs them.
+			nModifier.RequestModifier = function() return kObjIDNone end
 			nThread.WaitUntilTime = function() end
 			nThread.WaitForXSeconds = function() end
 
@@ -218,6 +221,7 @@ namespace Game {
 
 		// Runs first, because the ability test below replaces engine functions with stubs.
 		ProjectileFlightCheck::Run(*game, lua, "script-flight.txt");
+		ModifierCheck::Run(*game, lua, "script-modifier.txt");
 
 		for (const char* check : { listApi, testBasicAttacks }) {
 			sol::protected_function_result result = lua.LoadBuffer(check);

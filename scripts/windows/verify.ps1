@@ -58,6 +58,13 @@ $wrong = @($flight -match ' wrong')
 Write-Host "Scripts registered $registered, abilities passed $passed, flight tests $good good, $($wrong.Count) wrong"
 $wrong | ForEach-Object { Write-Host $_ }
 
+$modifier = Get-Content (Join-Path $server 'script-modifier.txt')
+$modifierGood = @($modifier -match '^MODIFIER .* good').Count
+$modifierWrong = @($modifier -match '^MODIFIER .* wrong')
+$modifierScripts = @($modifier -match '^SCRIPTS ') -join ''
+Write-Host "Modifier tests $modifierGood good, $($modifierWrong.Count) wrong. Modifier scripts: $modifierScripts"
+$modifierWrong | ForEach-Object { Write-Host $_ }
+
 $errors = @(Get-Content (Join-Path $server 'script-report.txt') | Select-String -Pattern 'LuaThread::').Count
 if ($errors -gt 0) { Write-Host "Script thread errors: $errors, see script-report.txt" }
 
