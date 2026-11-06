@@ -523,7 +523,25 @@ namespace RakNet {
 		return nullptr;
 	}
 
+	void Server::ConnectOffline(const SporeNet::UserPtr& user, PacketObserver observer) {
+		auto client = std::make_shared<Client>(*this, SystemAddress());
+		client->mId = 0;
+		client->mUser = user;
+		client->mPlayer = mGame.AddPlayer(user, client->mId);
+		mClients.emplace(SystemAddress(), client);
+		mPacketObserver = std::move(observer);
+	}
+
 	void Server::Send(BitStream& stream, const ClientPtr& client) {
+		if (mPacketObserver) {
+			stream.ResetReadPointer();
+
+			PacketID packetType;
+			stream.Read(packetType);
+			mPacketObserver(to_string(packetType));
+			return;
+		}
+
 		mSelf->Send(&stream, HIGH_PRIORITY, UNRELIABLE_WITH_ACK_RECEIPT, 0, client->mSystemAddress, false);
 #if 1 // if logging
 		stream.ResetReadPointer();

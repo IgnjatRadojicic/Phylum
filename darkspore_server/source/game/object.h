@@ -378,6 +378,7 @@ namespace Game {
 			// Physics
 			std::vector<ObjectPtr> GetCollidingObjectsWith(const CollisionVolume& collisionVolume, const std::vector<NounType>& types) const;
 			bool IsColliding() const;
+			bool IsProjectile() const;
 
 			// Effects
 			uint8_t AddEffect(uint32_t effect);

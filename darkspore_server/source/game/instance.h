@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <map>
 #include <set>
@@ -116,6 +117,7 @@ namespace Game {
 
 			// Objects and scripts with no network, which is all a check needs.
 			void CreateWorld();
+			void StartOffline(const SporeNet::UserPtr& user, std::function<void(std::string_view)> observer);
 			void Stop();
 
 			bool IsLevelLoaded() const;

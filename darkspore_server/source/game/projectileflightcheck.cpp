@@ -7,11 +7,15 @@
 #include "object.h"
 #include "objectmanager.h"
 
+#include "sporenet/user.h"
+
 #include "utils/functions.h"
 
 #include <algorithm>
 #include <chrono>
 #include <fstream>
+#include <functional>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
@@ -80,6 +84,92 @@ namespace {
 			{ "mob-past-range-is-missed", false, 20, 8, { { { 25, 0 } } }, {} },
 			{ "ally-is-not-hit", false, 20, 30, { { stack, shooterTeam } }, {} }
 		};
+	}
+
+	void Wait(Game::Instance& game, int milliseconds) {
+		for (int waited = 0; waited < milliseconds; waited += 20) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			game.Update();
+		}
+	}
+
+	// A finished thread goes back to the pool, so its object must let go of it, or the object
+	// could be refused a cast by a thread that now belongs to something else.
+	void CheckThreadsAreReleased(Game::Instance& game, Game::Lua& lua, uint32_t mobNoun, std::ostream& report) {
+		sol::state_view state(lua.GetState());
+		lua.LoadBuffer(R"lua(
+			function FlightCheckShortThread(object)
+				nThread.CreateThreadForObject(object, function()
+					nThread.WaitForXSeconds(0.1)
+				end)
+			end
+		)lua");
+		sol::protected_function start = state["FlightCheckShortThread"];
+
+		// More at once than the pool keeps, so some threads are deleted, not reused.
+		constexpr size_t threadCount = 300;
+		std::vector<Game::ObjectPtr> mobs;
+		for (size_t index = 0; index < threadCount; ++index) {
+			auto mob = game.GetObjectManager().Create(mobNoun);
+			mob->SetPosition(glm::vec3(index * 3.f, -3000, 0));
+			mobs.push_back(mob);
+			start(mob->GetId());
+		}
+
+		const auto waiting = std::count_if(mobs.begin(), mobs.end(), [](const auto& mob) { return mob->GetLuaThread() != nullptr; });
+		Wait(game, 400);
+		const auto leftOver = std::count_if(mobs.begin(), mobs.end(), [](const auto& mob) { return mob->GetLuaThread() != nullptr; });
+
+		// Every mob can use a thread again, so none points at a deleted one.
+		for (const auto& mob : mobs) {
+			start(mob->GetId());
+		}
+		Wait(game, 400);
+
+		const bool good = waiting == threadCount && leftOver == 0;
+		report << "FLIGHT threads-released-from-objects " << (good ? "good" : "wrong")
+			<< " waiting=" << waiting << " leftOver=" << leftOver << "\n";
+	}
+
+	// The client flies a shot itself, so this order is what makes it visible and moving.
+	void CheckPacketOrder(Game::Instance& game, Game::Lua& lua, const char* abilityName, float lane, uint32_t mobNoun,
+		const std::vector<std::string>& packets, const std::function<void()>& clearPackets, std::ostream& report) {
+		const auto& ability = lua.GetAbility(abilityName);
+		auto& objects = game.GetObjectManager();
+
+		auto caster = objects.Create(mobNoun);
+		auto target = objects.Create(mobNoun);
+		caster->SetPosition(glm::vec3(0, lane, 0));
+		caster->SetTeam(shooterTeam);
+		caster->SetAttributeValue(Game::AttributeType::CooldownScale, 1);
+		target->SetPosition(glm::vec3(10, lane, 0));
+		target->SetTeam(enemyTeam);
+
+		Wait(game, 200);
+		clearPackets();
+
+		const float startingHealth = target->GetHealth();
+		ability->Tick(caster, target, target->GetPosition(), 1);
+		for (int ticks = 0; ticks < 300 && target->GetHealth() >= startingHealth; ++ticks) {
+			Wait(game, 20);
+		}
+		Wait(game, 600);
+
+		const auto find = [&](const char* name, size_t from) {
+			return std::find(packets.begin() + std::min(from, packets.size()), packets.end(), name) - packets.begin();
+		};
+		const size_t created = find("ObjectCreate", 0);
+		const size_t effect = find("ServerEvent", created);
+		const size_t motion = find("LocomotionDataUpdate", effect);
+		const size_t deleted = find("ObjectDelete", motion);
+		const auto teleports = std::count(packets.begin(), packets.end(), "ObjectTeleport");
+
+		const bool good = deleted < packets.size() && teleports == 0;
+		report << "FLIGHT packets-" << abilityName << (good ? " good" : " wrong") << " teleports=" << teleports << " sent=";
+		for (const auto& packet : packets) {
+			report << packet << " ";
+		}
+		report << "\n";
 	}
 }
 
@@ -219,5 +309,17 @@ namespace Game {
 			}
 			report << "\n";
 		}
+
+		CheckThreadsAreReleased(game, lua, mobNoun, report);
+
+		// The observer outlives this check, so it shares the list instead of borrowing it.
+		auto packets = std::make_shared<std::vector<std::string>>();
+		game.StartOffline(std::make_shared<SporeNet::User>("offline"), [packets](std::string_view packet) {
+			packets->emplace_back(packet);
+		});
+
+		const auto clearPackets = [packets] { packets->clear(); };
+		CheckPacketOrder(game, lua, "Fireball", -4000, mobNoun, *packets, clearPackets, report);
+		CheckPacketOrder(game, lua, "FireToss", -4100, mobNoun, *packets, clearPackets, report);
 	}
 }

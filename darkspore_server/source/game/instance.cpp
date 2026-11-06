@@ -97,6 +97,11 @@ namespace Game {
 		mServer = std::make_unique<RakNet::Server>(*this);
 	}
 
+	void Instance::StartOffline(const SporeNet::UserPtr& user, std::function<void(std::string_view)> observer) {
+		mGameStarted = true;
+		mServer->ConnectOffline(user, std::move(observer));
+	}
+
 	void Instance::Stop() {
 		if (!mEvents.empty()) {
 			auto& scheduler = GetApp().GetScheduler();
@@ -1010,9 +1015,7 @@ namespace Game {
 					mServer->SendObjectPlayerMove(client, object, *locomotion);
 				} else {
 					// The client flies a projectile itself from its parameters.
-					const auto movementType = object->GetMovementType();
-					const bool isProjectile = movementType == MovementType::Projectile || movementType == MovementType::HomingProjectile || movementType == MovementType::Lobbed;
-					if (!isProjectile && (locomotion->GetGoalFlags() & 0x20)) {
+					if (!object->IsProjectile() && (locomotion->GetGoalFlags() & 0x20)) {
 						mServer->SendObjectTeleport(client, object, object->GetPosition(), locomotion->GetFacing());
 					} else {
 #if 0 // If unreliable update

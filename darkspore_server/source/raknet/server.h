@@ -28,6 +28,7 @@
 #include <array>
 #include <queue>
 #include <functional>
+#include <string_view>
 
 // RakNet
 namespace RakNet {
@@ -149,6 +150,10 @@ namespace RakNet {
 			const auto& GetClients() const { return mClients; }
 
 			void Send(BitStream& stream, const ClientPtr& client);
+
+			// Connects one client with no network and reports what would be sent to it, for checks.
+			using PacketObserver = std::function<void(std::string_view)>;
+			void ConnectOffline(const SporeNet::UserPtr& user, PacketObserver observer);
 			void SendBroadcast(BitStream& stream);
 			
 			// RakNet
@@ -239,6 +244,7 @@ namespace RakNet {
 			Game::Instance& mGame;
 
 			std::map<SystemAddress, ClientPtr> mClients;
+			PacketObserver mPacketObserver;
 
 			// Thread
 			std::thread mThread;

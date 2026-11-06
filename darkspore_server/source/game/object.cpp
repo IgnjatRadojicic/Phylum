@@ -1075,6 +1075,11 @@ namespace Game {
 		return result;
 	}
 
+	// The noun decides, because a lob only gets its movement type once it is thrown.
+	bool Object::IsProjectile() const {
+		return mNoun && mNoun->GetProjectileData();
+	}
+
 	bool Object::IsColliding() const {
 		if (!mNoun) {
 			return false;
