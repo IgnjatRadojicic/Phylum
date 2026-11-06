@@ -126,8 +126,10 @@ add_executable(recap_tests
     tests/main.cpp
     tests/scriptsource_test.cpp
     tests/scriptgaps_test.cpp
+    tests/projectilesweep_test.cpp
     source/game/scriptsource.cpp
-    source/game/scriptgaps.cpp)
+    source/game/scriptgaps.cpp
+    source/game/projectilesweep.cpp)
 target_include_directories(recap_tests PRIVATE source ${doctest_SOURCE_DIR})
 target_link_libraries(recap_tests PRIVATE lua)
 
@@ -140,6 +142,7 @@ CPMAddPackage(
     GIT_REPOSITORY https://github.com/g-truc/glm.git
     GIT_TAG 8b94f970d9666f77f4400103e31aaa4a79a7edef)
 target_link_libraries(recap_server PRIVATE glm::glm)
+target_link_libraries(recap_tests PRIVATE glm::glm)
 
 # cpp-base64
 CPMAddPackage(
