@@ -91,6 +91,12 @@ namespace {
 			return currentCast().object:GetId()
 		end
 
+		-- Nil outside an ability, for example while a modifier runs
+		function nAbility.GetCaster()
+			local cast = currentCast()
+			return cast and cast.object or nil
+		end
+
 		function nAbility.GetTargetID()
 			local target = currentCast().target
 			return target and target:GetId() or kObjIDNone
@@ -141,6 +147,44 @@ namespace {
 		end
 
 		-- Cooldowns are sent by the server's ability reply for now
+		-- Private storage for whatever is running, kept across waits
+		nThreadData = {}
+		local looseData = setmetatable({}, { __mode = "k" })
+
+		local function dataOwner()
+			local thread = running() or casts
+			local cast = casts[thread]
+			if cast then
+				return cast
+			end
+			looseData[thread] = looseData[thread] or {}
+			return looseData[thread]
+		end
+
+		function nThreadData.CreatePrivateTable()
+			local owner = dataOwner()
+			owner.privateTable = {}
+			return owner.privateTable
+		end
+
+		function nThreadData.GetPrivateTable()
+			local owner = dataOwner()
+			owner.privateTable = owner.privateTable or {}
+			return owner.privateTable
+		end
+
+		local function setData(key, value)
+			nThreadData.GetPrivateTable()[key] = value
+		end
+
+		local function getData(key)
+			return nThreadData.GetPrivateTable()[key]
+		end
+
+		nThreadData.SetInt, nThreadData.GetInt = setData, getData
+		nThreadData.SetFloat, nThreadData.GetFloat = setData, getData
+		nThreadData.SetGUID, nThreadData.GetGUID = setData, getData
+
 		function nDebug.IsAbilityDebugEnabled()
 			return false
 		end
@@ -233,7 +277,8 @@ namespace {
 				return false, 0, false
 			end
 			local direction = x and vec3.new(x, y, z) or nil
-			return target:TakeDamage(nil, snapshot, damage, damageType, damageSource, coefficient or 0, descriptors, multiplier, direction)
+			local attacker = nAbility.GetCaster() or target
+			return target:TakeDamage(attacker, snapshot, damage, damageType or 0, damageSource or 0, coefficient or 0, descriptors or 0, multiplier, direction)
 		end
 
 		nAttribute = nAttribute or {}
@@ -257,6 +302,68 @@ namespace {
 			return false
 		end
 	)lua";
+
+	// The game's scripts pass positions as x, y, z. Server functions take and return a vec3.
+	constexpr const char* vectorApi = R"lua(
+		local function get(id)
+			return id and id ~= kObjIDNone and nObjectManager.GetObject(id) or nil
+		end
+
+		local function vector(x, y, z)
+			return vec3.new(x or 0, y or 0, z or 0)
+		end
+
+		local function toIds(objects)
+			local ids = {}
+			for index, object in ipairs(objects) do
+				ids[index] = object:GetId()
+			end
+			return ids
+		end
+
+		for _, name in ipairs({ "GetObjectsInRadius", "GetObjectsInRadius_SortedByDistance" }) do
+			local query = nObjectManager[name]
+			nObjectManager[name] = function(x, y, z, radius, types)
+				return toIds(query(vector(x, y, z), radius, type(types) == "table" and types or {}))
+			end
+		end
+
+		local createObject = nObjectManager.CreateObject
+		function nObjectManager.CreateObject(noun, x, y, z)
+			local object = createObject(noun, vector(x, y, z))
+			return object and object:GetId() or kObjIDNone
+		end
+
+		local rotateVector = nMathUtil.RotateVectorByAxisAngle
+		function nMathUtil.RotateVectorByAxisAngle(x, y, z, axisX, axisY, axisZ, angle)
+			local result = rotateVector(vector(x, y, z), vector(axisX, axisY, axisZ), angle)
+			return result.x, result.y, result.z
+		end
+
+		local circleIntersectsArc = nMathUtil.CircleIntersectsArc
+		function nMathUtil.CircleIntersectsArc(x, y, z, radius, ...)
+			return circleIntersectsArc(vector(x, y, z), radius, ...)
+		end
+
+		-- Not worked out yet: scripts pass this one a quaternion in an unknown layout
+		function nMathUtil.TransformVector(x, y, z)
+			return x, y, z
+		end
+
+		-- Locomotion functions take an object, then a position, then anything else
+		for _, name in ipairs({
+			"TeleportObject", "JumpInDirection", "SlideToPoint", "MoveToPointExact", "MoveToCircleEdge",
+			"MoveToPointWithinRange", "ApplyExternalVelocity", "TurnToFace", "SetTargetPosition"
+		}) do
+			local move = Locomotion[name]
+			nLocomotion[name] = function(id, x, y, z, ...)
+				local object = get(id)
+				if object then
+					return move(object, vector(x, y, z), ...)
+				end
+			end
+		end
+	)lua";
 }
 
 // Game
@@ -271,8 +378,9 @@ namespace Game {
 			}
 		};
 
-		const auto preload = [](const std::string& name, sol::variadic_args) -> uint32_t {
-			return utils::hash_id(name);
+		// Scripts pass either a name or an id that is already hashed.
+		const auto preload = [](sol::object asset, sol::variadic_args) -> uint32_t {
+			return asset.is<uint32_t>() ? asset.as<uint32_t>() : utils::hash_id(asset.as<std::string>());
 		};
 		gameAbility["PreloadAnimation"] = preload;
 		gameAbility["PreloadAsset"] = preload;
@@ -301,5 +409,6 @@ namespace Game {
 		LoadBuffer(setupApi);
 		LoadBuffer(castApi);
 		LoadBuffer(objectApi);
+		LoadBuffer(vectorApi);
 	}
 }
