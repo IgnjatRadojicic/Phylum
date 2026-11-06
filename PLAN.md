@@ -49,7 +49,7 @@ Make every hero's abilities work.
 - [ ] Work out `TransformVector`, and replace adapter placeholders such as `IsPet`
 - [x] Apply cooldowns and mana from scripts, instead of the fixed reply cooldown
 - [x] Apply armour, resistances and damage types in `TakeDamage` (see `docs/damage.md` for what is still approximate)
-- [ ] Build hero stats as the client does: class base, part stats and primary stat shares, and the weapon's damage range
+- [x] Build hero stats as the client does: class base and primary stat shares, and the weapon's damage range (part stats and stat caps wait for equipping, see `docs/damage.md`)
 - [ ] Raise the remaining ability events, such as `Dodged`, `NearbyDeath` and `UsedAbility`
 
 Done when: every hero's abilities run in play, effects apply and expire, and loading is reliable.
