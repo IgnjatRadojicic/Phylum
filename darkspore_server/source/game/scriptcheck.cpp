@@ -86,6 +86,16 @@ namespace Game {
 				recordGap(name)
 			end
 
+			-- Waits do nothing here and fake objects never die, so a script that loops until something
+			-- changes would never end. Past this many engine calls it fails instead.
+			local engineCalls = 0
+			local function countEngineCall()
+				engineCalls = engineCalls + 1
+				if engineCalls > 5000 then
+					error("ability never finished")
+				end
+			end
+
 			-- Engine functions cannot take fake objects, so record calls to them instead.
 			local stubbed = {}
 			local safeTables = { nBit = true, nUtil = true, nGameSimulator = true }
@@ -97,6 +107,7 @@ namespace Game {
 						if type(field) == "function" and (adapterTables[tableName] or debug.getinfo(field, "S").what == "C") then
 							local label = tableName .. "." .. name
 							value[name] = function()
+								countEngineCall()
 								stubbed[label] = (stubbed[label] or 0) + 1
 								trail[#trail + 1] = "stub:" .. label
 							end
@@ -118,8 +129,8 @@ namespace Game {
 			nMathUtil.CircleIntersectsArc = function() return true end
 			-- Waits do nothing here, so a modifier that loops would never end. ModifierCheck runs them.
 			nModifier.RequestModifier = function() return kObjIDNone end
-			nThread.WaitUntilTime = function() end
-			nThread.WaitForXSeconds = function() end
+			nThread.WaitUntilTime = countEngineCall
+			nThread.WaitForXSeconds = countEngineCall
 
 			-- Scripts run the launch as a thread. Here it runs at once, inside the ability.
 			nThread.Create = function(_, callback, ...)
@@ -162,6 +173,7 @@ namespace Game {
 					calls = { animation = 0, damage = 0, projectile = 0 }
 					trail = {}
 					projectileWaits = 0
+					engineCalls = 0
 					file:write("RUN ", name, "\n")
 					file:flush()
 					local thread = coroutine.create(function()

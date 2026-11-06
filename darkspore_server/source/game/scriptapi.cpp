@@ -153,6 +153,18 @@ namespace {
 			registerAbility(name, ability)
 		end
 
+		-- Scripts with no template set tick by its nAbilityFns number, after they register
+		function nAbility.NumberedTick(ability)
+			local tick = ability[nAbilityFns.Tick]
+			if tick then
+				ability.tick = function(self, object, target, cursorPosition, rank)
+					nAbility.BeginCast(self, object, target, cursorPosition, rank)
+					return tick(self)
+				end
+				return ability.tick
+			end
+		end
+
 		function nAbility.GetAgentID()
 			return currentCast().object:GetId()
 		end

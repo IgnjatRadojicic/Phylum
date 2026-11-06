@@ -295,6 +295,8 @@ namespace Game {
 		public:
 			Ability(Lua& lua, sol::table&& self, const std::string& name, uint32_t id);
 
+			void FindNumberedTick();
+
 			// properties
 			const std::string& GetName() const;
 

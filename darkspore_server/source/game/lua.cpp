@@ -421,6 +421,11 @@ namespace Game {
 		}
 		std::cout << "Game ability scripts: " << mAbilities.size() << " registered, " << failed << " failed." << std::endl;
 
+		// These only exist once a script has finished running, not when it registers.
+		for (const auto& [_, ability] : mAbilities) {
+			ability->FindNumberedTick();
+		}
+
 		PreloadModifiers();
 	}
 
@@ -733,6 +738,24 @@ namespace Game {
 			return method.call<bool>(mSelf, object, target, targetPosition, rank);
 		}
 		return mLua.GetGame().GetObjectManager().IsInLineOfSight(object, target, targetPosition);
+	}
+
+	void Ability::FindNumberedTick() {
+		if (mTickFn) {
+			return;
+		}
+
+		sol::state_view state(mLua.GetState());
+		sol::protected_function find = state["nAbility"]["NumberedTick"];
+		sol::protected_function_result result = find(mSelf);
+		if (!result.valid()) {
+			return;
+		}
+
+		if (sol::object value = result; value.is<sol::function>()) {
+			mEnvironment.set_on(value);
+			mTickFn = value.as<sol::function>();
+		}
 	}
 
 	bool Ability::Tick(ObjectPtr object, ObjectPtr target, glm::vec3 cursorPosition, int32_t rank) const {
