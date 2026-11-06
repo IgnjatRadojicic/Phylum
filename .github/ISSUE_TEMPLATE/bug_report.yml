@@ -1,0 +1,113 @@
+name: Bug report
+description: Something in Darkspore or the server is broken or behaves wrongly.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing! This server is a work in progress, so check the
+        [known issues](https://github.com/IgnjatRadojicic/recap_server_cpp#known-issues)
+        and the [open bugs](https://github.com/IgnjatRadojicic/recap_server_cpp/labels/bug) first.
+
+        Please don't attach game files.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What went wrong? Screenshots and clips help a lot.
+      placeholder: My basic attack on the first enemy in level 1-1 does no damage.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened instead?
+      placeholder: The enemy takes damage and the ability goes on cooldown.
+    validations:
+      required: true
+  - type: textarea
+    id: used-to-be
+    attributes:
+      label: How it used to be
+      description: |
+        Optional. If you remember how this worked on the live game, describe it here,
+        and link a video, wiki page or screenshot if you have one.
+      placeholder: On the live servers this attack also knocked enemies back. See this video at 2:15.
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The shortest way to make it happen again.
+      placeholder: |
+        1. Start level 1-1 with...
+        2. Use...
+        3. See...
+    validations:
+      required: true
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does it happen?
+      options:
+        - Every time
+        - Often
+        - Sometimes
+        - Only saw it once
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where does the bug show up?
+      options:
+        - Combat or abilities
+        - Enemies or AI
+        - Levels or loading
+        - Heroes, squads or the editor
+        - Loot, items or the catalyst screen
+        - Menus or UI
+        - Multiplayer
+        - Server startup or login
+        - Client crash
+        - Server crash
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: context
+    attributes:
+      label: Hero and level
+      description: Which hero, ability and level, if that applies.
+      placeholder: Hero name, ability name, level 1-1
+    validations:
+      required: false
+  - type: input
+    id: game-version
+    attributes:
+      label: Game version
+      value: 5.3.0.103 (Steam Demo)
+    validations:
+      required: true
+  - type: input
+    id: server-version
+    attributes:
+      label: Server commit or release
+      description: The commit hash or release you built or downloaded.
+      placeholder: e6b645f
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and crash details
+      description: |
+        Server console output around the problem. For a crash, include the error
+        message and any address it shows. This box is formatted as code automatically.
+      render: text
+    validations:
+      required: false

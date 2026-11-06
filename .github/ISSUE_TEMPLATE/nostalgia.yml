@@ -1,0 +1,42 @@
+name: Nostalgia
+description: Share how something worked on the live game, so the server can match it.
+title: "[Nostalgia]: "
+labels: ["nostalgia"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The live servers are gone, so memories and old footage are how we find out
+        how Darkspore really played. Nothing needs to be broken to post here.
+  - type: textarea
+    id: used-to-be
+    attributes:
+      label: How it used to be
+      description: Describe what the game did, in as much detail as you can.
+      placeholder: Enemies in this level dropped more loot when you finished it on a higher chain.
+    validations:
+      required: true
+  - type: textarea
+    id: now
+    attributes:
+      label: How it behaves on this server
+      description: Optional. Leave this empty if you haven't checked or it isn't in yet.
+    validations:
+      required: false
+  - type: dropdown
+    id: confidence
+    attributes:
+      label: How sure are you?
+      options:
+        - I have proof (video, screenshot, wiki page)
+        - I remember it clearly
+        - I think so, but my memory is hazy
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources
+      description: Links to videos (with timestamps), screenshots, wiki pages or old forum posts.
+    validations:
+      required: false

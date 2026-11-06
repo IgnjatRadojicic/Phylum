@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest something the server or its tools should add.
+title: "[Feature]: "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If this is something the live game had, the Nostalgia form may fit better.
+  - type: textarea
+    id: request
+    attributes:
+      label: What would you like?
+      description: Describe the feature.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does it matter?
+      description: What would this let you do, or what problem would it solve?
+    validations:
+      required: true
