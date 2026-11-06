@@ -161,7 +161,7 @@ TEST_CASE("durations follow buffs, debuffs and the target's resistances") {
 TEST_CASE("a duration too long for the client stops at the longest it can hold") {
 	const ModifierDurationRules rules;
 
-	CHECK(ResolveModifierDuration(100000000, rules) == 0xFFFFFFFFu);
+	CHECK(ResolveModifierDuration(100000000, rules) == 0x7FFFFFFFu);
 }
 
 TEST_CASE("resistance cannot make a timed modifier last forever") {

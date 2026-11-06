@@ -37,8 +37,9 @@ namespace Game {
 			seconds *= 1.f - rules.crowdControlReduction;
 		}
 
-		// Some scripts use 100000000 seconds to mean forever, which is more than the packet can carry.
-		constexpr double longest = std::numeric_limits<uint32_t>::max();
+		// Cinematic modifiers use 100000000 seconds to mean forever, which is more than the packet can
+		// carry. We do not know if the client reads the field as signed, so this stays positive either way.
+		constexpr double longest = std::numeric_limits<int32_t>::max();
 		const auto duration = static_cast<uint32_t>(std::min(std::round(std::max(seconds, 0.f) * 1000.0), longest));
 		if (timed && duration == 0) {
 			return std::nullopt;

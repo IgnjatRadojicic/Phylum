@@ -84,7 +84,7 @@ Bound means the modifier blocks actions, not only movement.
 - What each activation type does comes from its name.
 - Which debuffs count as crowd control, and which are bound, is chosen from their names.
 - Refusing a fully resisted modifier is our choice, and the scripts do not show what EA's server did. A script with no duration still lasts until something removes it.
-- Durations too long for the packet's 32 bits stop at the longest it can hold. Scripts use 100000000 seconds to mean forever, and what the client shows for that has not been checked.
+- Durations too long for the packet stop at the largest signed 32 bit value, about 24.8 days, because we do not know if the client reads the field as signed. Cinematic modifiers use 100000000 seconds to mean forever, and what the client shows for that has not been checked.
 - A modifier's child threads are not stopped when it ends. Only `modifier_cryosboss_passive` starts one, and passives do not run yet.
 - Durations follow the client's order, which darkspin recovered. Which object supplies each attribute is chosen: the caster for `BuffDuration`, the target for the others. `DebuffDurationIncrease` is not used, and the client's diminishing returns are not done.
 - Only `StackModifier` reaches scripts. `TookDamage`, `DealtDamage` and the other events do not, so modifiers that react to them do nothing yet.
