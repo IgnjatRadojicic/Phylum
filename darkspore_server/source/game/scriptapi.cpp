@@ -266,7 +266,8 @@ namespace {
 			if not agent then
 				return
 			end
-			local target = targetId and targetId ~= kObjIDNone and nObjectManager.GetObject(targetId) or nil
+			-- false, not nil: the engine side cannot take nil for an object it may not get.
+			local target = targetId and targetId ~= kObjIDNone and nObjectManager.GetObject(targetId) or false
 			agent:UseAbility(ability, target, vec3.new(x or 0, y or 0, z or 0), rank)
 		end
 
