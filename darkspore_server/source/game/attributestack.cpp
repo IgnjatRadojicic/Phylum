@@ -11,8 +11,9 @@
 namespace Game {
 	// AttributeStack
 	uint32_t AttributeStack::Add(uint8_t attribute, float value, AttributeOp op, float currentValue) {
+		// With no changes left the object's value may have moved on, so the old base is out of date.
 		auto [it, inserted] = mEntries.try_emplace(attribute);
-		if (inserted) {
+		if (inserted || it->second.changes.empty()) {
 			it->second.base = currentValue;
 		}
 

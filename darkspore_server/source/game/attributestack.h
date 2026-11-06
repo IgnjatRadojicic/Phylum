@@ -26,7 +26,7 @@ namespace Game {
 	// (base + adds + best add) * (1 + percents + best percent), then the lowest clamp.
 	class AttributeStack {
 		public:
-			// The current value becomes the base when an attribute gets its first change.
+			// The current value becomes the base when an attribute has no other changes.
 			uint32_t Add(uint8_t attribute, float value, AttributeOp op, float currentValue);
 
 			// Returns the attribute that changed, or nothing if the handle is unknown.

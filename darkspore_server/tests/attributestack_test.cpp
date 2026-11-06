@@ -62,6 +62,17 @@ TEST_CASE("removing every change gives the base back") {
 	CHECK(stack.Resolve(attribute) == doctest::Approx(10));
 }
 
+TEST_CASE("a change after the old ones ended starts from the current value") {
+	AttributeStack stack;
+	const auto first = stack.Add(attribute, 2, AttributeOp::Add, 10);
+	stack.Remove(first);
+
+	stack.Add(attribute, 1, AttributeOp::Add, 30);
+
+	CHECK(stack.GetBase(attribute) == doctest::Approx(30));
+	CHECK(stack.Resolve(attribute) == doctest::Approx(31));
+}
+
 TEST_CASE("an unknown handle changes nothing") {
 	AttributeStack stack;
 	stack.Add(attribute, 2, AttributeOp::Add, 10);
