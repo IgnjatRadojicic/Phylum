@@ -20,7 +20,7 @@ Sending teleports instead pins the shot at the hero. Every new object starts wit
 | Call | Arguments | Gives back |
 | --- | --- | --- |
 | `nThread.WaitForProjectile` | agent, projectile, parameters, target, validator | hit id, hit ground, x, y, z, range left |
-| `nThread.WaitForLobbedProjectile` | agent, projectile, x, y, z, height, flight time, speed, one unknown | x, y, z |
+| `nThread.WaitForLobbedProjectile` | agent, projectile, x, y, z, height, flight time, speed, strikes ground only, bounces, restitution, stop bounce on creatures | x, y, z, and a fourth value we do not send |
 | `nThread.CreateThreadForObject` | object, function, arguments | nothing |
 | `nGameObject.GetCenterPoint` | object | x, y, z |
 | `nGameObject.GetOrientation` | object | four values, only ever handed back to the engine |
@@ -34,7 +34,9 @@ A shot's caster data travels on the projectile through `SetAttributeSnapshot`, a
 
 ## Hits
 
-`ProjectileSweep` tests the whole path of a tick, so a fast shot cannot jump over a mob. Hits are ordered by distance along the path, then the intended target, then lowest object id. It ignores height.
+`ProjectileSweep` tests the whole path of a tick, so a fast shot cannot jump over a mob. It sweeps the projectile's box, from its noun's `creatureCollisionVolume`, against a box around each mob, so a shot can pass over a short mob. A mob's box comes from its footprint and height.
+
+Hits are ordered by distance along the path, then the intended target, then lowest object id. A shot stops at its range, and a contact right at the end of its range is a miss.
 
 ## Lobs
 
@@ -44,9 +46,14 @@ A shot's caster data travels on the projectile through `SetAttributeSnapshot`, a
 
 - Shots ignore walls, because the server cannot test level geometry.
 - Homing turns straight at the target, ignoring turn rate and delay.
-- Lobs never bounce, and always collide with the ground only.
+- Bounces are approximate on the server: each keeps its ground speed and is shorter by the restitution. Only `Trapper_Grenade` bounces.
+- A lob never hits a creature in flight, and bounces do not stop on creatures on the server, whatever the script asks.
+- The fourth result of a lob is not sent. In the toss template it only reaches `ProjectileLanded`, which is empty there.
 - The smallest mob radius (0.5) and the script tick time (0.05 seconds) are chosen values.
+- Velocity reaches the client in an `ObjectUpdate` just after `ObjectCreate`. Darkspin puts it in the create packet, which would mean reordering the launch, since the effect needs the object to exist first.
 
 ## Script data worth knowing
 
 `BoulderToss` has a `damageCoefficient` of 0, and the toss template only deals damage above 0, so it lands without hurting anything.
+
+Basic attacks use the caster's weapon damage, so a test caster needs one. `Trapper_Grenade` and `VoodooTempestBasic` do nothing without it.

@@ -38,7 +38,7 @@ Make every hero's abilities work.
 - [ ] Work out the `ModifierCreated`, `ModifierUpdated` and `ModifierDeleted` packets
 - [ ] Implement `AddAttributeModifier` and the `nModifier` functions
 - [ ] Reconstruct how attribute changes combine, using the client code and `magicnumbers`
-- [ ] Fix projectile abilities (straight and lobbed shots work, seeing lobs in the client and homing turn rate remain)
+- [x] Fix projectile abilities (see `docs/projectiles.md` for what is still approximate)
 - [ ] Implement `CreateThreadForObject` and the remaining `nAbility` functions
 - [ ] Work out `TransformVector`, and replace adapter placeholders such as `IsPet`
 - [ ] Apply cooldowns and mana from scripts, instead of the fixed reply cooldown
