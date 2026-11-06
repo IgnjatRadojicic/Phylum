@@ -132,6 +132,7 @@ add_executable(recap_tests
     tests/modifiermanager_test.cpp
     tests/damageevents_test.cpp
     tests/difficultytuning_test.cpp
+    tests/abilitycost_test.cpp
     source/game/scriptsource.cpp
     source/game/scriptgaps.cpp
     source/game/projectilesweep.cpp
@@ -140,7 +141,8 @@ add_executable(recap_tests
     source/game/modifiermanager.cpp
     source/game/abilityevent.cpp
     source/game/damageevents.cpp
-    source/game/difficultytuning.cpp)
+    source/game/difficultytuning.cpp
+    source/game/abilitycost.cpp)
 target_include_directories(recap_tests PRIVATE source ${doctest_SOURCE_DIR})
 target_link_libraries(recap_tests PRIVATE lua pugixml)
 
