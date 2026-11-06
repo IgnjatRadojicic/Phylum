@@ -285,6 +285,12 @@ namespace {
 
 		function nAbility.PayCooldownAndMana() end
 
+		-- Scripts read this back with GetAbilityEventType. Events do not reach anything yet.
+		function nAbility.CreateAbilityEvent(eventType)
+			return { eventType = eventType }
+		end
+		function nAbility.SendAbilityEvent() end
+
 		-- The server never holds a hero in place, because timeImmobilized is always 0
 		function nAbility.ReleaseAgent() end
 		function nAbility.DebugDrawDamageArc() end
@@ -388,6 +394,21 @@ namespace {
 			end
 		end
 
+		function nGameObject.GetMaxHitPoints(id)
+			local object = get(id)
+			return object and object:GetMaxHealth() or 0
+		end
+
+		function nGameObject.GetObjectDistance(firstId, secondId)
+			local first, second = get(firstId), get(secondId)
+			if not first or not second then
+				return 0
+			end
+			local from, to = first:GetPosition(), second:GetPosition()
+			local x, y, z = to.x - from.x, to.y - from.y, to.z - from.z
+			return math.sqrt(x * x + y * y + z * z)
+		end
+
 		function nGameObject.GetHitPoints(id)
 			local object = get(id)
 			return object and object:GetHealth() or 0
@@ -435,6 +456,17 @@ namespace {
 			local direction = x and vec3.new(x, y, z) or nil
 			local attacker = nAbility.GetCaster() or target
 			return target:TakeDamage(attacker, snapshot or false, damage, damageType or 0, damageSource or 0, coefficient or 0, descriptors or 0, multiplier, direction)
+		end
+
+		-- An amount is one number, or a table with the lowest and highest
+		function nGameObject.HealDamage(snapshot, targetId, amount, coefficient, descriptors, critical, canResurrect)
+			local target = get(targetId)
+			if not target then
+				return 0, false
+			end
+			local range = type(amount) == "table" and amount or { amount or 0, amount or 0 }
+			local healer = nAbility.GetCaster() or target
+			return target:Heal(healer, snapshot, range, coefficient or 0, descriptors or 0, critical == true, canResurrect == true)
 		end
 
 		nAttribute = nAttribute or {}
@@ -798,8 +830,14 @@ namespace {
 		end
 
 		local circleIntersectsArc = nMathUtil.CircleIntersectsArc
-		function nMathUtil.CircleIntersectsArc(x, y, z, radius, ...)
-			return circleIntersectsArc(vector(x, y, z), radius, ...)
+		-- Scripts give no height, and the engine function reads the radius from the third number
+		function nMathUtil.CircleIntersectsArc(x, y, radius, ...)
+			return circleIntersectsArc(vector(x, y, radius), radius, ...)
+		end
+
+		-- Approximate: waits it out, and the one script using this checks the target after each wait
+		function nThread.WaitForNotValidTarget(seconds)
+			nThread.WaitForXSeconds(seconds)
 		end
 
 		-- Scripts give the agent first and read the position as three numbers

@@ -54,6 +54,7 @@ namespace Game {
 				function object:GetTeam() return team end
 				function object:GetHealth() return 100 end
 				function object:GetMaxHealth() return 100 end
+				function object:Heal() return 5, false end
 				function object:GetOwnerObject() return nil end
 				function object:GetNpcType() return 0 end
 				function object:GetFootprintRadius() return 1 end

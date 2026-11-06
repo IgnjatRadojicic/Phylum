@@ -190,6 +190,8 @@ namespace {
 				CheckPrimaryAttributeCanBeRead();
 				CheckHashedModulesLoad();
 				CheckSecondCastRuns();
+				CheckDistanceCanBeRead();
+				CheckMeleeArcFindsTargets();
 				CheckDeactivateCanDeleteObjects(slow);
 				CheckDeactivateCanRequestItself();
 				CheckMarkedObjectsOutlastDeactivate();
@@ -564,6 +566,33 @@ namespace {
 				sol::table cast = mState["ModifierCheckCast"];
 				const int casts = cast["casts"];
 				Report("second-cast-runs", casts == 2, "casts=" + std::to_string(casts));
+			}
+
+			// Scripts give a position with no height, then its radius. This facing is along X.
+			void CheckMeleeArcFindsTargets() {
+				sol::protected_function arc = mState["nMathUtil"]["CircleIntersectsArc"];
+				constexpr float quarterTurn = 1.5707964f;
+
+				sol::protected_function_result ahead = arc(1.f, 0.f, 0.5f, 0.f, 0.f, 1.f, 0.f, 2.f, quarterTurn);
+				sol::protected_function_result behind = arc(-1.f, 0.f, 0.5f, 0.f, 0.f, 1.f, 0.f, 2.f, quarterTurn);
+
+				const bool hitsAhead = ahead.valid() && ahead.get<bool>();
+				const bool hitsBehind = !behind.valid() || behind.get<bool>();
+				Report("melee-arc-finds-targets", hitsAhead && !hitsBehind,
+					"ahead=" + std::to_string(hitsAhead) + " behind=" + std::to_string(hitsBehind));
+			}
+
+			void CheckDistanceCanBeRead() {
+				auto first = Spawn();
+				auto second = Spawn();
+				first->SetPosition(glm::vec3(0.f));
+				second->SetPosition(glm::vec3(3.f, 4.f, 0.f));
+
+				sol::protected_function distance = mState["nGameObject"]["GetObjectDistance"];
+				sol::protected_function_result result = distance(first->GetId(), second->GetId());
+				sol::optional<float> value = result;
+
+				Report("distance-can-be-read", value && *value == 5.f, "distance=" + std::to_string(value.value_or(-1.f)));
 			}
 
 			// Not a pass or a fail: this finds which scripts need engine functions we do not have yet.
