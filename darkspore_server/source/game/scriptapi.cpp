@@ -321,6 +321,17 @@ namespace {
 			end
 		end
 
+		-- Scripts give an animation as a name or an id
+		function nGameObject.SetAnimationState(id, animation, ...)
+			local object = get(id)
+			if object then
+				if type(animation) == "string" then
+					animation = nUtil.GetAsset(animation)
+				end
+				return object:SetAnimationState(animation, ...)
+			end
+		end
+
 		function nGameObject.MarkForDelete(id)
 			local object = get(id)
 			if object then
@@ -431,6 +442,13 @@ namespace {
 			end
 		end
 
+		function nObjectManager.RemoveObjectById(id)
+			local object = get(id)
+			if object then
+				object:MarkForDeletion()
+			end
+		end
+
 		local createObject = nObjectManager.CreateObject
 		function nObjectManager.CreateObject(noun, x, y, z, ...)
 			local object = createObject(noun, vector(x, y, z))
@@ -462,6 +480,16 @@ namespace {
 				hitId = kObjIDNone
 			end
 			return hitId, hitGround, position.x, position.y, position.z, remaining
+		end
+
+		-- Scripts read where the shot landed as three numbers
+		nThread.EngineWaitForLobbedProjectile = nThread.WaitForLobbedProjectile
+		function nThread.WaitForLobbedProjectile(agent, projectile, x, y, z, height, flightTime, speed)
+			local landed = nThread.EngineWaitForLobbedProjectile(projectile, vector(x, y, z), height or 0, flightTime or 0, speed or 0)
+			if landed then
+				return landed.x, landed.y, landed.z
+			end
+			return x, y, z
 		end
 
 		local transformVector = nMathUtil.TransformVector

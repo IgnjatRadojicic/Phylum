@@ -20,6 +20,13 @@ namespace {
 	// Follows the loop the game's own projectile script uses: wait, take a hit, and go on with
 	// the range left if the shot pierces.
 	constexpr const char* fireShot = R"lua(
+		function FlightCheckLob(agent, projectile, x, y, z, height, flightTime, landing)
+			nThread.Create(projectile, function()
+				landing.x, landing.y, landing.z = nThread.WaitForLobbedProjectile(agent, projectile, x, y, z, height, flightTime)
+				landing.done = true
+			end)
+		end
+
 		function FlightCheckFire(agent, projectile, piercing, speed, range, hits)
 			nThread.Create(projectile, function()
 				local remaining = range
@@ -92,7 +99,7 @@ namespace Game {
 
 		// The game's own script, from the cast to the hit. Its waits follow the real clock.
 		float scriptLane = -500;
-		for (const char* abilityName : { "Fireball", "Frostbolt", "HomingFireball" }) {
+		for (const char* abilityName : { "Fireball", "Frostbolt", "HomingFireball", "FireToss" }) {
 			scriptLane -= laneSpacing;
 			const auto& ability = lua.GetAbility(abilityName);
 			if (!ability) {
@@ -119,6 +126,35 @@ namespace Game {
 			const bool good = cast && castBlocked && target->GetHealth() < startingHealth;
 			report << "FLIGHT script-" << abilityName << (good ? " good" : " wrong") << " secondCastBlocked=" << castBlocked
 				<< " health=" << startingHealth << "->" << target->GetHealth() << "\n";
+		}
+
+		// A real lob through the adapter: lands where it was aimed, after its flight time.
+		{
+			auto thrower = objects.Create(mobNoun);
+			auto shell = objects.Create(projectileNoun);
+			thrower->SetPosition(glm::vec3(0, -2000, 0));
+			shell->SetPosition(glm::vec3(0, -2000, 0));
+
+			sol::table landing = state.create_table();
+			sol::protected_function lob = state["FlightCheckLob"];
+			auto lobbed = lob(thrower->GetId(), shell->GetId(), 12, -2000, 0, 4, 1, landing);
+			if (!lobbed.valid()) {
+				sol::error error = lobbed;
+				report << "FLIGHT lob-lands-on-target wrong " << error.what() << "\n";
+			} else {
+				int ticks = 0;
+				float highest = 0;
+				for (; ticks < maximumTicks && !landing.get_or("done", false); ++ticks) {
+					objects.Update(tickSeconds);
+					lua.Update();
+					highest = std::max(highest, shell->GetPosition().z);
+				}
+
+				const float landedX = landing.get_or("x", 0.f);
+				const bool good = landing.get_or("done", false) && landedX == 12 && highest > 3.5f && highest < 4.5f && ticks >= 19 && ticks <= 22;
+				report << "FLIGHT lob-lands-on-target " << (good ? "good" : "wrong") << " ticks=" << ticks
+					<< " landedX=" << landedX << " highest=" << highest << "\n";
+			}
 		}
 
 		float lane = 0;

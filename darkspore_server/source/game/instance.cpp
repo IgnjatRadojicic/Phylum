@@ -1011,7 +1011,7 @@ namespace Game {
 				} else {
 					// The client flies a projectile itself from its parameters.
 					const auto movementType = object->GetMovementType();
-					const bool isProjectile = movementType == MovementType::Projectile || movementType == MovementType::HomingProjectile;
+					const bool isProjectile = movementType == MovementType::Projectile || movementType == MovementType::HomingProjectile || movementType == MovementType::Lobbed;
 					if (!isProjectile && (locomotion->GetGoalFlags() & 0x20)) {
 						mServer->SendObjectTeleport(client, object, object->GetPosition(), locomotion->GetFacing());
 					} else {

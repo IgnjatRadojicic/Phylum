@@ -1863,6 +1863,45 @@ namespace Game {
 
 			YieldThread(thread);
 		});
+
+		thread["WaitForLobbedProjectile"] = sol::yielding([this](sol::this_state L,
+			sol::object projectileObjectValue,
+			glm::vec3 destination,
+			float height,
+			float flightTime,
+			float speed
+		) {
+			auto thread = GetThread(L);
+			if (!thread) {
+				return;
+			}
+
+			auto& objectManager = mGame.GetObjectManager();
+			auto projectile = LuaGetObject(objectManager, projectileObjectValue);
+			if (!projectile || !projectile->HasLocomotionData()) {
+				return;
+			}
+
+			// A lob with no ground to cover lands straight away.
+			const auto arc = Game::LobArc::Build(projectile->GetPosition(), destination, height, flightTime, speed);
+			if (arc) {
+				projectile->SetMovementType(Game::MovementType::Lobbed);
+				projectile->SetLinearVelocity(arc->GetInitialVelocity());
+				projectile->GetLocomotionData()->StartLob(*arc, mGame.GetTime());
+			}
+
+			thread->set_resume_condition([&objectManager, id = projectile->GetId(), destination](lua_State* L, sol::variadic_results& results) {
+				const Game::ObjectPtr& object = objectManager.Get(id);
+				if (object && !object->GetLocomotionData()->HasLobFinished()) {
+					return false;
+				}
+
+				results.push_back({ L, sol::in_place, destination });
+				return true;
+			});
+
+			YieldThread(thread);
+		});
 	}
 
 	void Lua::RegisterGame() {

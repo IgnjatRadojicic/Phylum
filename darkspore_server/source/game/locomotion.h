@@ -4,12 +4,14 @@
 
 // Include
 #include "predefined.h"
+#include "lobarc.h"
 #include "projectilesweep.h"
 
 #include <glm/glm.hpp>
 
 #include <cstdint>
 #include <deque>
+#include <optional>
 #include <unordered_set>
 #include <vector>
 #include <bitset>
@@ -79,11 +81,16 @@ namespace Game {
 			void WriteReflection(RakNet::BitStream& stream) const;
 
 		public:
+			glm::vec3 mStartPosition {};
+			glm::vec3 mDestination {};
 			glm::vec3 mUpDirection {};
 			glm::vec3 mPlaneDirection {};
 
 			int32_t mBounceNumber = 0;
 
+			float mPlaneVelocity = 0;
+			float mHeight = 0;
+			float mDuration = 0;
 			float mUpQuadratic = 0;
 			float mUpLinear = 0;
 			float mPlaneLinear = 0;
@@ -160,6 +167,10 @@ namespace Game {
 			bool HasCollidedWithCreature() const;
 			void SetHasCollidedWithCreature(bool hasCollided);
 
+			// Sends a lobbed projectile along an arc, from the given game time.
+			void StartLob(const LobArc& arc, uint64_t startTime);
+			bool HasLobFinished() const;
+
 			// Gives the next creature this projectile hit, if one is waiting.
 			bool TakeProjectileHit(SweepHit& hit);
 
@@ -201,6 +212,7 @@ namespace Game {
 			float GetProjectileRadius() const;
 			std::vector<SweepHit> SweepCreatures(const glm::vec3& from, const glm::vec3& to);
 			void SteerToTarget();
+			void FlyLob(float deltaTime);
 
 			void Projectile(float value);
 			void OrbitOwner(float value);
@@ -239,6 +251,9 @@ namespace Game {
 
 			bool mHasCollidedWithCreature = false;
 			bool mHasCollided = false;
+
+			std::optional<LobArc> mLobArc;
+			float mLobSeconds = 0;
 
 			std::deque<SweepHit> mPendingHits;
 			std::unordered_set<uint32_t> mHitIds;

@@ -52,10 +52,13 @@ namespace Game {
 
 		auto writeOffset = ReallocateStream(stream, size);
 
-		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x18));
+		stream.SetWriteOffset(writeOffset);
+		Write(stream, mStartPosition);
+		Write(stream, mDestination);
 		Write(stream, mUpDirection);
-
-		stream.SetWriteOffset(writeOffset + bytes_to_bits(0x30));
+		Write(stream, mPlaneVelocity);
+		Write(stream, mHeight);
+		Write(stream, mDuration);
 		Write(stream, mBounceNumber);
 		Write(stream, mBounceRestitution);
 		Write(stream, mGroundCollisionOnly);
@@ -176,6 +179,7 @@ namespace Game {
 			}
 
 			case MovementType::Lobbed: {
+				FlyLob(deltaTime);
 				break;
 			}
 
@@ -823,6 +827,42 @@ LAB_009ef634:
 		hit = mPendingHits.front();
 		mPendingHits.pop_front();
 		return true;
+	}
+
+	void Locomotion::StartLob(const LobArc& arc, uint64_t startTime) {
+		mLobArc = arc;
+		mLobSeconds = 0;
+
+		mLobParameters.mStartPosition = arc.mStart;
+		mLobParameters.mDestination = arc.mDestination;
+		mLobParameters.mUpDirection = glm::vec3(0, 0, 1);
+		mLobParameters.mPlaneVelocity = arc.mPlaneSpeed;
+		mLobParameters.mHeight = arc.mHeight;
+		mLobParameters.mDuration = arc.mDuration;
+		mLobParameters.mGroundCollisionOnly = true;
+		mLobParameters.mPlaneDirection = arc.mPlaneDirection;
+		mLobParameters.mPlaneLinear = arc.mPlaneSpeed;
+		mLobParameters.mUpLinear = arc.mUpLinear;
+		mLobParameters.mUpQuadratic = arc.mUpQuadratic;
+
+		mLobStartTime = startTime;
+		mLobPrevSpeedModifier = 0;
+		mDataBits.set(LocomotionDataBits::LobStartTime);
+		mDataBits.set(LocomotionDataBits::LobPreviousSpeedModifier);
+		mDataBits.set(LocomotionDataBits::LobParameters);
+		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
+	}
+
+	bool Locomotion::HasLobFinished() const {
+		return !mLobArc || mLobSeconds >= mLobArc->mDuration;
+	}
+
+	// The client flies its own copy, so this position is only for where the shot lands.
+	void Locomotion::FlyLob(float deltaTime) {
+		if (mLobArc) {
+			mLobSeconds += deltaTime;
+			mObject->SetPositionSimulated(mLobArc->GetPositionAt(mLobSeconds));
+		}
 	}
 
 	// Approximate: turns straight at the target, ignoring turn rate and homing delay.

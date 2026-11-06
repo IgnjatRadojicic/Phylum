@@ -123,6 +123,10 @@ namespace Game {
 				callback(...)
 			end
 
+			nThread.EngineWaitForLobbedProjectile = function(_, destination)
+				return { x = destination.x, y = destination.y, z = destination.z }
+			end
+
 			-- Answers as the engine does: one hit, then the shot runs out of range. A script that
 			-- keeps waiting after that would hang a real projectile thread, so it fails here.
 			local projectileWaits = 0
