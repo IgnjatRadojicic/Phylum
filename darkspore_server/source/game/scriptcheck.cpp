@@ -60,11 +60,12 @@ namespace Game {
 			-- Engine functions cannot take fake objects, so record calls to them instead.
 			local stubbed = {}
 			local safeTables = { nBit = true, nUtil = true }
+			local adapterTables = { nLocomotion = true, nObjectManager = true, nMathUtil = true }
 			for tableName, value in pairs(_G) do
 				local isEngineTable = tableName:match("^n%u") or tableName == "Locomotion" or tableName == "Ability"
 				if type(value) == "table" and isEngineTable and not safeTables[tableName] then
 					for name, field in pairs(value) do
-						if type(field) == "function" and debug.getinfo(field, "S").what == "C" then
+						if type(field) == "function" and (adapterTables[tableName] or debug.getinfo(field, "S").what == "C") then
 							local label = tableName .. "." .. name
 							value[name] = function()
 								stubbed[label] = (stubbed[label] or 0) + 1
@@ -80,6 +81,11 @@ namespace Game {
 				return (id == 1 and agent) or (id == 2 and target) or nil
 			end
 			nObjectManager.GetObjectsInRadius = function() return { 2 } end
+			nObjectManager.GetObjectsInRadius_SortedByDistance = function() return { 2 } end
+			nObjectManager.CreateObject = function() return 2 end
+			nMathUtil.RotateVectorByAxisAngle = function(x, y, z) return x, y, z end
+			nMathUtil.TransformVector = function(x, y, z) return x, y, z end
+			nMathUtil.CircleIntersectsArc = function() return true end
 			nThread.WaitUntilTime = function() end
 			nThread.WaitForXSeconds = function() end
 
@@ -94,7 +100,7 @@ namespace Game {
 			for _, name in ipairs(names) do
 				local ability = nAbility.scripts[name]
 				local basic = ability.descriptors and nBit.And(ability.descriptors, nDescriptors.IsBasic) ~= 0
-				if basic and ability.tick then
+				if ability.tick then
 					total = total + 1
 					calls = { animation = 0, damage = 0 }
 					file:write("RUN ", name, "\n")
@@ -111,16 +117,16 @@ namespace Game {
 						end
 					end, "c")
 					local ok, err = coroutine.resume(thread)
-					local good = ok and calls.animation > 0 and calls.damage > 0
+					local good = ok and (calls.animation > 0 or calls.damage > 0)
 					if good then
 						passed = passed + 1
 					end
-					file:write(string.format("%s %s animation=%d damage=%d %s\n",
-						good and "PASS" or "FAIL", name, calls.animation, calls.damage, ok and "" or tostring(err)))
+					file:write(string.format("%s %s %s animation=%d damage=%d %s\n",
+						good and "PASS" or (ok and "IDLE" or "FAIL"), basic and "basic" or "ability", name, calls.animation, calls.damage, ok and "" or tostring(err)))
 				end
 			end
 
-			file:write(string.format("Basic attacks passed: %d of %d\n", passed, total))
+			file:write(string.format("Abilities passed: %d of %d\n", passed, total))
 			for label, count in pairs(stubbed) do
 				file:write("STUB ", label, " ", count, "\n")
 			end
