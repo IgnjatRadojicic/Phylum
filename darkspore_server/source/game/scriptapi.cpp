@@ -258,6 +258,17 @@ namespace {
 			return GetRankedValueHelper(value, currentCast().rank)
 		end
 
+		-- A script makes an object cast another ability: a summon, a charge's hit, a pet's attack.
+		-- It starts at once in its own cast, and skips the cost and cooldown of a cast the player asks for.
+		function nAbility.RequestAbility(ability, agentId, targetId, x, y, z, rank)
+			local agent = agentId and agentId ~= kObjIDNone and nObjectManager.GetObject(agentId) or nil
+			if not agent then
+				return
+			end
+			local target = targetId and targetId ~= kObjIDNone and nObjectManager.GetObject(targetId) or nil
+			agent:UseAbility(ability, target, vec3.new(x or 0, y or 0, z or 0), rank)
+		end
+
 		function nAbility.TargetInRangeAtStart()
 			return true
 		end

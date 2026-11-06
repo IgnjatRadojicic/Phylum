@@ -990,7 +990,7 @@ namespace LuaFunction {
 			}
 		}
 
-		auto UseAbility(sol::this_state L, sol::object objectValue, uint32_t abilityId, sol::object targetObjectValue, glm::vec3 targetPosition) {
+		auto UseAbility(sol::this_state L, sol::object objectValue, uint32_t abilityId, sol::object targetObjectValue, glm::vec3 targetPosition, sol::optional<int32_t> rank) {
 			auto& game = LuaGetGame(L);
 
 			const auto& ability = game.GetLua().GetAbility(abilityId);
@@ -1000,7 +1000,7 @@ namespace LuaFunction {
 				auto object = LuaGetObject(objectManager, objectValue);
 				if (object) {
 					auto targetObject = LuaGetObject(objectManager, targetObjectValue);
-					ability->Tick(object, targetObject, targetPosition, 1);
+					ability->Tick(object, targetObject, targetPosition, std::max(1, rank.value_or(1)));
 				}
 			}
 		}
