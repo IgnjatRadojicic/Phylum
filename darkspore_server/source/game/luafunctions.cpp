@@ -1591,6 +1591,17 @@ namespace Game {
 			YieldThread(thread);
 		});
 
+		// Only stopping the thread ends this wait.
+		thread["WaitForever"] = sol::yielding([this](sol::this_state L) {
+			auto thread = GetThread(L);
+			if (!thread) {
+				return;
+			}
+
+			thread->set_resume_condition([](lua_State* L, sol::variadic_results& results) { return false; });
+			YieldThread(thread);
+		});
+
 		thread["WaitForCallback"] = sol::yielding([this](sol::this_state L, sol::function callback) {
 			auto thread = GetThread(L);
 			if (!thread) {

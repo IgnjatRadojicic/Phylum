@@ -10,6 +10,7 @@
 #include "client.h"
 
 #include "game/catalyst.h"
+#include "game/modifiermanager.h"
 
 #include "blaze/types.h"
 
@@ -210,7 +211,7 @@ namespace RakNet {
 			void SendServerEvent(const ClientPtr& client, const Game::ServerEventBase& serverEvent);
 			void SendActionCommandMessages(const ClientPtr& client, const Game::PlayerPtr& player);
 			void SendCombatEvent(const ClientPtr& client, const Game::CombatEvent& combatEvent);
-			void SendModifierCreated(const ClientPtr& client, const Game::ObjectPtr& object);
+			void SendModifierCreated(const ClientPtr& client, const Game::ObjectPtr& object, const Game::ModifierInstance& modifier);
 			void SendModifierUpdated(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t modifierId, uint64_t timestamp, uint32_t stackCount, bool bind);
 			void SendModifierDeleted(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t modifierId);
 			void SendAnimationState(const ClientPtr& client, const Game::ObjectPtr& object, uint32_t state, uint64_t timestamp, bool overlay, float scale);

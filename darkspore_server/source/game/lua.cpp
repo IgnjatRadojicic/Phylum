@@ -144,6 +144,7 @@ namespace Game {
 
 	void LuaThread::renew() {
 		mCoroutine = sol::nil;
+		mResumeCondition = nullptr;
 		mThread = sol::thread::create(mLua.GetState());
 	}
 
@@ -370,18 +371,39 @@ namespace Game {
 	}
 
 	void Lua::Update() {
-		for (auto it = mYieldedThreads.begin(); it != mYieldedThreads.end(); ) {
-			auto thread = *it;
-			if (thread->resume()) {
-				it = mYieldedThreads.erase(it);
+		// A resumed script can start threads of its own, so the set may change along the way.
+		const std::vector<LuaThread*> threads(mYieldedThreads.begin(), mYieldedThreads.end());
+		for (auto thread : threads) {
+			if (mYieldedThreads.contains(thread) && thread->resume()) {
+				mYieldedThreads.erase(thread);
 				ReturnThreadToPool(thread);
-			} else {
-				++it;
+			}
+		}
+	}
+
+	void Lua::PreloadLibraries() {
+		// These have hashed names, so no script can require them, but scripts call what they define.
+		const std::filesystem::path folder = "data/serverdata/lua";
+		if (!std::filesystem::exists(folder)) {
+			return;
+		}
+
+		sol::protected_function require = mState["require"];
+		for (const auto& entry : std::filesystem::directory_iterator(folder)) {
+			const auto name = entry.path().filename().string();
+			if (name.starts_with("0x") && entry.path().extension() == ".lua") {
+				sol::protected_function_result result = require("Lua!" + name);
+				if (!result.valid()) {
+					sol::error err = result;
+					std::cout << err.what() << std::endl;
+				}
 			}
 		}
 	}
 
 	void Lua::PreloadAbilities() {
+		PreloadLibraries();
+
 		// Each script registers itself under its own name when it runs.
 		size_t failed = 0;
 		for (const auto& [_, code] : GlobalLua::Instance().GetLoadedAbilities()) {
@@ -393,6 +415,35 @@ namespace Game {
 			}
 		}
 		std::cout << "Game ability scripts: " << mAbilities.size() << " registered, " << failed << " failed." << std::endl;
+
+		PreloadModifiers();
+	}
+
+	void Lua::PreloadModifiers() {
+		// Abilities only load the modifiers they require, and some belong to nothing else.
+		const std::filesystem::path folder = "data/serverdata/Modifiers";
+		if (!std::filesystem::exists(folder)) {
+			return;
+		}
+
+		sol::protected_function require = mState["require"];
+
+		size_t failed = 0;
+		for (const auto& entry : std::filesystem::directory_iterator(folder)) {
+			if (entry.path().extension() != ".lua") {
+				continue;
+			}
+
+			sol::protected_function_result result = require("Modifiers!" + entry.path().filename().string());
+			if (!result.valid()) {
+				sol::error err = result;
+				std::cout << err.what() << std::endl;
+				++failed;
+			}
+		}
+
+		sol::table registered = mState["nModifier"]["registered"];
+		std::cout << "Game modifier scripts: " << registered.size() << " registered, " << failed << " failed." << std::endl;
 	}
 
 	Instance& Lua::GetGame() {
@@ -469,7 +520,34 @@ namespace Game {
 		mThreads.emplace(thread->lua_state(), thread);
 	}
 
+	uint64_t Lua::TrackThread(LuaThread* thread) {
+		const auto ticket = mNextThreadTicket++;
+		thread->mTicket = ticket;
+		mTrackedThreads.emplace(ticket, thread);
+		return ticket;
+	}
+
+	void Lua::StopThread(uint64_t ticket) {
+		const auto it = mTrackedThreads.find(ticket);
+		if (it == mTrackedThreads.end()) {
+			return;
+		}
+
+		// A thread cannot be stopped from inside itself, and it ends by itself in that case.
+		auto thread = it->second;
+		if (lua_status(thread->lua_state()) == LUA_YIELD) {
+			thread->mTicket = 0;
+			mTrackedThreads.erase(it);
+			thread->stop();
+		}
+	}
+
 	void Lua::ReturnThreadToPool(LuaThread* thread) {
+		if (thread->mTicket != 0) {
+			mTrackedThreads.erase(thread->mTicket);
+			thread->mTicket = 0;
+		}
+
 		// The thread may be reused or deleted from here on, so no object may keep pointing at it.
 		if (auto owner = thread->mOwner.lock(); owner && owner->GetLuaThread() == thread) {
 			owner->SetLuaThread(nullptr);

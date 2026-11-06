@@ -2,6 +2,9 @@
 // Include
 #include "instance.h"
 #include "lua.h"
+#include "modifiersystem.h"
+#include "object.h"
+#include "objectmanager.h"
 #include "scriptgaps.h"
 #include "scriptsource.h"
 
@@ -26,18 +29,15 @@ namespace {
 			return 0.05
 		end
 
-		-- Modifiers register but have no effect yet
+		-- Scripts ask for a modifier by id. They add its functions after registering it, so these
+		-- stay in the table until a modifier runs.
 		nModifier = nModifier or {}
 		nModifier.registered = {}
 		function nModifier.RegisterModifier(name, modifier)
-			nModifier.registered[name] = modifier
+			nModifier.registered[nUtil.SPID(name)] = modifier
 		end
 		function nModifier.PreloadAsset(name)
 			return nUtil.GetAsset(name)
-		end
-		function nModifier.RequestModifier() end
-		function nModifier.CheckForModifierDebuffDescriptor()
-			return false
 		end
 
 		-- Scripts require files as "Folder!Name.lua"
@@ -151,11 +151,18 @@ namespace {
 			return currentCast().object:GetId()
 		end
 
-		-- Nil outside an ability, for example while a modifier runs
+		-- A modifier's caster is whoever started it, not the object it sits on
 		function nAbility.GetCaster()
 			local cast = currentCast()
-			return cast and cast.object or nil
+			return cast and (cast.initiator or cast.object) or nil
 		end
+
+		CastContext = {
+			Get = currentCast,
+			Set = function(context)
+				casts[running()] = context
+			end
+		}
 
 		function nAbility.GetTargetID()
 			local target = currentCast().target
@@ -252,6 +259,7 @@ namespace {
 		function nAbility.PayCooldownAndMana() end
 		function nAbility.DebugDrawDamageArc() end
 		function nDebug.Assert() end
+		function nDebug.LogToConsole() end
 		function nDebug.DrawLine() end
 
 		nEvent = nEvent or {}
@@ -402,7 +410,7 @@ namespace {
 		nAttribute = nAttribute or {}
 		function nAttribute.GetAttributeValue(id, attribute)
 			local object = get(id)
-			return object and object:GetAttributeValue(attribute) or 0
+			return object and object:GetAttributeValue(ModifierEngine.AttributeFromScript(attribute)) or 0
 		end
 
 		nPlayer = nPlayer or {}
@@ -422,6 +430,274 @@ namespace {
 	)lua";
 
 	// The game's scripts pass positions as x, y, z. Server functions take and return a vec3.
+	// Modifiers are scripts like abilities, and run with the same kind of context. The rules for
+	// them live in ModifierManager, and ModifierSystem runs them.
+	constexpr const char* modifierApi = R"lua(
+		local function get(id)
+			return id and id ~= kObjIDNone and nObjectManager.GetObject(id) or nil
+		end
+
+		local function contextOf(id)
+			if id == nil then
+				return CastContext.Get()
+			end
+			return ModifierEngine.GetContext(id)
+		end
+
+		local function instanceOf(id)
+			if id ~= nil then
+				return id
+			end
+			local context = CastContext.Get()
+			return context and context.instanceId or 0
+		end
+
+		-- A script can set a function by its nAbilityFns number or by its name
+		local function scriptFunction(modifier, number, name, flag)
+			if modifier[flag] == false then
+				return nil
+			end
+			return modifier[number] or modifier[name]
+		end
+
+		ModifierApi = {}
+
+		function ModifierApi.Start(context)
+			CastContext.Set(context)
+			local modifier = context.ability
+			local activate = scriptFunction(modifier, nAbilityFns.Activate, "activate", "hasActivate")
+			if activate then
+				activate(modifier)
+			end
+			local tick = scriptFunction(modifier, nAbilityFns.Tick, "tick", "hasTick")
+			if tick then
+				tick(modifier)
+			end
+		end
+
+		function ModifierApi.Stop(context)
+			CastContext.Set(context)
+			local modifier = context.ability
+			local deactivate = scriptFunction(modifier, nAbilityFns.Deactivate, "deactivate", "hasDeactivate")
+			if deactivate then
+				deactivate(modifier)
+			end
+		end
+
+		-- The event reads as the modifier too, because handlers use their one argument as both
+		function ModifierApi.Stack(context)
+			CastContext.Set(context)
+			local modifier = context.ability
+			local handler = scriptFunction(modifier, nAbilityFns.HandleEvent, "handleEvent", "hasHandleEvent")
+			if handler then
+				local event = setmetatable({ eventType = nAbilityEventFlags.StackModifier }, { __index = modifier })
+				context.handled = handler(event) == true
+			end
+		end
+
+		function nAbility.GetAbilityEventType(event)
+			return event and event.eventType
+		end
+
+		local function canUse(modifier, agent, initiator, rank)
+			if modifier.CanUseModifier then
+				return modifier.CanUseModifier(agent, initiator, rank) ~= false
+			elseif modifier.canUseModifier then
+				return modifier:canUseModifier(agent, initiator, rank) ~= false
+			end
+			return true
+		end
+
+		local function hasFlag(flags, flag)
+			return flag ~= nil and nBit.And(flags or 0, flag) ~= 0
+		end
+
+		local function hasAnyFlag(flags, names)
+			for _, name in ipairs(names) do
+				if hasFlag(flags, nDebuffDescriptors[name]) then
+					return true
+				end
+			end
+			return false
+		end
+
+		-- Approximate: which debuffs count as crowd control or block actions in the client
+		local boundDebuffs = { "IsStun", "IsFear", "IsBanish", "IsSleep", "IsShock" }
+		local crowdControlDebuffs = { "IsStun", "IsFear", "IsBanish", "IsSleep", "IsShock", "IsRoot", "IsSlow", "IsSilence", "IsTaunt" }
+
+		function nModifier.RequestModifier(agent, initiator, guid, snapshot, rank, ...)
+			local modifier = nModifier.registered[guid]
+			local object = get(agent)
+			if not modifier or not object then
+				return kObjIDNone
+			end
+
+			rank = rank or 1
+			if not canUse(modifier, agent, initiator, rank) then
+				return kObjIDNone
+			end
+
+			local caster = get(initiator)
+			local source = caster or object
+			local debuffs = modifier.debuffDescriptors
+			local descriptors = modifier.descriptors
+			local id = ModifierEngine.Request({
+				ability = modifier,
+				object = object,
+				initiator = caster,
+				initiatorId = initiator or kObjIDNone,
+				guid = guid,
+				rank = rank,
+				snapshot = snapshot or source:GetAttributeSnapshot(),
+				properties = { ... },
+				descriptors = descriptors or 0,
+				debuffDescriptors = debuffs or 0
+			}, {
+				guid = guid,
+				seconds = GetRankedValueHelper(modifier.duration or 0, rank) or 0,
+				maxStackCount = GetRankedValueHelper(modifier.maxStackCount or 0, rank) or 0,
+				activation = modifier.activationType or 0,
+				deactivation = modifier.deactivationType or 0,
+				bound = hasAnyFlag(debuffs, boundDebuffs),
+				isBuff = hasFlag(descriptors, nDescriptors.IsBuff),
+				isDebuff = hasFlag(descriptors, nDescriptors.IsDebuff),
+				isDoT = hasFlag(descriptors, nDescriptors.IsDoT),
+				isCrowdControl = hasAnyFlag(debuffs, crowdControlDebuffs)
+			}, agent, initiator or kObjIDNone)
+			return id ~= 0 and id or kObjIDNone
+		end
+
+		function nModifier.GetMyAgentID()
+			return CastContext.Get().object:GetId()
+		end
+
+		function nModifier.GetMyInitiatorID()
+			return CastContext.Get().initiatorId
+		end
+
+		function nModifier.GetInitiatorID(id)
+			local context = contextOf(id)
+			return context and context.initiatorId or kObjIDNone
+		end
+
+		function nModifier.GetInitiatorAttributeSnapshot(id)
+			local context = contextOf(id)
+			return context and context.snapshot
+		end
+
+		function nModifier.GetModifierInstanceID()
+			return instanceOf(nil)
+		end
+
+		function nModifier.GetModifierGUID(id)
+			local context = contextOf(id)
+			return context and context.guid or 0
+		end
+
+		function nModifier.GetRank(id)
+			local context = contextOf(id)
+			return context and context.rank or 1
+		end
+
+		-- Numbered from zero. The first argument is the modifier itself.
+		function nModifier.GetFloatProperty(_, index)
+			return CastContext.Get().properties[index + 1]
+		end
+
+		function nModifier.GetStackCount(id)
+			return ModifierEngine.GetStackCount(instanceOf(id))
+		end
+
+		function nModifier.GetMyStackCount()
+			return ModifierEngine.GetStackCount(instanceOf(nil))
+		end
+
+		function nModifier.SetStackCount(count)
+			ModifierEngine.SetStackCount(instanceOf(nil), count)
+		end
+
+		function nModifier.IncrementStackCount()
+			local id = instanceOf(nil)
+			ModifierEngine.SetStackCount(id, ModifierEngine.GetStackCount(id) + 1)
+			return ModifierEngine.GetStackCount(id)
+		end
+
+		function nModifier.ResetDuration()
+			ModifierEngine.ResetDuration(instanceOf(nil))
+		end
+
+		function nModifier.GetRemainingDuration(id)
+			return ModifierEngine.GetRemainingSeconds(instanceOf(id))
+		end
+
+		function nModifier.IsModifierRunning(id)
+			return id ~= nil and ModifierEngine.GetContext(id) ~= nil
+		end
+
+		-- Scripts pass the agent and the instance, or only the instance, or nothing for themselves
+		function nModifier.MarkForDelete(...)
+			local count = select("#", ...)
+			local id = select(count > 0 and count or 1, ...)
+			if type(id) ~= "number" or ModifierEngine.GetContext(id) == nil then
+				id = instanceOf(nil)
+			end
+			ModifierEngine.MarkForDelete(id)
+		end
+
+		function nModifier.GetFirstModifierByGUID(agent, guid)
+			local id = ModifierEngine.GetFirst(agent or 0, guid or 0)
+			return id ~= 0 and id or kObjIDNone
+		end
+
+		function nModifier.AgentHasModifierMatchingGUID(agent, guid)
+			return ModifierEngine.GetFirst(agent or 0, guid or 0) ~= 0
+		end
+		nGameObject.IsModifierActive = nModifier.AgentHasModifierMatchingGUID
+
+		local function matching(agent, field, flag)
+			local found = {}
+			for _, id in ipairs(ModifierEngine.GetAll(agent or 0)) do
+				local context = ModifierEngine.GetContext(id)
+				if context and hasFlag(context[field], flag) then
+					found[#found + 1] = id
+				end
+			end
+			return found
+		end
+
+		function nModifier.GetModifiersMatchingDescriptor(agent, flag)
+			return matching(agent, "descriptors", flag)
+		end
+
+		function nModifier.CheckForModifierDebuffDescriptor(agent, flag)
+			return #matching(agent, "debuffDescriptors", flag) > 0
+		end
+
+		-- Runs a function as if it were inside that modifier, then goes back
+		local function finishInContext(previous, ...)
+			CastContext.Set(previous)
+			return ...
+		end
+
+		function nModifier.CallFunctionInContext(id, callback, ...)
+			local previous = CastContext.Get()
+			CastContext.Set(contextOf(id) or previous)
+			return finishInContext(previous, callback(...))
+		end
+		nAbility.CallFunctionInContext = nModifier.CallFunctionInContext
+
+		-- Without an operation a change adds. Inside a modifier it ends with the modifier.
+		function nAttribute.AddAttributeModifier(id, attribute, value, operation)
+			return ModifierEngine.AddAttributeChange(id, attribute, value or 0, operation or nAttributeOp.kAdd, instanceOf(nil))
+		end
+
+		function nAttribute.RemoveAttributeModifier(id, handle)
+			if handle then
+				ModifierEngine.RemoveAttributeChange(id, handle, instanceOf(nil))
+			end
+		end
+	)lua";
+
 	constexpr const char* vectorApi = R"lua(
 		local function get(id)
 			return id and id ~= kObjIDNone and nObjectManager.GetObject(id) or nil
@@ -553,8 +829,9 @@ namespace Game {
 		simulator["GetGameTime"] = [this]() {
 			return GetGame().GetTime() / 1000.0;
 		};
+		// A chain is the campaign, as opposed to the arena, and immunities only count in one.
 		simulator["IsChainGame"] = [] {
-			return false;
+			return true;
 		};
 
 		sol::table bitOperations = mState.create_named_table("nBit");
@@ -584,9 +861,71 @@ namespace Game {
 			gaps->Record(name);
 		};
 
+		sol::table modifierEngine = mState.create_named_table("ModifierEngine");
+		modifierEngine["AttributeFromScript"] = [](uint8_t attribute) {
+			return AttributeFromScript(attribute);
+		};
+		modifierEngine["Request"] = [this](sol::table context, sol::table settings, uint32_t agent, uint32_t initiator) {
+			ModifierSpec spec;
+			spec.guid = settings["guid"];
+			spec.maxStackCount = static_cast<uint32_t>(settings.get<double>("maxStackCount"));
+			spec.activation = static_cast<ActivationType>(settings.get<uint8_t>("activation"));
+			spec.deactivation = static_cast<DeactivationType>(settings.get<uint8_t>("deactivation"));
+			spec.bound = settings["bound"];
+
+			const auto& objects = GetGame().GetObjectManager();
+			const auto target = objects.Get(agent);
+			const auto source = objects.Get(initiator);
+
+			ModifierDurationRules rules;
+			rules.isBuff = settings["isBuff"];
+			rules.isDebuff = settings["isDebuff"];
+			rules.isDoT = settings["isDoT"];
+			rules.isCrowdControl = settings["isCrowdControl"];
+			rules.buffIncrease = source ? source->GetAttributeValue(AttributeType::BuffDuration) : 0.f;
+			rules.debuffReduction = target ? target->GetAttributeValue(AttributeType::DebuffDuration) : 0.f;
+			rules.dotReduction = target ? target->GetAttributeValue(AttributeType::DoTDurationDecrease) : 0.f;
+			rules.crowdControlReduction = target ? target->GetAttributeValue(AttributeType::CrowdControlDurationDecrease) : 0.f;
+
+			return GetGame().GetModifiers().Request(spec, rules, settings.get<float>("seconds"), agent, initiator, std::move(context));
+		};
+		modifierEngine["GetContext"] = [this](sol::this_state L, uint32_t id) {
+			return GetGame().GetModifiers().GetContext(id, L);
+		};
+		modifierEngine["GetStackCount"] = [this](uint32_t id) {
+			const auto instance = GetGame().GetModifiers().GetManager().Get(id);
+			return instance ? instance->stackCount : 0;
+		};
+		modifierEngine["SetStackCount"] = [this](uint32_t id, uint32_t count) {
+			GetGame().GetModifiers().SetStackCount(id, count);
+		};
+		modifierEngine["ResetDuration"] = [this](uint32_t id) {
+			GetGame().GetModifiers().ResetDuration(id);
+		};
+		modifierEngine["GetRemainingSeconds"] = [this](uint32_t id) {
+			return GetGame().GetModifiers().GetManager().GetRemainingMs(id, GetGame().GetTime()) / 1000.0;
+		};
+		modifierEngine["MarkForDelete"] = [this](uint32_t id) {
+			GetGame().GetModifiers().MarkForDelete(id);
+		};
+		modifierEngine["GetFirst"] = [this](uint32_t agent, uint32_t guid) -> uint32_t {
+			const auto instance = GetGame().GetModifiers().GetManager().FindFirst(agent, guid);
+			return instance ? instance->id : 0;
+		};
+		modifierEngine["GetAll"] = [this](uint32_t agent) {
+			return sol::as_table(GetGame().GetModifiers().GetManager().GetAll(agent));
+		};
+		modifierEngine["AddAttributeChange"] = [this](uint32_t object, uint8_t attribute, float value, uint8_t op, uint32_t id) {
+			return GetGame().GetModifiers().AddAttributeChange(object, AttributeFromScript(attribute), value, static_cast<AttributeOp>(op), id);
+		};
+		modifierEngine["RemoveAttributeChange"] = [this](uint32_t object, uint32_t handle, uint32_t id) {
+			GetGame().GetModifiers().RemoveAttributeChange(object, handle, id);
+		};
+
 		LoadBuffer(setupApi);
 		LoadBuffer(castApi);
 		LoadBuffer(objectApi);
+		LoadBuffer(modifierApi);
 		LoadBuffer(vectorApi);
 		LoadBuffer(watchApi);
 	}

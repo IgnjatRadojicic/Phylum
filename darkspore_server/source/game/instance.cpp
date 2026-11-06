@@ -4,6 +4,7 @@
 
 #include "objectmanager.h"
 #include "lua.h"
+#include "modifiersystem.h"
 #include "serverevent.h"
 #include "catalyst.h"
 #include "scheduler.h"
@@ -94,6 +95,7 @@ namespace Game {
 	void Instance::CreateWorld() {
 		mObjectManager = std::make_unique<ObjectManager>(*this);
 		mLua = std::make_unique<Lua>(*this);
+		mModifiers = std::make_unique<ModifierSystem>(*this);
 		mServer = std::make_unique<RakNet::Server>(*this);
 	}
 
@@ -117,6 +119,7 @@ namespace Game {
 		}
 
 		mServer.reset();
+		mModifiers.reset(); // Holds tables that belong to Lua
 		mLua.reset();
 		mObjectManager.reset();
 	}
@@ -239,6 +242,10 @@ namespace Game {
 		return *mObjectManager;
 	}
 
+	ModifierSystem& Instance::GetModifiers() {
+		return *mModifiers;
+	}
+
 	Lua& Instance::GetLua() {
 		return *mLua;
 	}
@@ -267,6 +274,8 @@ namespace Game {
 		if (!object) {
 			return;
 		}
+
+		mModifiers->OnAgentDeath(object->GetId());
 
 		SendObjectGfxState(object, utils::hash_id("dead"));
 
@@ -472,6 +481,7 @@ namespace Game {
 
 		if (auto delta = (newGameTime - mGameTime); delta >= 50) {
 			mGameTime = newGameTime;
+			mModifiers->Update();
 			mObjectManager->Update(delta / 1000.f); // Maybe send update time so we can compensate for lag?
 			for (const auto& [_, player] : mPlayers) {
 				SendLabsPlayerUpdate(player);
@@ -1097,6 +1107,27 @@ namespace Game {
 
 		for (const auto& [_, client] : mServer->GetClients()) {
 			mServer->SendCooldownUpdate(client, object, id, start, duration);
+		}
+	}
+
+	void Instance::SendModifierCreated(const ObjectPtr& object, const ModifierInstance& modifier) {
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendModifierCreated(client, object, modifier);
+		}
+	}
+
+	void Instance::SendModifierUpdated(const ObjectPtr& object, const ModifierInstance& modifier, bool restarted) {
+		// This start time tells the client to keep the one it has.
+		constexpr uint64_t keepStart = 0xFFFFFFFFFFFFFFFFULL;
+
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendModifierUpdated(client, object, modifier.id, restarted ? modifier.startMs : keepStart, modifier.stackCount, modifier.spec.bound);
+		}
+	}
+
+	void Instance::SendModifierDeleted(const ObjectPtr& object, uint32_t id) {
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendModifierDeleted(client, object, id);
 		}
 	}
 

@@ -86,6 +86,7 @@ namespace Game {
 
 			// The object casting on this thread, whose pointer is cleared when the thread is freed.
 			std::weak_ptr<Object> mOwner;
+			uint64_t mTicket = 0;
 
 			ResumeCondition mResumeCondition;
 
@@ -213,8 +214,15 @@ namespace Game {
 
 			void ReturnThreadToPool(LuaThread* thread);
 
+			// A pooled thread can be reused or deleted, so anything holding on to one keeps a ticket.
+			uint64_t TrackThread(LuaThread* thread);
+			void StopThread(uint64_t ticket);
+
 		private:
 			// luafunctions.cpp
+			void PreloadLibraries();
+			void PreloadModifiers();
+
 			void RegisterEnums();
 			void RegisterFunctions();
 
@@ -239,6 +247,8 @@ namespace Game {
 			std::unordered_map<uint32_t, sol::table> mPrivateTables;
 
 			std::unordered_set<LuaThread*> mYieldedThreads;
+			std::unordered_map<uint64_t, LuaThread*> mTrackedThreads;
+			uint64_t mNextThreadTicket = 1;
 
 			std::vector<LuaThread*> mThreadPool;
 	};

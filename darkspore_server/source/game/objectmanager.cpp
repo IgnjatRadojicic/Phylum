@@ -2,6 +2,7 @@
 // Include
 #include "objectmanager.h"
 #include "instance.h"
+#include "modifiersystem.h"
 #include "lua.h"
 
 #include "utils/functions.h"
@@ -297,6 +298,11 @@ namespace Game {
 
 		if (!mMarkedObjects.empty()) {
 			auto& lua = mGame.GetLua();
+
+			// Before the objects go, because deactivate scripts still reach for them.
+			for (const auto& object : mMarkedObjects) {
+				mGame.GetModifiers().OnAgentDestroyed(object->GetId());
+			}
 
 			mGame.SendObjectDelete(mMarkedObjects);
 			for (const auto& object : mMarkedObjects) {

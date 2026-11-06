@@ -362,11 +362,6 @@ namespace RakNet {
 					break;
 				}
 
-				case PacketID::ModifierCreated: {
-					SendModifierCreated(client, player->GetDeployedCharacterObject());
-					break;
-				}
-
 				case PacketID::DebugPing: {
 					SendDebugPing(client);
 					break;
@@ -1808,26 +1803,23 @@ namespace RakNet {
 		Send(outStream, client);
 	}
 
-	void Server::SendModifierCreated(const ClientPtr& client, const Game::ObjectPtr& object) {
-		// Packet size: 0x15
+	void Server::SendModifierCreated(const ClientPtr& client, const Game::ObjectPtr& object, const Game::ModifierInstance& modifier) {
 		if (!object) {
 			return;
 		}
-
-		bool bind = false;
 
 		BitStream outStream(8);
 		outStream.Write(PacketID::ModifierCreated);
 
 		Write<uint32_t>(outStream, object->GetId());
-		Write<uint32_t>(outStream, utils::hash_id("LightningRoguePassive"));
-		Write<uint32_t>(outStream, object->GetId()); // Target object
-		Write<uint32_t>(outStream, 60 * 1000); // duration i think
-		Write<uint32_t>(outStream, 1); // overdrive = 3, some = 1, other stuff is unknown
-		Write<uint32_t>(outStream, 1); // always 1?
-		Write<uint64_t>(outStream, mGame.GetTime());
-		Write<uint32_t>(outStream, 0); // Seems to be a pointer in the client, always send 0
-		Write<bool>(outStream, bind);
+		Write<uint32_t>(outStream, modifier.spec.guid);
+		Write<uint32_t>(outStream, modifier.id);
+		Write<uint32_t>(outStream, modifier.spec.durationMs);
+		Write<uint32_t>(outStream, 0); // Overdrive
+		Write<uint32_t>(outStream, modifier.stackCount);
+		Write<uint64_t>(outStream, modifier.startMs);
+		Write<uint32_t>(outStream, 0); // NPC affix asset, for elites
+		Write<bool>(outStream, modifier.spec.bound);
 
 		Send(outStream, client);
 	}
@@ -1843,8 +1835,8 @@ namespace RakNet {
 
 		Write<uint32_t>(outStream, object->GetId());
 		Write<uint32_t>(outStream, modifierId);
-		Write<uint64_t>(outStream, timestamp); // 0xFFFFFFFFFFFFFFFFULL = dont update duration?
-		Write<uint32_t>(outStream, stackCount); // not sure yet, maybe stack count
+		Write<uint64_t>(outStream, timestamp); // All bits set keeps the start time the client has
+		Write<uint32_t>(outStream, stackCount);
 		Write<bool>(outStream, bind);
 
 		Send(outStream, client);

@@ -102,6 +102,8 @@ namespace Game {
 	// Predefined
 	class ObjectManager;
 	class Lua;
+	class ModifierSystem;
+	struct ModifierInstance;
 
 	// Instance
 	class Instance {
@@ -136,6 +138,8 @@ namespace Game {
 
 			ObjectManager& GetObjectManager();
 			const ObjectManager& GetObjectManager() const;
+
+			ModifierSystem& GetModifiers();
 
 			Lua& GetLua();
 			const Lua& GetLua() const;
@@ -207,6 +211,9 @@ namespace Game {
 			void SendServerEvent(const PlayerPtr& player, const ServerEventBase& serverEvent);
 			void SendCombatEvent(const CombatEvent& combatEvent);
 			void SendCooldownUpdate(const ObjectPtr& object, uint32_t id, uint64_t start, uint32_t duration);
+			void SendModifierCreated(const ObjectPtr& object, const ModifierInstance& modifier);
+			void SendModifierUpdated(const ObjectPtr& object, const ModifierInstance& modifier, bool restarted);
+			void SendModifierDeleted(const ObjectPtr& object, uint32_t id);
 			void SendLabsPlayerUpdate(const PlayerPtr& player);
 
 		private:
@@ -218,6 +225,7 @@ namespace Game {
 			std::unique_ptr<RakNet::Server> mServer;
 			std::unique_ptr<ObjectManager> mObjectManager;
 			std::unique_ptr<Lua> mLua;
+			std::unique_ptr<ModifierSystem> mModifiers;
 
 			std::unordered_map<uint32_t, MarkerPtr> mMarkers;
 			std::map<int64_t, PlayerPtr> mPlayers;
