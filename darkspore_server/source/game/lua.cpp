@@ -561,6 +561,11 @@ namespace Game {
 		sol::main_table cast = std::move(thread->mCastContext);
 		thread->mCastContext = sol::main_table();
 
+		// Scripts key their cast by thread (see CastContext in scriptapi.cpp), and this one will be reused.
+		if (sol::optional<sol::protected_function> forget = mState["CastContext"]["Forget"]) {
+			(*forget)(thread->mThread);
+		}
+
 		if (thread->mTicket != 0) {
 			mTrackedThreads.erase(thread->mTicket);
 			thread->mTicket = 0;

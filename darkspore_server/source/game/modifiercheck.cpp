@@ -112,6 +112,19 @@ namespace {
 			end
 		})
 
+		-- Two threads one after the other: the second usually gets the first one's pooled
+		-- Lua thread, and must not find the first one's cast.
+		function ModifierCheckStaleCast(object, result)
+			nThread.Create(object, function()
+				result.first = coroutine.running()
+				CastContext.Set({ stale = true })
+			end)
+			nThread.Create(object, function()
+				result.reused = coroutine.running() == result.first
+				result.stale = CastContext.Get() ~= nil
+			end)
+		end
+
 		function ModifierCheckBrokenGuid()
 			return nUtil.SPID("ModifierCheckBroken")
 		end
@@ -215,6 +228,7 @@ namespace {
 				CheckMarkedObjectsOutlastDeactivate();
 				CheckCanUseReadsItsOwnContext();
 				CheckFailedStartEndsIt();
+				CheckReusedThreadForgetsItsCast();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
 				forget();
@@ -448,6 +462,18 @@ namespace {
 				for (uint32_t left : Manager().GetAll(agent->GetId())) {
 					EndNow(left);
 				}
+			}
+
+			void CheckReusedThreadForgetsItsCast() {
+				auto object = Spawn();
+				sol::table result = mState.create_table();
+				sol::protected_function check = mState["ModifierCheckStaleCast"];
+				check(object->GetId(), result);
+
+				const bool reused = result.get_or("reused", false);
+				const bool stale = result.get_or("stale", true);
+				Report("reused-thread-forgets-its-cast", reused && !stale,
+					"reused=" + std::to_string(reused) + " stale=" + std::to_string(stale));
 			}
 
 			void CheckFailedStartEndsIt() {

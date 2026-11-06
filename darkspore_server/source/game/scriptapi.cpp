@@ -270,6 +270,13 @@ namespace {
 			return looseData[thread]
 		end
 
+		-- The server calls this when a thread goes back to its pool. The thread is used
+		-- again for other work, which must not find this one's cast or private data.
+		function CastContext.Forget(thread)
+			casts[thread] = nil
+			looseData[thread] = nil
+		end
+
 		function nThreadData.CreatePrivateTable()
 			local owner = dataOwner()
 			owner.privateTable = {}
