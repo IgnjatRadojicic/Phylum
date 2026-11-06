@@ -586,7 +586,7 @@ namespace Game {
 			return { true, 0 };
 		}
 
-		const auto [end, duration] = payment.Pay();
+		const auto duration = payment.Pay().Duration();
 		mLua->Trace(std::format("PAID ability={} object={} mana={:.0f} cooldown={}", abilityId, object->GetId(), cost.mana, duration));
 		return { true, duration };
 	}

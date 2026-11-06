@@ -26,7 +26,7 @@ namespace Game {
 			// Takes the mana and starts the cooldown. Returns the cooldown now running, which is
 			// empty when the cast has none. With TEST_FREE_MANA, until orbs refill mana as in the
 			// game, a cast costs no mana at all.
-			Cooldown Pay();
+			CooldownSpan Pay();
 
 		private:
 			Object& mCaster;

@@ -6,6 +6,7 @@
 #include "noun.h"
 #include "attributes.h"
 #include "attributestack.h"
+#include "cooldowntable.h"
 #include "hitroll.h"
 #include "locomotion.h"
 #include "lua.h"
@@ -19,8 +20,6 @@ namespace SporeNet { class Part; }
 
 // Game
 namespace Game {
-	// Cooldown = tuple(Start + milliseconds, milliseconds)
-	using Cooldown = std::tuple<uint64_t, uint32_t>;
 
 	// DamageResult
 	// One hit: whether it landed (see HitRoll for dodge, resist and immune), and how hard.
@@ -402,12 +401,10 @@ namespace Game {
 
 			// Cooldown
 			bool HasCooldown(uint32_t abilityId) const;
-			Cooldown AddCooldown(uint32_t abilityId, uint32_t milliseconds);
+			CooldownTable& GetCooldowns() { return mCooldowns; }
 
 			// The attribute the ability scales with, as nAbility.GetAbilityAttributeValue gives it.
 			float GetAbilityAttributeValue(const Ability& ability) const;
-			Cooldown RemoveCooldown(uint32_t abilityId, uint32_t milliseconds);
-			Cooldown ScaleCooldown(uint32_t abilityId, float scale);
 
 			// Properties
 			float GetAttributeValue(uint8_t idx) const;
@@ -561,7 +558,7 @@ namespace Game {
 
 			std::unordered_map<uint32_t, std::shared_ptr<Modifier>> mModifiers;
 			AttributesPtr mAttributeSnapshot;
-			std::map<uint32_t, Cooldown> mCooldowns;
+			CooldownTable mCooldowns;
 
 			std::unique_ptr<EffectList> mEffects;
 			std::unique_ptr<Attributes> mAttributes;

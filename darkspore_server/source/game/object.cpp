@@ -1088,24 +1088,7 @@ namespace Game {
 
 	// Cooldown
 	bool Object::HasCooldown(uint32_t abilityId) const {
-		// TODO: check if ability has global cooldown
-		if (auto it = mCooldowns.find(abilityId); it != mCooldowns.end()) {
-			return std::get<0>(it->second) > GetGame().GetTime();
-		}
-		return false;
-	}
-
-	Cooldown Object::AddCooldown(uint32_t abilityId, uint32_t milliseconds) {
-		const auto time = GetGame().GetTime();
-		const auto& [it, inserted] = mCooldowns.try_emplace(abilityId);
-		if (inserted || time > std::get<0>(it->second)) {
-			it->second = std::make_tuple(time + milliseconds, milliseconds);
-		} else {
-			const auto& [end, duration] = it->second;
-			const auto newDuration = static_cast<uint32_t>(end - time + milliseconds);
-			it->second = std::make_tuple(end - duration + newDuration, newDuration);
-		}
-		return it->second;
+		return mCooldowns.IsCooling(abilityId, GetGame().GetTime());
 	}
 
 	float Object::GetAbilityAttributeValue(const Ability& ability) const {
@@ -1115,27 +1098,6 @@ namespace Game {
 			scalingAttribute = static_cast<AttributeType>(GetPrimaryAttribute());
 		}
 		return GetAttributeValue(scalingAttribute);
-	}
-
-	Cooldown Object::RemoveCooldown(uint32_t abilityId, uint32_t milliseconds) {
-		Cooldown cooldown;
-		if (auto it = mCooldowns.find(abilityId); it != mCooldowns.end()) {
-			const auto time = GetGame().GetTime();
-			
-			auto& [end, duration] = it->second;
-			if (milliseconds >= duration) {
-				mCooldowns.erase(it);
-			} else {
-				end -= milliseconds;
-				duration -= milliseconds;
-				cooldown = it->second;
-			}
-		}
-		return cooldown;
-	}
-
-	Cooldown Object::ScaleCooldown(uint32_t abilityId, float scale) {
-		return Cooldown {};
 	}
 
 	// Properties

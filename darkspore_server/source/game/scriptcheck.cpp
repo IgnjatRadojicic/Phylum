@@ -63,6 +63,10 @@ namespace Game {
 				function object:GetAttributeValue() return 0 end
 				function object:GetAbilityAttributeValue() return 0 end
 				function object:PayForCast() end
+				function object:RestartCooldown() end
+				function object:ShiftCooldown() end
+				function object:ClearCooldown() end
+				function object:ScaleCooldown() end
 				function object:IsPlayerControlled() return team == 1 end
 				function object:SetAnimationState() calls.animation = calls.animation + 1 end
 				function object:TakeDamage()

@@ -784,12 +784,65 @@ namespace LuaFunction {
 			return false;
 		}
 
-		auto AddCooldown(sol::this_state L, sol::object objectValue, uint32_t abilityId, uint32_t milliseconds) {
+		void SendCooldown(Game::Instance& game, const Game::ObjectPtr& object, uint32_t abilityId, const Game::CooldownSpan& span) {
+			game.SendCooldownUpdate(object, abilityId, span.start, span.Duration());
+		}
+
+		void SendCooldowns(Game::Instance& game, const Game::ObjectPtr& object, const Game::CooldownTable::Changes& changes) {
+			for (const auto& [abilityId, span] : changes) {
+				SendCooldown(game, object, abilityId, span);
+			}
+		}
+
+		// nAbility.ResetAbilityCooldown: the ability's full cooldown at that rank, from now
+		auto RestartCooldown(sol::this_state L, sol::object objectValue, uint32_t abilityId, sol::optional<int32_t> rank) {
+			auto& game = LuaGetGame(L);
+			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
+			const auto& ability = game.GetLua().GetAbility(abilityId);
+			if (object && ability) {
+				const auto milliseconds = Game::CastPayment(*object, *ability, abilityId, rank.value_or(1)).GetCost().cooldownMs;
+				SendCooldown(game, object, abilityId, object->GetCooldowns().Start(abilityId, game.GetTime(), milliseconds));
+			}
+		}
+
+		// nAbility.AddCooldownTime, in milliseconds
+		auto ShiftCooldown(sol::this_state L, sol::object objectValue, uint32_t abilityId, double milliseconds) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
 			if (object) {
-				const auto& [end, duration] = object->AddCooldown(abilityId, milliseconds);
-				game.SendCooldownUpdate(object, abilityId, end - duration, duration);
+				if (const auto span = object->GetCooldowns().Shift(abilityId, static_cast<int64_t>(milliseconds))) {
+					SendCooldown(game, object, abilityId, *span);
+				}
+			}
+		}
+
+		// nAbility.RemoveCooldownTime: one ability's cooldown, or every one without an ability
+		auto ClearCooldown(sol::this_state L, sol::object objectValue, sol::optional<uint32_t> abilityId) {
+			auto& game = LuaGetGame(L);
+			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
+			if (!object) {
+				return;
+			}
+			auto& cooldowns = object->GetCooldowns();
+			if (!abilityId) {
+				SendCooldowns(game, object, cooldowns.ClearAll(game.GetTime()));
+			} else if (const auto span = cooldowns.Clear(*abilityId, game.GetTime())) {
+				SendCooldown(game, object, *abilityId, *span);
+			}
+		}
+
+		// nAbility.ScaleCooldownTime: one ability's cooldown, or every one without an ability
+		auto ScaleCooldown(sol::this_state L, sol::object objectValue, float scale, sol::optional<uint32_t> abilityId) {
+			auto& game = LuaGetGame(L);
+			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
+			if (!object) {
+				return;
+			}
+			auto& cooldowns = object->GetCooldowns();
+			if (!abilityId) {
+				SendCooldowns(game, object, cooldowns.ScaleAll(game.GetTime(), scale));
+			} else if (const auto span = cooldowns.Scale(*abilityId, game.GetTime(), scale)) {
+				SendCooldown(game, object, *abilityId, *span);
 			}
 		}
 
@@ -806,24 +859,11 @@ namespace LuaFunction {
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
 			const auto& ability = game.GetLua().GetAbility(abilityId);
 			if (object && ability) {
-				const auto& [end, duration] = Game::CastPayment(*object, *ability, abilityId, rank.value_or(1)).Pay();
-				if (duration > 0) {
-					game.SendCooldownUpdate(object, abilityId, end - duration, duration);
+				const auto span = Game::CastPayment(*object, *ability, abilityId, rank.value_or(1)).Pay();
+				if (span.Duration() > 0) {
+					SendCooldown(game, object, abilityId, span);
 				}
 			}
-		}
-
-		auto RemoveCooldown(sol::this_state L, sol::object objectValue, uint32_t abilityId, uint32_t milliseconds) {
-			auto& game = LuaGetGame(L);
-			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
-			if (object) {
-				const auto& [end, duration] = object->RemoveCooldown(abilityId, milliseconds);
-				game.SendCooldownUpdate(object, abilityId, end - duration, duration);
-			}
-		}
-
-		auto ScaleCooldown(sol::this_state L, sol::object objectValue, uint32_t abilityId, float scale) {
-			//
 		}
 
 		auto TakeDamage(sol::this_state L,
@@ -2161,8 +2201,9 @@ namespace Game {
 
 		object["IsCombatant"] = &LuaFunction::Object::IsCombatant;
 
-		object["AddCooldown"] = &LuaFunction::Object::AddCooldown;
-		object["RemoveCooldown"] = &LuaFunction::Object::RemoveCooldown;
+		object["RestartCooldown"] = &LuaFunction::Object::RestartCooldown;
+		object["ShiftCooldown"] = &LuaFunction::Object::ShiftCooldown;
+		object["ClearCooldown"] = &LuaFunction::Object::ClearCooldown;
 		object["PayForCast"] = &LuaFunction::Object::PayForCast;
 		object["GetAbilityAttributeValue"] = &LuaFunction::Object::GetAbilityAttributeValue;
 		object["ScaleCooldown"] = &LuaFunction::Object::ScaleCooldown;

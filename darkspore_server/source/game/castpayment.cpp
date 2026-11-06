@@ -3,6 +3,7 @@
 #include "castpayment.h"
 
 #include "config.h"
+#include "instance.h"
 #include "lua.h"
 #include "object.h"
 
@@ -37,7 +38,7 @@ namespace Game {
 		return !mCaster.HasCooldown(mAbilityId) && mCaster.GetMana() >= mCost.mana;
 	}
 
-	Cooldown CastPayment::Pay() {
+	CooldownSpan CastPayment::Pay() {
 		if (mCost.mana > 0) {
 			mCaster.SetMana(mCaster.GetMana() - mCost.mana);
 		}
@@ -45,6 +46,6 @@ namespace Game {
 		if (mCost.cooldownMs == 0) {
 			return {};
 		}
-		return mCaster.AddCooldown(mAbilityId, mCost.cooldownMs);
+		return mCaster.GetCooldowns().Start(mAbilityId, mCaster.GetGame().GetTime(), mCost.cooldownMs);
 	}
 }
