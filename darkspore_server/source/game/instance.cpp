@@ -1,6 +1,7 @@
 
 // Include
 #include "instance.h"
+#include "basicattack.h"
 
 #include "objectmanager.h"
 #include "lua.h"
@@ -516,39 +517,58 @@ namespace Game {
 	}
 
 	void Instance::WeaponAttack(const ObjectPtr& attacker, uint32_t targetId, uint32_t abilityId, const std::tuple<float, float>& damageRange) {
-		// The game's ability scripts need an API this server does not provide yet,
-		// so basic attacks apply weapon damage directly.
+		// The game's ability scripts need an API this server does not provide yet, so basic
+		// attacks play the script's swing and apply weapon damage directly at its hit time.
 		if (!attacker) {
 			return;
 		}
 
-		const auto target = mObjectManager->Get(targetId);
-		if (!target || target == attacker || target->IsMarkedForDeletion() || !target->HasCombatantData() || target->GetHealth() <= 0) {
+		const uint32_t attackerId = attacker->GetId();
+		const auto hit = [this, attackerId, targetId, abilityId, damageRange]() {
+			const auto attacker = mObjectManager->Get(attackerId);
+			const auto target = mObjectManager->Get(targetId);
+			if (!attacker || !target || target == attacker || target->IsMarkedForDeletion() || !target->HasCombatantData() || target->GetHealth() <= 0) {
+				return;
+			}
+
+			CombatEvent combatEvent;
+			combatEvent.mTargetId = target->GetId();
+			combatEvent.mSourceId = attackerId;
+			combatEvent.mAbilityId = abilityId;
+
+			const auto offset = target->GetPosition() - attacker->GetPosition();
+			if (glm::length(offset) > 0.f) {
+				combatEvent.mDirection = glm::normalize(offset);
+			}
+
+			const auto [landed, damage, critical] = target->TakeDamage(
+				nullptr, damageRange, DamageType::Life, DamageSource::Physical, 0.f, Descriptors::IsBasic, 1.f, combatEvent.mDirection
+			);
+
+			combatEvent.mDeltaHealth = damage;
+			combatEvent.mIntegerHpChange = static_cast<int32_t>(damage);
+			if (critical) {
+				combatEvent.mFlags = CombatEventFlags::Critical;
+			}
+			SendCombatEvent(combatEvent);
+
+			std::cout << "WeaponAttack: target " << targetId << " damage " << damage << " health " << target->GetHealth() << std::endl;
+		};
+
+		const auto* step = BasicAttacks::NextStep(abilityId, attackerId);
+		if (!step) {
+			std::cout << "WeaponAttack: no animation for ability 0x" << std::hex << abilityId << std::dec << std::endl;
+			hit();
 			return;
 		}
 
-		CombatEvent combatEvent;
-		combatEvent.mTargetId = target->GetId();
-		combatEvent.mSourceId = attacker->GetId();
-		combatEvent.mAbilityId = abilityId;
-
-		const auto offset = target->GetPosition() - attacker->GetPosition();
-		if (glm::length(offset) > 0.f) {
-			combatEvent.mDirection = glm::normalize(offset);
-		}
-
-		const auto [hit, damage, critical] = target->TakeDamage(
-			nullptr, damageRange, DamageType::Life, DamageSource::Physical, 0.f, Descriptors::IsBasic, 1.f, combatEvent.mDirection
-		);
-
-		combatEvent.mDeltaHealth = damage;
-		combatEvent.mIntegerHpChange = static_cast<int32_t>(damage);
-		if (critical) {
-			combatEvent.mFlags = CombatEventFlags::Critical;
-		}
-		SendCombatEvent(combatEvent);
-
-		std::cout << "WeaponAttack: target " << targetId << " damage " << damage << " health " << target->GetHealth() << std::endl;
+		SendAnimationState(attacker, step->animation);
+		AddTask(step->hitDelay, [this, hit](uint32_t id) {
+			AddServerTask([this, hit, id]() {
+				CancelTask(id);
+				hit();
+			});
+		});
 	}
 
 	void Instance::SwapCharacter(const PlayerPtr& player, uint32_t creatureIndex) {
