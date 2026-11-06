@@ -51,10 +51,10 @@ values (to build stats, see below).
 - `Deflect` is never sent.
 - The `Dodged` ability event is not raised yet.
 
-## Stats the client builds
+## Hero stats
 
 The client works out a hero's stats as class base + primary stat × the MagicNumbers per-point value
-(`Darkspore.exe` 0x9e2580):
+(`Darkspore.exe` 0x9e2580). The server does the same (`StatShares`):
 
 | Attribute | Adds |
 |---|---|
@@ -64,5 +64,16 @@ The client works out a hero's stats as class base + primary stat × the MagicNum
 | EnergyDefense | Mind × EnergyDefensePerPointofMind (6) |
 | CriticalRating | Dexterity × CritRatingPerPointofDexterity (4) |
 
-The server does not add these yet. It uses the class base values alone, so heroes dodge, resist
-and crit less than the client's tooltip says.
+The class base comes from the hero's ClassAttributes file. A change to Strength, Dexterity or Mind,
+such as a buff, works the shares out again, as the client does each time it reads a stat.
+The weapon's damage range comes from the hero's playerclass file.
+
+Not done yet:
+- Part stats. Parts carry them in their prefix and suffix, but the server cannot equip parts yet,
+  and every stored part has none.
+- The client then caps a stat at the class file's `max` value times a scale (0x9e2020) and at a
+  per-attribute table (0x1165128). Most classes set no `max`, so this is left out for now.
+- Mobs keep their class values as they are. The client's rule does not check for heroes, but mob
+  stats also scale with level and difficulty, which is Stage 2.
+- Darkspin uses (Strength − 10) × 5 for health. The client code reads Strength × 5, which is what
+  the server uses.

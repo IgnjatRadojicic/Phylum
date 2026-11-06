@@ -8,6 +8,7 @@
 #include "castpayment.h"
 #include "difficultytuning.h"
 #include "magicnumbers.h"
+#include "statshares.h"
 
 #include "sporenet/part.h"
 
@@ -584,45 +585,20 @@ namespace Game {
 
 			const auto& attributes = data->GetAttributes();
 			if (attributes) {
-				auto health = attributes->GetBaseAttribute(ClassAttribute::Health);
-				if (health > 0) {
-					SetAttributeValue(AttributeType::MaxHealth, health);
-					SetHealth(GetMaxHealth());
-				}
+				// Primary stats first, since the others grow with them (see StatShares).
+				SetAttributeValue(AttributeType::Strength, attributes->GetBaseAttribute(ClassAttribute::Strength));
+				SetAttributeValue(AttributeType::Dexterity, attributes->GetBaseAttribute(ClassAttribute::Dexterity));
+				SetAttributeValue(AttributeType::Mind, attributes->GetBaseAttribute(ClassAttribute::Mind));
 
-				auto mana = attributes->GetBaseAttribute(ClassAttribute::Mana);
-				if (mana > 0) {
-					SetAttributeValue(AttributeType::MaxMana, mana);
-					SetMana(GetMaxMana());
-				}
+				SetStatShareBase(AttributeType::MaxHealth, attributes->GetBaseAttribute(ClassAttribute::Health));
+				SetStatShareBase(AttributeType::MaxMana, attributes->GetBaseAttribute(ClassAttribute::Mana));
+				SetStatShareBase(AttributeType::PhysicalDefense, attributes->GetBaseAttribute(ClassAttribute::PhysicalDefense));
+				SetStatShareBase(AttributeType::EnergyDefense, attributes->GetBaseAttribute(ClassAttribute::EnergyDefense));
+				SetStatShareBase(AttributeType::CriticalRating, attributes->GetBaseAttribute(ClassAttribute::Critical));
+				// MagicalDefense is in the class data but has no attribute.
 
-				if (auto value = attributes->GetBaseAttribute(ClassAttribute::Strength); value > 0) {
-					SetAttributeValue(AttributeType::Strength, value);
-				}
-
-				if (auto value = attributes->GetBaseAttribute(ClassAttribute::Dexterity); value > 0) {
-					SetAttributeValue(AttributeType::Dexterity, value);
-				}
-
-				if (auto value = attributes->GetBaseAttribute(ClassAttribute::Mind); value > 0) {
-					SetAttributeValue(AttributeType::Mind, value);
-				}
-
-				if (auto value = attributes->GetBaseAttribute(ClassAttribute::PhysicalDefense); value > 0) {
-					SetAttributeValue(AttributeType::PhysicalDefense, value);
-				}
-
-				if (auto value = attributes->GetBaseAttribute(ClassAttribute::MagicalDefense); value > 0) {
-					// Unused
-				}
-
-				if (auto value = attributes->GetBaseAttribute(ClassAttribute::EnergyDefense); value > 0) {
-					SetAttributeValue(AttributeType::EnergyDefense, value);
-				}
-
-				if (auto value = attributes->GetBaseAttribute(ClassAttribute::Critical); value > 0) {
-					SetAttributeValue(AttributeType::CriticalRating, value);
-				}
+				SetHealth(GetMaxHealth());
+				SetMana(GetMaxMana());
 
 				if (auto value = attributes->GetBaseAttribute(ClassAttribute::NonCombatSpeed); value > 0) {
 					SetAttributeValue(AttributeType::NonCombatSpeed, value);
@@ -1186,10 +1162,42 @@ namespace Game {
 
 		mAttributes->SetValue(idx, value);
 		SetFlags(GetFlags() | Flags::UpdateAttributes);
+
+		if (!mStatShareBases.empty()) {
+			RefreshStatShares(static_cast<AttributeType>(idx));
+		}
 	}
 
 	void Object::SetAttributeValue(AttributeType type, float value) {
 		SetAttributeValue(static_cast<uint8_t>(type), value);
+	}
+
+	namespace {
+		const StatShares& GameStatShares() {
+			static const StatShares shares(MagicNumbers::Game());
+			return shares;
+		}
+	}
+
+	void Object::SetStatShareBase(AttributeType derived, float classBase) {
+		const auto share = GameStatShares().For(derived);
+		if (!share) {
+			SetAttributeValue(derived, classBase);
+			return;
+		}
+		mStatShareBases[derived] = classBase;
+		SetAttributeValue(derived, StatShares::Value(*share, classBase, GetAttributeValue(share->primary)));
+	}
+
+	void Object::RefreshStatShares(AttributeType primary) {
+		for (const auto& share : GameStatShares().All()) {
+			if (share.primary != primary) {
+				continue;
+			}
+			if (const auto it = mStatShareBases.find(share.derived); it != mStatShareBases.end()) {
+				SetAttributeValue(share.derived, StatShares::Value(share, it->second, GetAttributeValue(primary)));
+			}
+		}
 	}
 
 	uint32_t Object::AddAttributeChange(uint8_t idx, float value, AttributeOp op) {

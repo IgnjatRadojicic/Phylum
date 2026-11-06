@@ -415,6 +415,10 @@ namespace Game {
 			void SetAttributeValue(uint8_t idx, float value);
 			void SetAttributeValue(AttributeType type, float value);
 
+			// A stat that grows with a primary stat (see StatShares) keeps its class base here,
+			// and is worked out again whenever that primary stat changes.
+			void SetStatShareBase(AttributeType derived, float classBase);
+
 			// A change made by a script. The handle takes it off again.
 			uint32_t AddAttributeChange(uint8_t idx, float value, AttributeOp op);
 			void RemoveAttributeChange(uint32_t handle);
@@ -542,6 +546,8 @@ namespace Game {
 			uint16_t GetFlags() const;
 			void SetFlags(uint16_t flags);
 
+			void RefreshStatShares(AttributeType primary);
+
 		protected:
 			ObjectManager& mManager;
 
@@ -560,6 +566,7 @@ namespace Game {
 			std::unique_ptr<EffectList> mEffects;
 			std::unique_ptr<Attributes> mAttributes;
 			AttributeStack mAttributeStack;
+			std::map<AttributeType, float> mStatShareBases;
 			std::unique_ptr<CombatantData> mCombatantData;
 			std::unique_ptr<InteractableData> mInteractableData;
 			std::unique_ptr<LootData> mLootData;
