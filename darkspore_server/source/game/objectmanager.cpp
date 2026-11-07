@@ -361,7 +361,6 @@ namespace Game {
 				lua.RemovePrivateTable(id);
 
 				mObjects.erase(id);
-				mOpenObjectIds.push_back(id);
 			}
 			mMarkedObjects.clear();
 
@@ -377,20 +376,9 @@ namespace Game {
 	}
 
 	uint32_t ObjectManager::GetNextObjectId() {
+		// Ids only count up, as Darkspin's do (zone/allocator.go): a freed id handed out again let a
+		// script still holding it (a missile's thread) reach the new object.
 		static thread_local uint32_t sNextId = 1;
-
-		uint32_t id;
-		if (!mOpenObjectIds.empty()) {
-			id = mOpenObjectIds.back();
-			mOpenObjectIds.pop_back();
-		} else {
-			id = sNextId++;
-		}
-
-		if (id == 0) {
-			// Out of ids?
-		}
-
-		return id;
+		return sNextId++;
 	}
 }

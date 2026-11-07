@@ -103,7 +103,6 @@ namespace Game {
 			std::unordered_set<ObjectPtr> mActiveObjects;
 
 			std::vector<ObjectPtr> mMarkedObjects;
-			std::vector<uint32_t> mOpenObjectIds;
 
 			friend class Object;
 	};
