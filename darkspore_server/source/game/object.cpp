@@ -1444,8 +1444,10 @@ namespace Game {
 		result.landed = true;
 		result.damage = damage;
 		if (damage > 0) {
+			// Only the hit that kills runs the death, not later ones on the corpse (a damage over time).
+			const bool wasAlive = GetHealth() > 0;
 			SetHealth(GetHealth() - damage);
-			if (GetHealth() <= 0) {
+			if (wasAlive && GetHealth() <= 0) {
 				GetGame().OnObjectDeath(shared_from_this(), result.critical, false);
 			}
 		}
