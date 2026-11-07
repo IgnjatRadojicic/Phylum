@@ -50,6 +50,10 @@ namespace Game {
 			void set_resume_condition(const ResumeCondition& condition);
 			void set_resume_condition(ResumeCondition&& condition);
 
+			// Runs once if the next resume fails, then is dropped (also when the thread goes back to
+			// the pool). A modifier's Tick starts on that resume (ModifierApi.Start waits one update).
+			void on_next_resume_failure(std::function<void()> handler);
+
 			// call<void> answers whether the script ran without an error. Use that answer, not
 			// this thread: a thread that did not wait is back in the pool, or deleted, on return.
 			template<typename Result, typename... Args>
@@ -103,6 +107,7 @@ namespace Game {
 			sol::main_table mCastContext;
 
 			ResumeCondition mResumeCondition;
+			std::function<void()> mOnNextResumeFailure;
 
 			sol::thread mThread;
 			sol::coroutine mCoroutine;

@@ -116,9 +116,12 @@ namespace Game {
 		}
 
 		mResumeCondition = nullptr;
+		const auto onFailure = std::move(mOnNextResumeFailure);
+		mOnNextResumeFailure = nullptr;
 
 		sol::protected_function_result result = mCoroutine(sol::as_args(results));
-		if (!result.valid()) {
+		const bool failed = !result.valid();
+		if (failed) {
 			sol::error err = result;
 			std::cout << "LuaThread::resume()" << std::endl;
 			std::cout << err.what() << std::endl;
@@ -126,7 +129,11 @@ namespace Game {
 			std::cout << std::to_underlying(mCoroutine.status()) << std::endl;
 		}
 
-		return !is_waiting();
+		const bool done = !is_waiting();
+		if (failed && onFailure) {
+			onFailure();
+		}
+		return done;
 	}
 
 	void LuaThread::report(const char* where, const std::string& error) {
@@ -140,6 +147,7 @@ namespace Game {
 
 	void LuaThread::set_resume_condition(const ResumeCondition& condition) { mResumeCondition = condition; }
 	void LuaThread::set_resume_condition(ResumeCondition&& condition) { mResumeCondition = std::move(condition); }
+	void LuaThread::on_next_resume_failure(std::function<void()> handler) { mOnNextResumeFailure = std::move(handler); }
 
 	void LuaThread::create(const sol::function& func) {
 		// Reset coroutine
@@ -150,12 +158,14 @@ namespace Game {
 	void LuaThread::renew() {
 		mCoroutine = sol::nil;
 		mResumeCondition = nullptr;
+		mOnNextResumeFailure = nullptr;
 		mHasEnvironment = false;
 		mThread = sol::thread::create(mLua.GetState());
 	}
 
 	void LuaThread::post_call() {
 		if (!is_waiting()) {
+			mOnNextResumeFailure = nullptr;
 			mLua.ReturnThreadToPool(this);
 		} else {
 			// A script's own coroutine.yield means "go on next frame" (the time bubble's loop). The

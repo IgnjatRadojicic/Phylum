@@ -9,6 +9,8 @@
 #include <DbgHelp.h>
 
 #include <cstdio>
+#include <cstdlib>
+#include <exception>
 
 namespace {
 	void WriteStack(FILE* file, const CONTEXT& crashContext) {
@@ -79,9 +81,31 @@ namespace {
 	}
 }
 
+namespace {
+	// An uncaught C++ exception ends in std::terminate and abort, which skip the exception filter.
+	void OnTerminate() {
+		if (FILE* file = std::fopen("crash.txt", "w")) {
+			std::fprintf(file, "std::terminate (uncaught C++ exception)\n");
+			CONTEXT context {};
+			RtlCaptureContext(&context);
+			WriteStack(file, context);
+			std::fclose(file);
+		}
+		std::abort();
+	}
+}
+
 void CrashReport::Install() {
 	SetUnhandledExceptionFilter(OnCrash);
+	std::set_terminate(OnTerminate);
+	GuardThread();
+}
+
+void CrashReport::GuardThread() {
+	ULONG size = 64 * 1024;
+	SetThreadStackGuarantee(&size);
 }
 #else
 void CrashReport::Install() {}
+void CrashReport::GuardThread() {}
 #endif

@@ -658,6 +658,15 @@ namespace {
 		end
 		nGameObject.GetObjectDirection = nGameObject.GetFacing
 
+		-- The client raises an error for a missing object (0xa01090).
+		function nGameObject.GetRightDirection(id)
+			local object = get(id)
+			if not object then
+				error("GetRightDirection: no object " .. tostring(id))
+			end
+			return object:GetRightDirection()
+		end
+
 		-- GetIsTargetable(id): the client asks the object (0xa03320), false when there is none.
 		function nGameObject.GetIsTargetable(id)
 			local object = get(id)
@@ -1441,8 +1450,9 @@ namespace {
 				nThread.Sleep(0)
 				return
 			end
+			-- Checked once a sim step (GetSimTimeDt), not every Lua update: each check is a radius query.
 			while true do
-				nThread.Sleep(0)
+				nThread.Sleep(50)
 				local object = tonumber(objectId) and nObjectManager.GetObject(objectId) or nil
 				if not object then
 					return

@@ -2,6 +2,8 @@
 // Include
 #include "server.h"
 
+#include "crashreport.h"
+
 #include "sporenet/instance.h"
 #include "sporenet/user.h"
 #include "sporenet/creature.h"
@@ -150,6 +152,7 @@ namespace RakNet {
 
 	void Server::start(uint16_t port) {
 		mThread = std::thread([this, port] {
+			CrashReport::GuardThread();
 			mSelf = RakNetworkFactory::GetRakPeerInterface();
 			// mSelf->SetTimeoutTime(30000, UNASSIGNED_SYSTEM_ADDRESS);
 			mSelf->SetTimeoutTime(0xFFFFFFFF, UNASSIGNED_SYSTEM_ADDRESS);

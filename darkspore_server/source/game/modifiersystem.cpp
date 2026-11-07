@@ -165,6 +165,15 @@ namespace Game {
 
 		mRuns[id].ticket = lua.TrackThread(thread);
 
+		// Start waits one update before Tick (as the client does), so a Tick that dies before it
+		// first waits fails on the next resume; that still counts as dying at start.
+		thread->on_next_resume_failure([this, id] {
+			if (const auto running = mManager.Get(id)) {
+				Trace("failed", running->spec.guid, id, running->agent, running->initiator);
+				mManager.MarkForDelete(id);
+			}
+		});
+
 		sol::state_view state(lua.GetState());
 		const bool started = thread->call<void>(state["ModifierApi"]["Start"], context);
 

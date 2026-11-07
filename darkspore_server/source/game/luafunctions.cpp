@@ -709,6 +709,21 @@ namespace LuaFunction {
 			return glm::zero<glm::vec3>();
 		}
 
+		// The object's right, its orientation turning the right axis (client 0xa01090 -> 0xa177e0);
+		// the axis itself when the turn gives no length. Forward is +Y, so right is +X.
+		auto GetRightDirection(sol::this_state L, sol::object objectValue) {
+			auto& game = LuaGetGame(L);
+			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
+			constexpr glm::vec3 axis(1.f, 0.f, 0.f);
+			glm::vec3 right = axis;
+			if (object) {
+				right = object->GetOrientation() * axis;
+				const float length = glm::length(right);
+				right = length > 0.000001f ? right / length : axis;
+			}
+			return std::make_tuple(right.x, right.y, right.z);
+		}
+
 		auto GetFootprintRadius(sol::this_state L, sol::object objectValue) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
@@ -2290,6 +2305,7 @@ namespace Game {
 
 		object["GetFacing"] = &LuaFunction::Object::GetFacing;
 		object["GetFootprintRadius"] = &Object::GetFootprintRadius;
+		object["GetRightDirection"] = &LuaFunction::Object::GetRightDirection;
 		object["GetCenterPoint"] = &Object::GetCenterPoint;
 
 		object["SetTickOverride"] = sol::resolve<void(sol::protected_function)>(&Object::SetTickOverride);

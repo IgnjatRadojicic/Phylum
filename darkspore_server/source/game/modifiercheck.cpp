@@ -243,6 +243,11 @@ namespace {
 			nAbility.scripts.ModifierCheckStealthCast = nil
 			nAbility.scripts.ModifierCheckCancelledWithChild = nil
 			nAbility.scripts.ModifierCheckFinishes = nil
+			-- RegisterAbility also lists an ability as a modifier (one registry, as in the client)
+			for _, name in ipairs({ "ModifierCheckWaits", "ModifierCheckFails", "ModifierCheckCancelled",
+				"ModifierCheckStealthCast", "ModifierCheckCancelledWithChild", "ModifierCheckFinishes" }) do
+				nModifier.registered[nUtil.SPID(name)] = nil
+			end
 		end
 
 		-- An ability has an instance number of its own, which can equal a modifier's id.
@@ -1183,6 +1188,9 @@ namespace {
 					auto* console = std::cout.rdbuf(output.rdbuf());
 
 					const auto id = Request(agent, caster, guid);
+					// A Tick starts on the update after Activate (as in the client); run it to its
+					// first wait so its missing functions are reported too.
+					mGame.GetLua().Update();
 					for (uint32_t running : Manager().GetAll(agent->GetId())) {
 						mGame.GetModifiers().MarkForDelete(running);
 					}

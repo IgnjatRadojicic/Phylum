@@ -8,6 +8,9 @@
 class CrashReport {
 	public:
 		static void Install();
+
+		// Keeps stack room on the calling thread, so a stack overflow there still gets a report.
+		static void GuardThread();
 };
 
 #endif
