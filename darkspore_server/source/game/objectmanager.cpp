@@ -262,6 +262,18 @@ namespace Game {
 		return mOctTree->GetObjectsInRegion(region, types);
 	}
 
+	std::vector<ObjectPtr> ObjectManager::GetObjectsOfOwner(uint32_t ownerId) const {
+		std::vector<ObjectPtr> owned;
+		for (const auto& [id, object] : mObjects) {
+			if (object && !object->IsMarkedForDeletion()) {
+				if (const auto owner = object->GetOwnerObject(); owner && owner->GetId() == ownerId) {
+					owned.push_back(object);
+				}
+			}
+		}
+		return owned;
+	}
+
 	std::vector<ObjectPtr> ObjectManager::GetObjectsInRadius(const BoundingSphere& region, const std::vector<NounType>& types) const {
 		return mOctTree->GetObjectsInRadius(region, types);
 	}

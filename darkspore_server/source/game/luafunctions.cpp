@@ -2116,6 +2116,13 @@ namespace Game {
 	void Lua::RegisterObjectManager() {
 		auto objectManager = mState.create_named_table("nObjectManager");
 		objectManager["GetObject"] = &LuaFunction::nObjectManager_GetObject;
+		objectManager["GetObjectsOfOwner"] = [this](sol::this_state L, uint32_t ownerId) {
+			auto ids = sol::state_view(L).create_table();
+			for (const auto& object : mGame.GetObjectManager().GetObjectsOfOwner(ownerId)) {
+				ids.add(object->GetId());
+			}
+			return ids;
+		};
 		objectManager["CreateObject"] = &LuaFunction::nObjectManager_CreateObject;
 
 		objectManager["GetTrigger"] = &LuaFunction::nObjectManager_GetTrigger;

@@ -618,6 +618,14 @@ namespace {
 			return 0, 0, 0
 		end
 
+		-- A deactivate step removes effects it may never have added (ZelemBossBlink); nil removes nothing.
+		function nGameObject.RemoveEffect(id, effect, hardStop)
+			local object = get(id)
+			if object and effect ~= nil then
+				return object:RemoveEffect(effect, hardStop)
+			end
+		end
+
 		-- The client takes the source as an id or an object (0xa03020).
 		function nGameObject.MirrorBaseAttributes(petId, source)
 			local pet = get(petId)

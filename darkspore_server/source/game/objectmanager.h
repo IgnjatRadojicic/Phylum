@@ -77,6 +77,9 @@ namespace Game {
 
 			std::vector<ObjectPtr> GetObjectsInRegion(const BoundingBox& region, const std::vector<NounType>& types) const;
 			std::vector<ObjectPtr> GetObjectsInRadius(const BoundingSphere& region, const std::vector<NounType>& types) const;
+			// Every living object whose owner is this one (summons, a boss's adds), as the client's
+			// nObjectManager.GetObjectsOfOwner walks all objects (0xa00b50).
+			std::vector<ObjectPtr> GetObjectsOfOwner(uint32_t ownerId) const;
 
 			// What a box of halfExtent touches moving from one point to another, nearest first.
 			// Shots and beams share it, so both agree on how big a mob is.
