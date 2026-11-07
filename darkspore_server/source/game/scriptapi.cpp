@@ -714,14 +714,15 @@ namespace {
 			return object ~= nil and object:GetHealth() > 0
 		end
 
-		function nGameObject.ValidateHostileTarget(agentId, targetId)
-			local agent, target = get(agentId), get(targetId)
-			return agent ~= nil and target ~= nil and target:GetHealth() > 0 and agent:GetTeam() ~= target:GetTeam()
+		-- Scripts pass the caster's team, not the caster (nGameObject.GetTeam(agent), or a stored myTeam).
+		function nGameObject.ValidateHostileTarget(team, targetId)
+			local target = get(targetId)
+			return target ~= nil and target:GetHealth() > 0 and target:GetTeam() ~= team
 		end
 
-		function nGameObject.ValidateFriendlyTarget(agentId, targetId)
-			local agent, target = get(agentId), get(targetId)
-			return agent ~= nil and target ~= nil and target:GetHealth() > 0 and agent:GetTeam() == target:GetTeam()
+		function nGameObject.ValidateFriendlyTarget(team, targetId)
+			local target = get(targetId)
+			return target ~= nil and target:GetHealth() > 0 and target:GetTeam() == team
 		end
 
 		function nGameObject.TakeDamage(snapshot, targetId, damage, damageType, damageSource, coefficient, descriptors, multiplier, x, y, z)
