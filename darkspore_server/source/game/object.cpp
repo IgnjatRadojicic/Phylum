@@ -415,7 +415,8 @@ namespace Game {
 
 		UseAbility();
 
-		if (aidefinition->FaceTarget()) {
+		// Turrets and traps face their target in their AI definition but have no locomotion.
+		if (aidefinition->FaceTarget() && mObject->HasLocomotionData()) {
 			mObject->GetLocomotionData()->SetFacing(mTargetObject->GetPosition());
 		}
 	}
