@@ -42,8 +42,10 @@ namespace Game {
 					std::get<1>(*it) = value;
 				}
 			} else if (value != 0) {
-				if (mDataBits.test(idx)) {
-					mErasedData.erase(std::find(mErasedData.begin(), mErasedData.end(), idx));
+				// Only one that was sent and then erased is in the list: a first value of 0 sets the bit
+				// without an entry, and erasing end() crashed (Fire Ravager's vulnerability stacking).
+				if (const auto erased = std::find(mErasedData.begin(), mErasedData.end(), idx); erased != mErasedData.end()) {
+					mErasedData.erase(erased);
 				}
 
 				mData.push_back({ idx, value });
