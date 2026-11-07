@@ -1416,6 +1416,16 @@ namespace {
 			end
 			return true, tonumber(x) or 0, tonumber(y) or 0, tonumber(z) or 0
 		end
+
+		-- The closest walkable point to a point, as three numbers (global.lua's random point, the
+		-- Lightning Tempest, charges, flee). With no navigation mesh that is the point itself.
+		function nLocomotion.GetClosestPositionFromPoint(x, y, z)
+			return tonumber(x) or 0, tonumber(y) or 0, tonumber(z) or 0
+		end
+
+		function nLocomotion.GetClosestPosition(agentId, x, y, z)
+			return nLocomotion.GetClosestPositionFromPoint(x, y, z)
+		end
 	)lua";
 }
 

@@ -645,16 +645,6 @@ namespace LuaFunction {
 			}
 		}
 
-		auto GetClosestPosition(sol::this_state L, glm::vec3 position) {
-			// TODO: add Locomotion::GetClosestPosition (not sure how the fuck I'm gonna do that without getting navmesh data)
-			return position;
-		}
-
-		auto GetClosestPositionFromPoint(sol::this_state L, glm::vec3 position) {
-			// TODO: add Locomotion::GetClosestPositionFromPoint (not sure how the fuck I'm gonna do that without getting navmesh data)
-			return position;
-		}
-
 		auto GetTargetPosition(sol::this_state L, sol::object objectValue) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
@@ -2169,8 +2159,6 @@ namespace Game {
 		locomotion["Stop"] = &LuaFunction::Locomotion::Stop;
 
 		// position functions (vec3 as arg0)
-		locomotion["GetClosestPosition"] = &LuaFunction::Locomotion::GetClosestPosition;
-		locomotion["GetClosestPositionFromPoint"] = &LuaFunction::Locomotion::GetClosestPositionFromPoint;
 
 		locomotion["GetTargetPosition"] = &LuaFunction::Locomotion::GetTargetPosition;
 		locomotion["SetTargetPosition"] = &LuaFunction::Locomotion::SetTargetPosition;
