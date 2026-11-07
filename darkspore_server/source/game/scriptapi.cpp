@@ -145,6 +145,13 @@ namespace {
 			end, ...)
 		end
 
+		-- Scripts index their rank tables from 1 (energyDefensePercent[rank]), and a squad ability
+		-- comes with rank 0, so anything below 1 is rank 1.
+		function ScriptRankOf(rank)
+			rank = tonumber(rank)
+			return (rank and rank >= 1) and rank or 1
+		end
+
 		function nAbility.BeginCast(ability, object, target, cursorPosition, rank)
 			nextInstanceId = nextInstanceId + 1
 			local id = object:GetId()
@@ -170,7 +177,7 @@ namespace {
 				object = object,
 				target = target,
 				cursorPosition = cursorPosition,
-				rank = rank or 1,
+				rank = ScriptRankOf(rank),
 				sequenceIndex = step,
 				instanceId = nextInstanceId,
 				startTime = nGameSimulator.GetGameTime()
@@ -1012,7 +1019,7 @@ namespace {
 				return kObjIDNone
 			end
 
-			rank = rank or 1
+			rank = ScriptRankOf(rank)
 
 			local caster = get(initiator)
 			local source = caster or object

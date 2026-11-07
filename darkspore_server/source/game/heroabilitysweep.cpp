@@ -119,7 +119,8 @@ namespace Game {
 								continue;
 							}
 							++total;
-							worked += Cast(className, slot.label, abilityId);
+							// The game casts squad abilities at rank 0 (server.cpp), the hero's own at the rank the client sends.
+							worked += Cast(className, slot.label, abilityId, slot.ability == PlayerAbility::Passive ? 0 : 1);
 						}
 						mReport.flush();
 					}
@@ -160,7 +161,7 @@ namespace Game {
 				}
 
 				// Each cast gets its own spot far from the last, so leftovers cannot touch it.
-				bool Cast(const std::string& className, const char* slot, uint32_t abilityId) {
+				bool Cast(const std::string& className, const char* slot, uint32_t abilityId, int32_t rank) {
 					const auto ability = mLua.GetAbility(abilityId);
 					// A grid inside the world's octree (+-2500), where object searches find things.
 					const auto index = mCasts++;
@@ -195,7 +196,7 @@ namespace Game {
 
 					RakNet::CombatData cast {};
 					cast.abilityId = abilityId;
-					cast.abilityRank = 1;
+					cast.abilityRank = rank;
 					cast.targetId = enemy->GetId();
 					cast.cursorPosition = enemy->GetPosition();
 					cast.targetPosition = enemy->GetPosition();
