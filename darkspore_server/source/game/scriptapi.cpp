@@ -730,7 +730,8 @@ namespace {
 				return false, 0, false
 			end
 			local direction = x and vec3.new(x, y, z) or nil
-			local attacker = nAbility.GetCaster() or target
+			-- With no caster there is no attacker (a hazard), so the victim gets no DealtDamage event.
+			local attacker = nAbility.GetCaster()
 			return target:TakeDamage(attacker, snapshot or false, damage, damageType or 0, damageSource or 0, coefficient or 0, descriptors or 0, multiplier, direction)
 		end
 
