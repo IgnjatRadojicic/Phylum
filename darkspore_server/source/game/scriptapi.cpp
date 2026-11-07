@@ -347,14 +347,34 @@ namespace {
 			looseData[thread] = nil
 		end
 
-		function nThreadData.CreatePrivateTable()
+		-- A name gives a separate table. The engine fills "RequestModifierParams" with the table a
+		-- modifier was requested with (RequestModifier's sixth argument: the knockback's direction).
+		local function namedTables(owner)
+			owner.namedTables = owner.namedTables or {}
+			return owner.namedTables
+		end
+
+		function nThreadData.CreatePrivateTable(name)
 			local owner = dataOwner()
+			if name ~= nil then
+				namedTables(owner)[name] = {}
+				return owner.namedTables[name]
+			end
 			owner.privateTable = {}
 			return owner.privateTable
 		end
 
-		function nThreadData.GetPrivateTable()
+		function nThreadData.GetPrivateTable(name)
 			local owner = dataOwner()
+			if name ~= nil then
+				local tables = namedTables(owner)
+				if tables[name] == nil and name == "RequestModifierParams" then
+					local params = owner.properties and owner.properties[1]
+					tables[name] = type(params) == "table" and params or nil
+				end
+				tables[name] = tables[name] or {}
+				return tables[name]
+			end
 			owner.privateTable = owner.privateTable or {}
 			return owner.privateTable
 		end
