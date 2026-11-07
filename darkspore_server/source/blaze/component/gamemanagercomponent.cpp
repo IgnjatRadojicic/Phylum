@@ -985,6 +985,11 @@ namespace Blaze {
 		auto gameId = request["GID"].GetUint();
 		auto reason = static_cast<DestroyGameReason>(request["REAS"].GetUint());
 
+		Game::GameManager::RemoveGame(gameId);
+		if (const auto& user = request.get_user(); user && user->get_game() && user->get_game()->GetId() == gameId) {
+			user->set_game(nullptr);
+		}
+
 		TDF::Packet packet;
 		packet.put_integer("GID", gameId);
 
@@ -1140,6 +1145,13 @@ namespace Blaze {
 		const auto& user = request.get_user();
 		if (!user) {
 			return;
+		}
+
+		// A game the user left (an aborted mission) would otherwise keep running and hold the game
+		// port, and the client would join it again instead of the new one.
+		if (const auto& previous = user->get_game()) {
+			Game::GameManager::RemoveGame(previous->GetId());
+			user->set_game(nullptr);
 		}
 
 		const auto& game = Game::GameManager::CreateGame();
