@@ -729,8 +729,14 @@ namespace Game {
 		}
 
 		// TODO: proper functions for these things
+		const auto outgoing = player->GetDeployedCharacterObject();
 		if (!player->SwapCharacter(creatureIndex)) {
 			return;
+		}
+
+		// A hero that leaves the field stops what it was casting, so a channel's changes come off.
+		if (outgoing && outgoing != player->GetDeployedCharacterObject()) {
+			CancelAction(player, outgoing);
 		}
 
 		// set player current creature
