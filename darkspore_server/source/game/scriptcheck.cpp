@@ -62,6 +62,8 @@ namespace Game {
 				function object:GetBodyRadius() return 1 end
 				function object:GetModifiedMovementSpeed() return 10 end
 				function object:GetWalkDistanceLeft() return 0 end
+				function object:GetCurrentSpeed() return 10 end
+				function object:IsCombatant() return true end
 				function object:IsJumping() return false end
 				function object:GetWeaponDamage() return { 6, 12 } end
 				function object:GetAttributeSnapshot() return {} end

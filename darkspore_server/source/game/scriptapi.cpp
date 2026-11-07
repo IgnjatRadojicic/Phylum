@@ -139,10 +139,15 @@ namespace {
 				return string.format(" at=%.1f,%.1f,%.1f", p.x, p.y, p.z)
 			end)
 			ScriptTrace("CAST ability=" .. tostring(ability.id) .. " object=" .. tostring(id) .. (ok and at or ""))
+			-- Each ability walks its own animation sequence: one object's abilities have sequences
+			-- of different lengths, so a shared step would run past a shorter one.
 			local steps = ability.animationSequence and #ability.animationSequence or 0
-			local step = sequenceSteps[id] or 0
+			local objectSteps = sequenceSteps[id] or {}
+			sequenceSteps[id] = objectSteps
+			local step = 0
 			if steps > 0 then
-				sequenceSteps[id] = (step + 1) % steps
+				step = (objectSteps[ability] or 0) % steps
+				objectSteps[ability] = (step + 1) % steps
 			end
 			casts[running()] = {
 				ability = ability,

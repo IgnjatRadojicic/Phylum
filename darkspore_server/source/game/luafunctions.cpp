@@ -2315,6 +2315,7 @@ namespace Game {
 		object["IsVisible"] = &Object::IsVisible;
 		object["SetVisible"] = &Object::SetVisible;
 		object["GetModifiedMovementSpeed"] = &Object::GetModifiedMovementSpeed;
+		object["GetCurrentSpeed"] = &Object::GetCurrentSpeed;
 		object["GetBodyRadius"] = &Object::GetBodyRadius;
 		object["GetWalkDistanceLeft"] = [](const Object& self) {
 			return self.HasLocomotionData() ? self.GetLocomotionData()->GetWalkDistanceLeft() : 0.f;

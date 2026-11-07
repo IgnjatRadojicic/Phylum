@@ -84,6 +84,15 @@ Still approximate:
 - `GetProperty(name)` gives the field of that name from the cast's ability script. The client reads
   the ability's definition, which can hold more than the script does.
 - `RetakeAgentSnapshot()` does nothing: the server reads the agent's attributes live.
+- A cast runs the ability's Activate step (`ability[nAbilityFns.Activate]`, or else `activate`) once,
+  before its tick and in the same cast, unless `hasActivate` is false. Scripts keep what the tick
+  needs there, such as Soul Ravager's shot count. Before this the server never ran it.
+- Each ability walks its own `animationSequence`, step by step for each object. Before this the step
+  was shared by all of an object's abilities and ran past a shorter sequence.
+- `nGameObject.GetObjectAngleRad(id, otherId)` (client 0xa0da40) is the turn from the object's facing
+  to the other object about the up axis, from 0 to 2 pi; nothing when either is missing.
+- `nGameObject.GetCurrentSpeed(id)` is the length of the object's velocity, raised by its movement
+  speed buff when it moves on its own, as in the client (0xa0b2c0).
 - `GetWarmupAnimation` is not in the client either, so its one script fails there too.
   `nAbilityFns.GetWarmupData` is the slot number 5 from GlobalDefinitions.lua; the contract lists it
   as missing by mistake.
