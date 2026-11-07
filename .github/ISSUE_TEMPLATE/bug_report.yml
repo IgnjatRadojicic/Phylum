@@ -7,8 +7,8 @@ body:
     attributes:
       value: |
         Thanks for testing! This server is a work in progress, so check the
-        [known issues](https://github.com/IgnjatRadojicic/recap_server_cpp#known-issues)
-        and the [open bugs](https://github.com/IgnjatRadojicic/recap_server_cpp/labels/bug) first.
+        [known issues](https://github.com/IgnjatRadojicic/Resurrection-Capsule-Original-Lua-Cpp#known-issues)
+        and the [open bugs](https://github.com/IgnjatRadojicic/Resurrection-Capsule-Original-Lua-Cpp/labels/bug) first.
 
         Please don't attach game files.
   - type: textarea

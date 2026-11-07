@@ -1,6 +1,6 @@
-# Resurrection Capsule Server (combat fork)
+# Resurrection Capsule: Original Lua + C++ Server
 
-A fork of the [Resurrection Capsule](https://github.com/Resurrection-Capsule/Resurrection-Capsule) (ReCap) server, a local server that lets you play Darkspore offline. This fork focuses on making combat work, tested on the Steam Demo (5.3.0.103).
+An independent continuation of the [Resurrection Capsule](https://github.com/Resurrection-Capsule/Resurrection-Capsule) (ReCap) server, a local server that lets you play Darkspore offline. It runs the game's original compiled Lua scripts on a C++ server, and focuses on making combat work. Tested on the Steam Demo (5.3.0.103). Based on [recap_server_cpp](https://github.com/Resurrection-Capsule/recap_server_cpp), with its full commit history kept.
 
 This is an unofficial community project, not affiliated with EA or Maxis. You need your own copy of Darkspore. Game scripts are extracted from your own install. Some data and images inherited from upstream ReCap are still in this repository, and the aim is to remove them too.
 
@@ -16,7 +16,7 @@ This is an unofficial community project, not affiliated with EA or Maxis. You ne
 | Damage | Random roll in the hero's weapon range, with no armour or resistances |
 | Enemies | Only one spawns per spawn group |
 
-## What this fork changes
+## What this project changes
 
 - **Hero abilities:** read from the game's player classes, because `creature_templates.json` has them all set to 0.
 - **Attack crash:** the game crashes on an unknown ability ID in an ability reply, so replies now carry valid IDs.
@@ -70,6 +70,7 @@ For the wider project, see the [ReCap repository](https://github.com/Resurrectio
  * dalkon, for migrating the project from Python to C++, and developing the majority of the ReCap server code from 2019 to 2022
  * Splitwirez, for being our main consultant regarding the way Darkspore used to work, our designer, and the developer of the Resurrection Capsule Hub
  * r0ptr, for fixing the CMake build process, allowing us to continue the project after a huge hiatus, and for helping with coding in general
+ * VitorMM (vitor251093), JeanxPereira and benjaminhottell, for their work on the upstream server
  * All the members from our Discord server that helped testing and developing the server!
 
 ## Special Thanks
