@@ -606,6 +606,24 @@ namespace {
 		end
 		nGameObject.GetObjectDirection = nGameObject.GetFacing
 
+		-- GetIsTargetable(id): the client asks the object (0xa03320), false when there is none.
+		function nGameObject.GetIsTargetable(id)
+			local object = get(id)
+			return object ~= nil and object:IsTargetable()
+		end
+
+		-- AddDependency(a, b): the client sets one flag (+0x98) on both objects (0xa03e60). Nothing on
+		-- the server reads it yet, so it is left out until that use is known.
+		function nGameObject.AddDependency() end
+
+		-- Aggro (taunts, turrets drawing enemies, a pet's attacker passed to its owner) needs enemy AI
+		-- that picks targets by it, which is Stage 2. Until then nothing is passed on.
+		function nGameObject.AddAggroForObject() end
+		function nGameObject.SetAggroDelegate() end
+		function nGameObject.GetAggroDelegate()
+			return kObjIDNone
+		end
+
 		-- GetObjectAngleRad(id, otherId): the turn from the object's facing to the other object, about
 		-- the up axis, from 0 to 2 pi (client 0xa0da40). Nothing when either one is missing, as there.
 		function nGameObject.GetObjectAngleRad(id, otherId)
