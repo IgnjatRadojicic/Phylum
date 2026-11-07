@@ -425,8 +425,89 @@ namespace {
 		end
 		function nAbility.SendAbilityEvent() end
 
-		-- The server never holds a hero in place, because timeImmobilized is always 0
-		function nAbility.ReleaseAgent() end
+		-- A cast or modifier can take control of its agent, as a resurrect does while it channels
+		-- (Darkspore.exe 0xa65320, 0xa65360). The client reads no argument and binds the agent of the
+		-- cast that calls it. Scripts ask IsControlledByAbility, so a pet leaves its owner alone then.
+		-- Approximate: the server does not stop the agent's own actions while it is bound.
+		local boundBy = {}
+		local function agentOf(cast)
+			return cast and cast.object and cast.object:GetId() or nil
+		end
+
+		function nAbility.BindAgent(_)
+			local cast = currentCast()
+			local id = agentOf(cast)
+			if id then
+				boundBy[id] = cast
+			end
+		end
+
+		function nAbility.ReleaseAgent(_)
+			local cast = currentCast()
+			local id = agentOf(cast)
+			if id and boundBy[id] == cast then
+				boundBy[id] = nil
+			end
+		end
+
+		function nAbility.IsControlledByAbility(id)
+			local cast = id and boundBy[id]
+			if not cast then
+				return false
+			end
+			-- Ids are used again, so the bound cast must still belong to the same object.
+			if cast.object ~= nObjectManager.GetObject(id) then
+				boundBy[id] = nil
+				return false
+			end
+			return true
+		end
+
+		-- Whether a cast with this instance id still runs (global.lua's debug drawing waits on it).
+		function nAbility.IsAbilityRunning(instanceId)
+			for _, cast in pairs(casts) do
+				if type(cast) == "table" and cast.instanceId == instanceId then
+					return true
+				end
+			end
+			return false
+		end
+
+		-- An ability's script by its id, which is nUtil.SPID of the name it registered with.
+		local function abilityScript(ability)
+			if type(ability) == "table" then
+				return ability
+			end
+			for name, script in pairs(nAbility.scripts) do
+				if nUtil.SPID(name) == ability then
+					return script
+				end
+			end
+			return nil
+		end
+
+		function nAbility.GetAbilityNamespace(ability)
+			local script = abilityScript(ability)
+			return script and script.namespace or nil
+		end
+
+		-- The descriptor bits the client keeps for an ability (0xa65a50).
+		function nAbility.GetDescriptors(ability)
+			local script = abilityScript(ability)
+			return script and script.descriptors or 0
+		end
+
+		-- A property of the cast's ability by name. The client looks it up in the ability's
+		-- definition (0xa676b0); the server has the script's fields.
+		function nAbility.GetProperty(name)
+			local cast = currentCast()
+			local ability = cast and cast.ability
+			return ability and ability[name] or nil
+		end
+
+		-- The client takes the agent's attributes again for the cast. The server reads them live
+		-- each time (GetAgentAttributeSnapshot), so there is nothing to take again.
+		function nAbility.RetakeAgentSnapshot() end
 		function nAbility.DebugDrawDamageArc() end
 		function nDebug.Assert() end
 		function nDebug.LogToConsole() end

@@ -73,8 +73,20 @@ Still approximate:
   began. Three abilities call it without being manual (the lightning and missile tempests and the
   sleep mushroom); they pay at the cast instead of at their first shot, which is approximate.
 - `nAbility.GetAbilityAttributeValue(agent, ability)` gives the attribute described above.
-- Still missing: `RemoveCooldownTime`, `ResetAbilityCooldown`, `AddCooldownTime` and
-  `ScaleCooldownTime`.
+- The cooldown functions are under "Cooldown" above.
+- `BindAgent` and `ReleaseAgent` mark the calling cast's agent as held by it, and
+  `IsControlledByAbility(id)` reports that (`Darkspore.exe` 0xa65320, 0xa65360, 0xa653d0). The client
+  reads no argument. Approximate: the server does not stop a bound agent's own actions, and the
+  client's check reads the agent's controller type, which the server does not have.
+- `IsAbilityRunning(instanceId)` looks for a running cast with that id.
+- `GetAbilityNamespace(ability)` and `GetDescriptors(ability)` read the ability's script, found by
+  its id or given as the script itself.
+- `GetProperty(name)` gives the field of that name from the cast's ability script. The client reads
+  the ability's definition, which can hold more than the script does.
+- `RetakeAgentSnapshot()` does nothing: the server reads the agent's attributes live.
+- `GetWarmupAnimation` is not in the client either, so its one script fails there too.
+  `nAbilityFns.GetWarmupData` is the slot number 5 from GlobalDefinitions.lua; the contract lists it
+  as missing by mistake.
 
 ## Creatures from scripts
 
