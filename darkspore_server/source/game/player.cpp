@@ -60,8 +60,8 @@ namespace Game {
 		mChainProgression = user->get_account().chainProgression;
 		mDataBits.set(PlayerDataBits::ChainProgression);
 
-		// Some data bits to clear out data from previous missions
-		mDataBits.set(PlayerDataBits::CharacterData);
+		// Some data bits to clear out data from previous missions. Heroes need none: each new
+		// character sends all its fields in its own update.
 		mDataBits.set(PlayerDataBits::CrystalData);
 		mDataBits.set(PlayerDataBits::CrystalBonuses);
 
@@ -344,7 +344,6 @@ namespace Game {
 			characterRef.mAssetId = 0;
 		}
 
-		mDataBits.set(PlayerDataBits::CharacterData);
 		SetUpdateBits(PlayerUpdateBits::CharacterBits << index);
 	}
 
@@ -478,7 +477,9 @@ namespace Game {
 			if (mDataBits.test(0)) { reflector.write<0>(mbDataSetup); }
 			if (mDataBits.test(1)) { reflector.write<1>(mCurrentDeckIndex); }
 			if (mDataBits.test(2)) { reflector.write<2>(mQueuedDeckIndex); }
-			if (mDataBits.test(3)) { reflector.write<3>(mCharacterData); }
+			// Field 3 (the heroes) is never sent. The client reads it as 3 records of 0x5e8 bytes, and a
+			// raw record holds the noun as a pointer, so sending it broke the hero nouns and every field
+			// after it. Each hero goes in its own character update instead.
 			if (mDataBits.test(4)) { reflector.write<4>(mPlayerIndex); }
 			if (mDataBits.test(5)) { reflector.write<5>(mTeam); }
 			if (mDataBits.test(6)) { reflector.write<6>(mPlayerOnlineId); }
