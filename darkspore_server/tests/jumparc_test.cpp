@@ -30,6 +30,14 @@ TEST_CASE("a jump's height grows with its distance up to the maximum") {
 	CHECK(slide->GetPositionAt(0.025f).z == doctest::Approx(0));
 }
 
+TEST_CASE("a jump cut short comes down below where it was") {
+	const auto arc = JumpArc::Build({ 0, 0, 0 }, { 1, 0, 0 }, 10, 10, 1, 3, 20);
+	REQUIRE(arc);
+	CHECK(arc->GetPositionAt(0.5f).z > 0);
+	CHECK(arc->GetGroundAt(0.5f).x == doctest::Approx(5));
+	CHECK(arc->GetGroundAt(0.5f).z == doctest::Approx(0));
+}
+
 TEST_CASE("a jump with no distance, speed or direction does not start") {
 	CHECK_FALSE(JumpArc::Build({ 0, 0, 0 }, { 1, 0, 0 }, 0, 10, 0, 0, 0));
 	CHECK_FALSE(JumpArc::Build({ 0, 0, 0 }, { 1, 0, 0 }, 5, 0, 0, 0, 0));

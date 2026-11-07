@@ -34,6 +34,11 @@ namespace Game {
 		return position;
 	}
 
+	glm::vec3 JumpArc::GetGroundAt(float seconds) const {
+		const float t = mDuration > 0 ? std::clamp(seconds / mDuration, 0.f, 1.f) : 1.f;
+		return mStart + (mDestination - mStart) * t;
+	}
+
 	bool JumpArc::IsFinished(float seconds) const {
 		return seconds >= mDuration;
 	}

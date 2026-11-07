@@ -580,6 +580,10 @@ LAB_009ef634:
 	}
 	
 	void Locomotion::Stop() {
+		// A jump cut short comes down where it was, not in mid-air.
+		if (mJumpArc) {
+			mObject->SetPositionSimulated(mJumpArc->GetGroundAt(mJumpSeconds));
+		}
 		mJumpArc.reset();
 		mWalkDistanceLeft = 0;
 

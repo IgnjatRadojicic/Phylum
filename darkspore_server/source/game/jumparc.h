@@ -23,6 +23,8 @@ namespace Game {
 				float minHeight, float maxHeight, float rangeToHitMaxHeight);
 
 			glm::vec3 GetPositionAt(float seconds) const;
+			// Where the jump is at that time, on its line along the ground (with no height).
+			glm::vec3 GetGroundAt(float seconds) const;
 			bool IsFinished(float seconds) const;
 
 			const glm::vec3& GetDestination() const;
