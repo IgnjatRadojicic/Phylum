@@ -2265,6 +2265,7 @@ namespace Game {
 		object["IsValid"] = &LuaFunction::Object::IsValid;
 
 		object["GetId"] = &Object::GetId;
+		object["MirrorBaseAttributes"] = &Object::MirrorBaseAttributes;
 		object["GetName"] = &LuaFunction::Object::GetName;
 		object["GetPrivateTable"] = &LuaFunction::Object::GetPrivateTable;
 

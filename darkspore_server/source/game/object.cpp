@@ -1,6 +1,8 @@
 
 // Include
 #include "object.h"
+
+#include "attributemirror.h"
 #include "objectmanager.h"
 #include "instance.h"
 #include "catalyst.h"
@@ -1185,6 +1187,29 @@ namespace Game {
 		const auto handle = mAttributeStack.Add(idx, value, op, GetAttributeValue(idx));
 		SetAttributeValue(idx, mAttributeStack.GetBase(idx));
 		return handle;
+	}
+
+	float Object::GetUnbuffedAttributeValue(AttributeType type) const {
+		const auto idx = static_cast<uint8_t>(type);
+		return mAttributeStack.Has(idx) ? mAttributeStack.GetBase(idx) : GetAttributeValue(idx);
+	}
+
+	void Object::MirrorBaseAttributes(const ObjectPtr& source) {
+		// The client mirrors onto summons only, never onto a hero (0x9e2e70).
+		const auto& data = mNoun ? mNoun->GetNonPlayerClassData() : nullptr;
+		const auto& shares = data ? data->GetAttributes() : nullptr;
+		if (!source || !shares) {
+			return;
+		}
+
+		const float health = GetHealth();
+		const float oldMaxHealth = GetMaxHealth();
+		const float petHealth = source->GetAttributeValue(AttributeType::PetHealth);
+		for (const auto& stat : AttributeMirror::stats) {
+			const float value = AttributeMirror::Value(stat, shares->GetBaseAttribute(stat.share), source->GetUnbuffedAttributeValue(stat.type), petHealth);
+			SetAttributeValue(stat.type, value);
+		}
+		SetHealth(AttributeMirror::Health(health, oldMaxHealth, GetMaxHealth()));
 	}
 
 	void Object::RemoveAttributeChange(uint32_t handle) {

@@ -618,6 +618,17 @@ namespace {
 			return 0, 0, 0
 		end
 
+		-- The client takes the source as an id or an object (0xa03020).
+		function nGameObject.MirrorBaseAttributes(petId, source)
+			local pet = get(petId)
+			if type(source) ~= "userdata" then
+				source = get(source)
+			end
+			if pet and source then
+				pet:MirrorBaseAttributes(source)
+			end
+		end
+
 		function nGameObject.GetFacing(id)
 			local object = get(id)
 			if object then

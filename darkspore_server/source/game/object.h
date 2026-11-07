@@ -412,6 +412,10 @@ namespace Game {
 			// Properties
 			float GetAttributeValue(uint8_t idx) const;
 			float GetAttributeValue(AttributeType type) const;
+			// The value before buffs and other changes (AttributeStack's base).
+			float GetUnbuffedAttributeValue(AttributeType type) const;
+			// nGameObject.MirrorBaseAttributes: a summon's stats as shares of its source's (AttributeMirror).
+			void MirrorBaseAttributes(const ObjectPtr& source);
 			void SetAttributeValue(uint8_t idx, float value);
 			void SetAttributeValue(AttributeType type, float value);
 
