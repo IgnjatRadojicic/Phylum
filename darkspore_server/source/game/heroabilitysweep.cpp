@@ -27,6 +27,8 @@ namespace Game {
 		constexpr const char* mobNounName = "ZelemBasicHybrid.Noun";
 		constexpr float durable = 100000;
 		constexpr float enemyDistance = 6;
+		// A hurt friend behind the hero, so heals and buffs on allies show.
+		constexpr float allyDistance = 4;
 		constexpr float spotSpacing = 200;
 		constexpr int watchMilliseconds = 3000;
 		constexpr int stepMilliseconds = 20;
@@ -171,7 +173,8 @@ namespace Game {
 
 					auto hero = Create(utils::hash_id(className + ".Noun"), 1, spot);
 					auto enemy = Create(utils::hash_id(mobNounName), 2, spot + glm::vec3(enemyDistance, 0.f, 0.f));
-					if (!hero || !enemy) {
+					auto ally = Create(utils::hash_id(mobNounName), 1, spot - glm::vec3(allyDistance, 0.f, 0.f));
+					if (!hero || !enemy || !ally) {
 						mReport << " NO-OBJECTS\n";
 						return false;
 					}
@@ -179,9 +182,13 @@ namespace Game {
 					PassiveModifiers(mLua).Start(hero);
 
 					Step(100);
+					// Half health, so a heal has room to show.
+					hero->SetHealth(durable / 2);
+					ally->SetHealth(durable / 2);
 					const auto before = ObjectsNear(spot);
 					const float enemyHealth = enemy->GetHealth();
 					const float heroHealth = hero->GetHealth();
+					const float allyHealth = ally->GetHealth();
 					mPackets->clear();
 					mErrors.clear();
 					sol::state_view(mLua.GetState())["HeroSweepGaps"] = sol::new_table();
@@ -203,9 +210,11 @@ namespace Game {
 					}
 					const float damage = enemyHealth - enemy->GetHealth();
 					const float healed = hero->GetHealth() - heroHealth;
+					const float allyHealed = ally->GetHealth() - allyHealth;
 					const auto& modifiers = mGame.GetModifiers().GetManager();
 					const auto onHero = modifiers.GetAll(hero->GetId()).size();
 					const auto onEnemy = modifiers.GetAll(enemy->GetId()).size();
+					const auto onAlly = modifiers.GetAll(ally->GetId()).size();
 					const bool running = hero->GetLuaThread() != nullptr;
 					const auto moved = glm::distance(hero->GetPosition(), spot);
 
@@ -220,13 +229,13 @@ namespace Game {
 						gaps.insert(name.as<std::string>());
 					}
 
-					const bool acted = damage > 0 || healed > 0 || onHero > 0 || onEnemy > 0 || spawned > 0 || moved > 0.5f ||
+					const bool acted = damage > 0 || healed > 0 || allyHealed > 0 || onHero > 0 || onEnemy > 0 || onAlly > 0 || spawned > 0 || moved > 0.5f ||
 						packets.contains("ObjectJump") || packets.contains("ObjectTeleport");
 					const bool good = acted && mErrors.empty() && gaps.empty();
 
 					mReport << (good ? " OK" : (!mErrors.empty() ? " ERROR" : (!gaps.empty() ? " MISSING" : (acted ? " OK" : " NOTHING"))))
-						<< std::format(" damage={:.0f} healed={:.0f} heroModifiers={} enemyModifiers={} spawned={} moved={:.1f} running={} animations={}",
-							damage, healed, onHero, onEnemy, spawned, moved, running, packets["SetAnimationState"]);
+						<< std::format(" damage={:.0f} healed={:.0f} allyHealed={:.0f} heroModifiers={} enemyModifiers={} allyModifiers={} spawned={} moved={:.1f} running={} animations={}",
+							damage, healed, allyHealed, onHero, onEnemy, onAlly, spawned, moved, running, packets["SetAnimationState"]);
 					for (const auto& gap : gaps) {
 						mReport << " missing:" << gap;
 					}
