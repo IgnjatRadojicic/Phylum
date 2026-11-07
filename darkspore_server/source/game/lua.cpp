@@ -157,6 +157,10 @@ namespace Game {
 	void LuaThread::post_call() {
 		if (!is_waiting()) {
 			mLua.ReturnThreadToPool(this);
+		} else {
+			// A script's own coroutine.yield means "go on next frame" (the time bubble's loop). The
+			// wait functions queue their thread themselves; queueing it again changes nothing.
+			mLua.YieldThread(this);
 		}
 	}
 

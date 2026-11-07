@@ -344,6 +344,7 @@ namespace {
 				CheckAuraSlowsEnemyInside();
 				CheckStealthEndsOnUsedAbility();
 				CheckStealthCastKeepsItsStealth();
+				CheckTimeBubbleEnds();
 				CheckCancelledCastUndoesItsChanges("ModifierCheckCancelled", "cancelled-cast-undoes-its-changes");
 				CheckCancelledCastUndoesItsChanges("ModifierCheckCancelledWithChild", "cancelled-cast-with-child-undoes-its-changes");
 				CheckJumpLandsWhereItAimed();
@@ -803,6 +804,39 @@ namespace {
 
 				Report("stealth-cast-keeps-its-stealth", hidden != Game::StealthType::None && after == Game::StealthType::None,
 					"hidden=" + std::to_string(static_cast<int>(hidden)) + " after=" + std::to_string(static_cast<int>(after)));
+			}
+
+			// Vex's time bubble (SpacetimeRandom2, ability_delaying_sphere) is an object that lasts 12
+			// seconds and then deletes itself. Runs the real ability, so this check takes about 14 s.
+			void CheckTimeBubbleEnds() {
+				auto agent = Spawn();
+				const auto ability = mLua.GetAbility(utils::hash_id("SpacetimeRandom2"));
+				if (!agent || !ability) {
+					Report("time-bubble-ends", false, "no agent or ability");
+					return;
+				}
+
+				const auto others = [this, &agent] {
+					size_t count = 0;
+					for (const auto& object : mGame.GetObjectManager().GetObjectsInRadius(Game::BoundingSphere(agent->GetPosition(), 30.f), {})) {
+						count += object != agent && !object->IsMarkedForDeletion();
+					}
+					return count;
+				};
+
+				const auto before = others();
+				RakNet::CombatData cast {};
+				cast.abilityId = utils::hash_id("SpacetimeRandom2");
+				cast.abilityRank = 1;
+				cast.cursorPosition = agent->GetPosition();
+				mGame.UseAbility(agent, cast);
+				Wait(1500);
+				const auto during = others();
+				Wait(12500);
+				const auto after = others();
+
+				Report("time-bubble-ends", during > before && after == before,
+					"before=" + std::to_string(before) + " during=" + std::to_string(during) + " after=" + std::to_string(after));
 			}
 
 			void CheckAuraSlowsEnemyInside() {
