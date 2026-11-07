@@ -576,6 +576,22 @@ namespace Game {
 		}
 	}
 
+	void Instance::SendObjectJump(const ObjectPtr& object, const JumpArc& arc, float speed, float minHeight, float maxHeight, float rangeToHitMaxHeight) {
+		if (!object || !mServer) {
+			return;
+		}
+
+		if (mLua) {
+			const auto& to = arc.GetDestination();
+			mLua->Trace(std::format("JUMP object={} to={:.1f},{:.1f},{:.1f} seconds={:.2f} height={:.1f}",
+				object->GetId(), to.x, to.y, to.z, arc.GetDuration(), arc.GetHeight()));
+		}
+
+		for (const auto& [_, client] : mServer->GetClients()) {
+			mServer->SendObjectJump(client, object, arc.GetDestination(), arc.GetDirection(), speed, minHeight, maxHeight, rangeToHitMaxHeight);
+		}
+	}
+
 	Instance::CastAnswer Instance::PayForCast(const ObjectPtr& object, uint32_t abilityId, int32_t rank, uint32_t unscriptedCooldownMs) {
 		const auto& ability = mLua->GetAbility(abilityId);
 		if (!object || !ability) {

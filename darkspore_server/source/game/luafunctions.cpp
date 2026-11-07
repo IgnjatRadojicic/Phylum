@@ -376,33 +376,45 @@ namespace LuaFunction {
 			}
 		}
 
-		auto JumpInDirection(sol::this_state L, sol::object objectValue, glm::vec3 position, sol::optional<bool> keepFacing) {
+		// As the client reads it (Darkspore.exe 0xa09c50): direction, distance, speed, facing, the
+		// lowest and highest jump and the distance that reaches the highest. True when it starts.
+		auto JumpInDirection(sol::this_state L, sol::object objectValue, glm::vec3 direction, float distance, float speed,
+			sol::optional<float> faceX, sol::optional<float> faceY, sol::optional<float> faceZ,
+			sol::optional<float> minHeight, sol::optional<float> maxHeight, sol::optional<float> rangeToHitMaxHeight
+		) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
-			if (object && object->HasLocomotionData()) {
-				object->SetInputSyncStamp(object->GetInputSyncStamp() + 1);
-
-				const auto& locomotion = object->GetLocomotionData();
-				locomotion->Stop();
-
-				const auto& direction = position - object->GetPosition();
-				object->SetPosition(position);
-
-				if (keepFacing.value_or(false)) {
-					locomotion->SetFacing(direction + object->GetPosition());
-				}
+			if (!object || !object->HasLocomotionData()) {
+				return false;
 			}
+
+			const glm::vec3 facing = faceX ? glm::vec3(*faceX, faceY.value_or(0.f), faceZ.value_or(0.f)) : direction;
+			const auto& locomotion = object->GetLocomotionData();
+			const auto* arc = locomotion->Jump(direction, distance, speed, facing,
+				minHeight.value_or(0.f), maxHeight.value_or(0.f), rangeToHitMaxHeight.value_or(0.f), true);
+			if (!arc) {
+				return false;
+			}
+
+			game.SendObjectJump(object, *arc, speed, minHeight.value_or(0.f), maxHeight.value_or(0.f), rangeToHitMaxHeight.value_or(0.f));
+			return true;
 		}
 
+		// A jump with no height (Darkspore.exe 0xa09bb0).
 		auto SlideToPoint(sol::this_state L, sol::object objectValue, glm::vec3 position, float speed) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
-			if (object && object->HasLocomotionData()) {
-				const auto& locomotion = object->GetLocomotionData();
-				locomotion->SlideToPoint(position, speed);
-
-				game.MoveObject(object, *locomotion);
+			if (!object || !object->HasLocomotionData()) {
+				return false;
 			}
+
+			const auto* arc = object->GetLocomotionData()->SlideToPoint(position, speed);
+			if (!arc) {
+				return false;
+			}
+
+			game.SendObjectJump(object, *arc, speed, 0.f, 0.f, 0.f);
+			return true;
 		}
 
 		auto MoveToPointExact(sol::this_state L, sol::object objectValue, glm::vec3 position, sol::optional<bool> setSomeFlag) {
@@ -2249,6 +2261,9 @@ namespace Game {
 
 		object["IsVisible"] = &Object::IsVisible;
 		object["SetVisible"] = &Object::SetVisible;
+		object["IsJumping"] = [](const Object& self) {
+			return self.HasLocomotionData() && self.GetLocomotionData()->IsJumping();
+		};
 
 		object["IsMarkedForDeletion"] = &Object::IsMarkedForDeletion;
 		object["MarkForDeletion"] = &Object::MarkForDeletion;

@@ -141,6 +141,7 @@ namespace Game {
 			nModifier.RequestModifier = function() return kObjIDNone end
 			nThread.WaitUntilTime = countEngineCall
 			nThread.WaitForXSeconds = countEngineCall
+			nThread.WaitForJumpComplete = countEngineCall
 
 			-- Scripts run the launch as a thread. Here it runs at once, inside the ability.
 			nThread.Create = function(_, callback, ...)

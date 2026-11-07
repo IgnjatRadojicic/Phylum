@@ -4,6 +4,7 @@
 
 // Include
 #include "predefined.h"
+#include "jumparc.h"
 #include "lobarc.h"
 #include "projectilesweep.h"
 
@@ -203,9 +204,11 @@ namespace Game {
 
 			void FaceObjectDuringMove(const ObjectPtr& object);
 
-			void SlideToPoint(const glm::vec3& position, float speed);
-			void Jump(const glm::vec3& direction, float distance, float speed, const glm::vec3& facing,
+			// Both start a JumpArc and give it, or nothing when the move cannot start.
+			const JumpArc* SlideToPoint(const glm::vec3& position, float speed);
+			const JumpArc* Jump(const glm::vec3& direction, float distance, float speed, const glm::vec3& facing,
 				float minJumpHeight, float maxJumpHeight, float rangeToHitMaxJumpHeight, bool param_9);
+			bool IsJumping() const;
 
 			void WriteTo(RakNet::BitStream& stream) const;
 			void WriteReflection(RakNet::BitStream& stream) const;
@@ -259,6 +262,8 @@ namespace Game {
 
 			std::optional<LobArc> mLobArc;
 			float mLobSeconds = 0;
+			std::optional<JumpArc> mJumpArc;
+			float mJumpSeconds = 0;
 
 			std::deque<SweepHit> mPendingHits;
 			std::unordered_set<uint32_t> mHitIds;

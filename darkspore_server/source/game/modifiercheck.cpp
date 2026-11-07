@@ -8,6 +8,7 @@
 #include "modifiersystem.h"
 #include "object.h"
 #include "objectmanager.h"
+#include "locomotion.h"
 #include "passivemodifiers.h"
 #include "scripttriggervolumes.h"
 
@@ -303,6 +304,7 @@ namespace {
 				CheckKillObjectEndsPassive();
 				CheckDronePassiveSpawnsDrone();
 				CheckAuraSlowsEnemyInside();
+				CheckJumpLandsWhereItAimed();
 				CheckLineFindsMobOnIt();
 
 				sol::protected_function forget = mState["ModifierCheckForgetHelper"];
@@ -750,6 +752,32 @@ namespace {
 				Report("aura-slows-enemy-inside", id != 0 && inside && !agentSlowed && !outside && volumesAfter == volumesBefore,
 					"id=" + std::to_string(id) + " inside=" + std::to_string(inside) + " agent=" + std::to_string(agentSlowed) +
 					" outside=" + std::to_string(outside) + " volumes=" + std::to_string(volumesBefore) + "->" + std::to_string(volumesAfter));
+			}
+
+			// A script's jump, as charges and knockbacks make them: the object rises on the way and
+			// lands its distance away, then stops jumping.
+			void CheckJumpLandsWhereItAimed() {
+				auto object = Spawn();
+				const glm::vec3 start(-500.f, 500.f, 0.f);
+				object->SetPosition(start);
+
+				// 10 along +X at 20 a second, 1 to 3 high, the highest from 5 away.
+				sol::protected_function jump = mState["nLocomotion"]["JumpInDirection"];
+				sol::protected_function_result started = jump(object->GetId(), 1, 0, 0, 10, 20, 1, 0, 0, 1, 3, 5);
+				const bool began = started.valid() && started.get_type() == sol::type::boolean && started.get<bool>();
+
+				Wait(240);
+				const auto& middle = object->GetPosition();
+				const bool rose = middle.z > start.z + 1.f && middle.x > start.x + 2.f && middle.x < start.x + 9.f;
+				Wait(500);
+				const auto& end = object->GetPosition();
+				const bool landed = std::abs(end.x - (start.x + 10.f)) < 0.01f && std::abs(end.z - start.z) < 0.01f;
+				const bool jumping = object->GetLocomotionData() && object->GetLocomotionData()->IsJumping();
+
+				Report("jump-lands-where-it-aimed", began && rose && landed && !jumping,
+					"began=" + std::to_string(began) + " rose=" + std::to_string(rose) + " landed=" + std::to_string(landed) +
+					" end=" + std::to_string(end.x - start.x) + "," + std::to_string(end.z - start.z));
+				object->MarkForDeletion();
 			}
 
 			// The game's own thorns script, given a melee hit, hits the attacker back.

@@ -104,6 +104,7 @@ namespace Game {
 	class Lua;
 	class ModifierSystem;
 	class ScriptTriggerVolumes;
+	class JumpArc;
 	struct ModifierInstance;
 	class DamageEvents;
 	struct DamageReport;
@@ -190,6 +191,8 @@ namespace Game {
 			bool Update();
 
 			void MoveObject(const ObjectPtr& object, const Locomotion& locomotionData);
+			// Every client plays the jump from these values (ObjectJump).
+			void SendObjectJump(const ObjectPtr& object, const JumpArc& arc, float speed, float minHeight, float maxHeight, float rangeToHitMaxHeight);
 
 			// Abilities / Combat / Etc
 			// The answer to a hero's cast: whether it runs, and the cooldown the reply shows.

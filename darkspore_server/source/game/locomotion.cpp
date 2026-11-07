@@ -150,6 +150,15 @@ namespace Game {
 	}
 
 	void Locomotion::Update(float deltaTime) {
+		// The client plays the jump itself, so the server follows it without sending positions.
+		if (mJumpArc) {
+			mJumpSeconds += deltaTime;
+			mObject->SetPositionSimulated(mJumpArc->GetPositionAt(mJumpSeconds));
+			if (mJumpArc->IsFinished(mJumpSeconds)) {
+				mJumpArc.reset();
+			}
+		}
+
 		switch (mObject->GetMovementType()) {
 			case MovementType::Pathfinding: {
 				if (false) {
@@ -570,6 +579,8 @@ LAB_009ef634:
 	}
 	
 	void Locomotion::Stop() {
+		mJumpArc.reset();
+
 		// reset data
 		mTargetId = 0;
 		mExternalLinearVelocity = glm::zero<glm::vec3>();
@@ -661,18 +672,31 @@ LAB_009ef634:
 		mGoalFlags |= 0x100;
 	}
 
-	void Locomotion::SlideToPoint(const glm::vec3& position, float speed) {
-		auto delta = position - mObject->GetPosition();
-		auto distance = glm::sqrt(glm::dot(delta, delta));
-		auto direction = delta * (static_cast<float>(1) / distance);
-		Jump(direction, distance, speed, direction, 0.f, 0.f, 0.f, false);
+	const JumpArc* Locomotion::SlideToPoint(const glm::vec3& position, float speed) {
+		const auto delta = position - mObject->GetPosition();
+		return Jump(delta, glm::length(delta), speed, delta, 0.f, 0.f, 0.f, false);
 	}
 
-	void Locomotion::Jump(
+	// The client fits the jump to its navigation mesh (Darkspore.exe 0xa15240); see JumpArc.
+	const JumpArc* Locomotion::Jump(
 		const glm::vec3& direction, float distance, float speed, const glm::vec3& facing,
 		float minJumpHeight, float maxJumpHeight, float rangeToHitMaxJumpHeight, bool param_9
 	) {
-		// TODO: seems to require a bunch of NavMesh stuff, no clue about this yet.
+		mJumpArc = JumpArc::Build(mObject->GetPosition(), direction, distance, speed, minJumpHeight, maxJumpHeight, rangeToHitMaxJumpHeight);
+		mJumpSeconds = 0;
+		if (!mJumpArc) {
+			return nullptr;
+		}
+
+		const glm::vec3 flatFacing(facing.x, facing.y, 0.f);
+		if (glm::length(flatFacing) > 0.0001f) {
+			mFacing = mObject->GetPosition() + glm::normalize(flatFacing);
+		}
+		return &*mJumpArc;
+	}
+
+	bool Locomotion::IsJumping() const {
+		return mJumpArc.has_value();
 	}
 
 	void Locomotion::WriteTo(RakNet::BitStream& stream) const {

@@ -1263,6 +1263,14 @@ namespace {
 			end
 		end
 		nGameObject.SetTargetPosition = nLocomotion.SetTargetPosition
+
+		-- Until the object's jump or slide lands. The client plays it from ObjectJump (JumpArc).
+		function nThread.WaitForJumpComplete(id)
+			local object = get(id)
+			while object and object:IsJumping() do
+				nThread.WaitForXSeconds(0.05)
+			end
+		end
 	)lua";
 }
 

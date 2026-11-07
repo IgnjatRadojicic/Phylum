@@ -153,3 +153,26 @@ Approximate:
   it would come from its physics, which cannot be read. Allies still count: an aura with no
   filter, such as the Zelem slow aura, slows them too, as its script asks.
 - A volume goes when its object does. The client may keep it until the script detaches it.
+
+## Jumps and slides
+
+Charges, leaps, knockbacks and pulls move with `nLocomotion.JumpInDirection` and `SlideToPoint`,
+then wait with `nThread.WaitForJumpComplete`. The client reads the jump as (`Darkspore.exe`
+0xa09c50, 0xa15240):
+
+`JumpInDirection(object, direction x, y, z, distance, speed, facing x, y, z, lowest, highest, range to highest)`
+
+`SlideToPoint(object, x, y, z, speed)` is a jump to that point with no height.
+
+The server builds a `JumpArc`, sends every client an `ObjectJump` packet so the client plays the
+move itself, and moves its own copy of the object along the arc each tick without sending
+positions. Both return true when the move starts. `WaitForJumpComplete` waits until it lands, and a
+teleport or a stop ends a jump early.
+
+Approximate:
+- The client fits the jump to its navigation mesh, so it can stop short at a wall. The server has
+  no mesh yet and always covers the whole distance (Stage 2).
+- The height: it grows from the lowest to the highest as the distance reaches the range to the
+  highest, on a parabola. The client's curve is not known; it only matters for where the server
+  thinks the object is in the air.
+- Before this, `JumpInDirection` read its direction as a position and teleported the object there.
