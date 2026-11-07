@@ -1415,6 +1415,23 @@ namespace {
 			until not object or object:GetHealth() <= 0
 		end
 
+		-- Get/SetSimDataAsInt(player, key): whole-number counters kept on the player (client 0xa055c0,
+		-- 0xa05620; slot player+0x137c+key*4). The only key is nPlayerSimData.kBeastSentinelRessurections.
+		nPlayer = nPlayer or {}
+		local playerSimData = {}
+		function nPlayer.GetSimDataAsInt(playerId, key)
+			local data = playerSimData[tonumber(playerId)]
+			return data and data[tonumber(key)] or 0
+		end
+		function nPlayer.SetSimDataAsInt(playerId, key, value)
+			playerId = tonumber(playerId)
+			if not playerId then
+				return
+			end
+			playerSimData[playerId] = playerSimData[playerId] or {}
+			playerSimData[playerId][tonumber(key) or 0] = math.floor(tonumber(value) or 0)
+		end
+
 		-- A delay can come as a table holding the number (Psistorm sets timetohit = { timeToHit }).
 		for _, name in ipairs({ "WaitForXSeconds", "WaitUntilTime" }) do
 			local wait = nThread[name]
