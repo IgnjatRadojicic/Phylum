@@ -300,7 +300,10 @@ namespace Game {
 					return mLua.CallCoroutine<Result>(mEnvironment, fn, mSelf, std::forward<Args>(args)...);
 				}
 
-				if constexpr (!std::is_void_v<Result>) {
+				// A void call answers whether it ran (see LuaThread::call), so it needs an answer here too.
+				if constexpr (std::is_void_v<Result>) {
+					return false;
+				} else {
 					return Result {};
 				}
 			}
