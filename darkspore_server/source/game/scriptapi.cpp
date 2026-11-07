@@ -629,6 +629,15 @@ namespace {
 			end
 		end
 
+		-- The client reads the team as a number (0xa02dd0, lua_tonumber), so a missing one is team 0:
+		-- a missile whose caster is gone gets GetTeam's no value (MissileTempestActive).
+		function nGameObject.SetTeam(id, team)
+			local object = get(id)
+			if object then
+				object:SetTeam(tonumber(team) or 0)
+			end
+		end
+
 		-- The client takes the source as an id or an object (0xa03020).
 		function nGameObject.MirrorBaseAttributes(petId, source)
 			local pet = get(petId)
