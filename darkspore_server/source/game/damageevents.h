@@ -37,6 +37,9 @@ namespace Game {
 			explicit DamageEvents(AbilityEventSink& sink);
 
 			void Report(const DamageReport& hit);
+			// Dodged to the one who dodged: GUID 1 itself, GUID 2 the attacker, as the ghost
+			// sentinel's Ghostform reads it. A dodged hit raises no damage events.
+			void ReportDodge(uint32_t victim, uint32_t attacker);
 
 		private:
 			AbilityEvent Describe(AbilityEventType type, uint32_t otherSide, const DamageReport& hit) const;

@@ -127,3 +127,15 @@ TEST_CASE("event slots count from one, and unset or unknown slots read as zero")
 	CHECK(event.GetFloat(3) == 0.f);
 	CHECK(event.GetInt(4) == 0);
 }
+
+TEST_CASE("a dodge tells the one who dodged, with itself and the attacker") {
+	RecordingSink sink;
+	DamageEvents events(sink);
+	events.ReportDodge(10, 20);
+
+	REQUIRE(sink.sent.size() == 1);
+	CHECK(sink.sent[0].agent == 10);
+	CHECK(sink.sent[0].event.GetType() == AbilityEventType::Dodged);
+	CHECK(sink.sent[0].event.GetGUID(1) == 10);
+	CHECK(sink.sent[0].event.GetGUID(2) == 20);
+}

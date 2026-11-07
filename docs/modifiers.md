@@ -90,7 +90,11 @@ Bound means the modifier blocks actions, not only movement.
 - Durations follow the client's order, which darkspin recovered. Which object supplies each attribute is chosen: the caster for `BuffDuration`, the target for the others. `DebuffDurationIncrease` is not used, and the client's diminishing returns are not done.
 - `TookDamage` and `DealtDamage` reach scripts (`DamageEvents`). Their data slots are read from how 134 script call sites use them, not from the engine: GUID 1 the other side, Float 2 the amount, Int 3 the descriptors, Int 4 the damage type, Int 5 the damage source, GUID 6 the modifier that did it, GUID 7 the ability. GUID 2, which one script reads for `DealtDamage`, is unknown and stays 0. Hits from scripts leave GUID 6 and 7 at 0, because `TakeDamage` is not told who dealt them.
 - A hit dealt while damage events are handled raises none of its own, so two thorns effects cannot hit each other back forever. The game's own rule is unknown.
-- The other events (`NearbyDeath`, `UsedAbility`, `Dodged`, `CrystalBonus` and so on) do not reach scripts yet.
+- `UsedAbility`, `NearbyDeath` and `Dodged` reach scripts too (`ActionEvents`, `DamageEvents`), with slots read from their scripts:
+  - `UsedAbility` goes to the caster when a player or an enemy starts an ability, with Int 2 the ability's descriptors. Stealth ends on it, the loot boosts and the Fire Ravager passive count it. Abilities a script starts (a charge's hit, a pet's attack) do not raise it.
+  - `NearbyDeath` goes to every object within 20 m of a death, the dead one too, before its modifiers end: GUID 1 the one that died, Float 2 how far each was. The radius is a guess: 20 m is the distance `modifier_arborealmight` checks.
+  - `Dodged` goes to the one who dodged: GUID 1 itself, GUID 2 the attacker (the ghost sentinel's Ghostform drains the attacker). A dodged hit raises no damage events.
+- `CrystalBonus` (GUID 1 the catalyst modifier, Float 2 its bonus) waits for catalyst effects, which the server does not start yet. The other events (`NearbyDamage`, `StartedNewAction`, `ModifierInstanceAdded` and so on) do not reach scripts yet.
 - Passive modifiers are not started for heroes and mobs.
 - `Default` deactivation keeps a modifier through death until its time is up or its object is destroyed.
 - Overdrive and the NPC affix asset are always 0.

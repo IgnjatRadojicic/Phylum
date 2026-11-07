@@ -450,8 +450,9 @@ namespace Game {
 	bool AI::UseAbility(uint32_t id) {
 		if (!mObject->HasCooldown(id)) {
 			const auto& ability = mObject->GetGame().GetLua().GetAbility(id);
-			if (ability) {
-				return ability->Tick(mObject, mTargetObject, mTargetObject->GetPosition(), 1);
+			if (ability && ability->Tick(mObject, mTargetObject, mTargetObject->GetPosition(), 1)) {
+				mObject->GetGame().ReportUsedAbility(mObject->GetId(), static_cast<uint32_t>(ability->GetDescriptors()));
+				return true;
 			}
 		}
 		return false;

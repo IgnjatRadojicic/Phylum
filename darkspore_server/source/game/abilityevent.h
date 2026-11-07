@@ -13,8 +13,11 @@ namespace Game {
 	// GlobalDefinitions.lua). Only the ones the server sends are listed.
 	enum class AbilityEventType : uint32_t {
 		TookDamage = 1,
+		UsedAbility = 4,
 		StackModifier = 32,
-		DealtDamage = 8192
+		NearbyDeath = 64,
+		DealtDamage = 8192,
+		Dodged = 65536
 	};
 
 	// AbilityEvent

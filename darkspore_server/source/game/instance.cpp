@@ -7,6 +7,7 @@
 #include "modifiersystem.h"
 #include "castpayment.h"
 #include "damageevents.h"
+#include "actionevents.h"
 #include "passivemodifiers.h"
 #include "scripttriggervolumes.h"
 #include "serverevent.h"
@@ -106,6 +107,7 @@ namespace Game {
 			mLua->CallCoroutine<void>(nullptr, sol::function(callback), volume, objectId);
 		});
 		mDamageEvents = std::make_unique<DamageEvents>(*mModifiers);
+		mActionEvents = std::make_unique<ActionEvents>(*mModifiers);
 		mServer = std::make_unique<RakNet::Server>(*this);
 	}
 
@@ -130,6 +132,7 @@ namespace Game {
 
 		mServer.reset();
 		mDamageEvents.reset();
+		mActionEvents.reset();
 		mModifiers.reset(); // Holds tables that belong to Lua
 		mTriggerVolumes.reset(); // Holds Lua functions
 		mLua.reset();
@@ -269,6 +272,18 @@ namespace Game {
 		}
 	}
 
+	void Instance::ReportDodge(uint32_t victim, uint32_t attacker) {
+		if (mDamageEvents) {
+			mDamageEvents->ReportDodge(victim, attacker);
+		}
+	}
+
+	void Instance::ReportUsedAbility(uint32_t agent, uint32_t descriptors) {
+		if (mActionEvents) {
+			mActionEvents->UsedAbility(agent, descriptors);
+		}
+	}
+
 	float Instance::GetRecentDamage(uint32_t victim, float cap, float seconds) const {
 		const auto window = static_cast<uint64_t>(std::max(seconds, 0.f) * 1000.f);
 		return mRecentDamage.Total(victim, mGameTime > window ? mGameTime - window : 0, cap);
@@ -301,6 +316,17 @@ namespace Game {
 	void Instance::OnObjectDeath(const ObjectPtr& object, bool critical, bool knockback) {
 		if (!object) {
 			return;
+		}
+
+		// Before the dead one's modifiers end, since they hear it too (modifier_gravityorb_passive).
+		// Approximate: the radius is not known; 20 m is the distance modifier_arborealmight checks.
+		constexpr float nearbyDeathRadius = 20.f;
+		if (mActionEvents) {
+			std::vector<DeathWitness> witnesses;
+			for (const auto& nearby : mObjectManager->GetObjectsInRadius(BoundingSphere(object->GetPosition(), nearbyDeathRadius), {})) {
+				witnesses.push_back({ nearby->GetId(), glm::distance(nearby->GetPosition(), object->GetPosition()) });
+			}
+			mActionEvents->NearbyDeath(object->GetId(), witnesses);
 		}
 
 		mModifiers->OnAgentDeath(object->GetId());
@@ -652,7 +678,11 @@ namespace Game {
 		}
 
 		// ability:tick(object, target, cursorPosition, rank)
-		return ability->Tick(object, mObjectManager->Get(combatData.targetId), combatData.cursorPosition, combatData.abilityRank);
+		if (!ability->Tick(object, mObjectManager->Get(combatData.targetId), combatData.cursorPosition, combatData.abilityRank)) {
+			return false;
+		}
+		ReportUsedAbility(object->GetId(), static_cast<uint32_t>(ability->GetDescriptors()));
+		return true;
 	}
 
 	void Instance::WeaponAttack(const ObjectPtr& attacker, uint32_t targetId, uint32_t abilityId, const std::tuple<float, float>& damageRange) {

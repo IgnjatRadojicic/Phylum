@@ -982,6 +982,9 @@ namespace LuaFunction {
 				hit.damageType = static_cast<uint32_t>(damageType);
 				hit.damageSource = static_cast<uint32_t>(damageSource);
 				game.ReportDamage(hit);
+				if (result.outcome == Game::HitOutcome::Dodged) {
+					game.ReportDodge(hit.victim, hit.attacker);
+				}
 				return std::make_tuple(result.landed, result.damage, result.critical);
 			}
 

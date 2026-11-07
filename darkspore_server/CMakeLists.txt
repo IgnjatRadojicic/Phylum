@@ -131,6 +131,7 @@ add_executable(recap_tests
     tests/attributestack_test.cpp
     tests/modifiermanager_test.cpp
     tests/damageevents_test.cpp
+    tests/actionevents_test.cpp
     tests/difficultytuning_test.cpp
     tests/abilitycost_test.cpp
     tests/hitroll_test.cpp
@@ -147,6 +148,7 @@ add_executable(recap_tests
     source/game/modifiermanager.cpp
     source/game/abilityevent.cpp
     source/game/damageevents.cpp
+    source/game/actionevents.cpp
     source/game/difficultytuning.cpp
     source/game/abilitycost.cpp
     source/game/hitroll.cpp

@@ -304,6 +304,7 @@ namespace {
 				CheckKillObjectEndsPassive();
 				CheckDronePassiveSpawnsDrone();
 				CheckAuraSlowsEnemyInside();
+				CheckStealthEndsOnUsedAbility();
 				CheckJumpLandsWhereItAimed();
 				CheckLineFindsMobOnIt();
 
@@ -721,6 +722,23 @@ namespace {
 
 			// The game's Zelem slow aura puts its slow on an enemy inside its trigger volume and takes
 			// it off when the enemy leaves. Its own agent is never slowed, and the volume goes with it.
+			// modifier_stealth shows its agent again when the agent uses an ability.
+			void CheckStealthEndsOnUsedAbility() {
+				auto agent = Spawn();
+				sol::protected_function spid = mState["nUtil"]["SPID"];
+				const auto id = Request(agent, agent, spid("StealthModifier"));
+				Wait(100);
+				const auto hidden = agent->GetStealthType();
+
+				mGame.ReportUsedAbility(agent->GetId(), 0);
+				Wait(100);
+				const auto after = agent->GetStealthType();
+
+				Report("stealth-ends-on-used-ability", id != 0 && hidden != Game::StealthType::None && after == Game::StealthType::None,
+					"id=" + std::to_string(id) + " hidden=" + std::to_string(static_cast<int>(hidden)) +
+					" after=" + std::to_string(static_cast<int>(after)));
+			}
+
 			void CheckAuraSlowsEnemyInside() {
 				auto* volumes = mGame.GetTriggerVolumes();
 				const size_t volumesBefore = volumes ? volumes->Count() : 0;

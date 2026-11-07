@@ -33,6 +33,17 @@ namespace Game {
 		}
 	}
 
+	void DamageEvents::ReportDodge(uint32_t victim, uint32_t attacker) {
+		if (mSending || victim == 0) {
+			return;
+		}
+
+		SendingScope scope(mSending);
+		AbilityEvent event(AbilityEventType::Dodged);
+		event.SetGUID(1, victim).SetGUID(2, attacker);
+		mSink.SendEvent(victim, event);
+	}
+
 	AbilityEvent DamageEvents::Describe(AbilityEventType type, uint32_t otherSide, const DamageReport& hit) const {
 		AbilityEvent event(type);
 		event.SetGUID(1, otherSide)
