@@ -1121,8 +1121,10 @@ namespace {
 				sol::protected_function distance = mState["nGameObject"]["GetObjectDistance"];
 				sol::protected_function_result result = distance(first->GetId(), second->GetId());
 				sol::optional<float> value = result;
+				const float expected = std::max(0.f, 5.f - first->GetFootprintRadius() - second->GetFootprintRadius());
 
-				Report("distance-can-be-read", value && *value == 5.f, "distance=" + std::to_string(value.value_or(-1.f)));
+				Report("distance-can-be-read", value && std::abs(*value - expected) < 0.001f,
+					"distance=" + std::to_string(value.value_or(-1.f)) + " expected=" + std::to_string(expected));
 			}
 
 			// A cast the player cancels still runs its Deactivate step, so its stat change comes off.

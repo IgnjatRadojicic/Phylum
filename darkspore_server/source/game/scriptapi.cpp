@@ -723,6 +723,7 @@ namespace {
 			return object and object:GetMaxHealth() or 0
 		end
 
+		-- Edge to edge, as the client's (0xa0b5c0): the centres' distance less both footprints, never below 0.
 		function nGameObject.GetObjectDistance(firstId, secondId)
 			local first, second = get(firstId), get(secondId)
 			if not first or not second then
@@ -730,7 +731,8 @@ namespace {
 			end
 			local from, to = first:GetPosition(), second:GetPosition()
 			local x, y, z = to.x - from.x, to.y - from.y, to.z - from.z
-			return math.sqrt(x * x + y * y + z * z)
+			local gap = math.sqrt(x * x + y * y + z * z) - first:GetFootprintRadius() - second:GetFootprintRadius()
+			return math.max(gap, 0)
 		end
 
 		function nGameObject.GetHitPoints(id)
