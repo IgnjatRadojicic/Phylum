@@ -41,10 +41,6 @@ namespace Game {
 			// A finished or failed thread is free. Only one waiting to resume is still in use.
 			bool is_waiting() const { return mCoroutine.valid() && mCoroutine.status() == sol::call_status::yielded; }
 
-			// Whether the last call or resume ended in a script error. Kept apart from the
-			// coroutine, because a failed thread is renewed as soon as it goes back to the pool.
-			bool failed() const { return mFailed; }
-
 			sol::object get_value(const std::string& key) const;
 			void set_value(const std::string& key, sol::object&& value);
 
@@ -54,25 +50,27 @@ namespace Game {
 			void set_resume_condition(const ResumeCondition& condition);
 			void set_resume_condition(ResumeCondition&& condition);
 
+			// call<void> answers whether the script ran without an error. Use that answer, not
+			// this thread: a thread that did not wait is back in the pool, or deleted, on return.
 			template<typename Result, typename... Args>
 			decltype(auto) call(const sol::function& func, Args&&... args) {
 				create(func);
 
 				sol::protected_function_result result = mCoroutine(std::forward<Args>(args)...);
-				mFailed = !result.valid();
-				if (result.valid()) {
-					post_call();
-				} else {
+				const bool succeeded = result.valid();
+				if (!succeeded) {
 					sol::error err = result;
 					std::cout << "LuaThread::call()" << std::endl;
 					std::cout << err.what() << std::endl;
 					report("call", err.what());
 					std::cout << std::to_underlying(mCoroutine.status()) << std::endl;
-					post_call();
 				}
+				post_call();
 
 				if constexpr (!std::is_void_v<Result>) {
 					return static_cast<Result>(result);
+				} else {
+					return succeeded;
 				}
 			}
 
@@ -97,7 +95,6 @@ namespace Game {
 			// The object casting on this thread, whose pointer is cleared when the thread is freed.
 			std::weak_ptr<Object> mOwner;
 			uint64_t mTicket = 0;
-			bool mFailed = false;
 
 			// Set when a call gave the thread its own globals, which the next user must not inherit.
 			bool mHasEnvironment = false;

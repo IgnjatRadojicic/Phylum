@@ -166,13 +166,13 @@ namespace Game {
 		mRuns[id].ticket = lua.TrackThread(thread);
 
 		sol::state_view state(lua.GetState());
-		thread->call<void>(state["ModifierApi"]["Start"], context);
+		const bool started = thread->call<void>(state["ModifierApi"]["Start"], context);
 
 		// A script that dies at start would otherwise hold the modifier, doing nothing, for its
 		// whole duration. It ends at the next update, so deactivate can undo what activate did.
 		// Only the start is covered: a script that fails later, after waiting, keeps its duration.
 		// Looked up again, because the script may already have ended it.
-		if (const auto running = mManager.Get(id); running && thread->failed()) {
+		if (const auto running = mManager.Get(id); running && !started) {
 			Trace("failed", running->spec.guid, id, running->agent, running->initiator);
 			mManager.MarkForDelete(id);
 		}
