@@ -32,6 +32,8 @@ namespace Game {
 		CONFIG_TEST_MOB_HEALTH,
 		// 1 lets casts cost no mana, until orbs refill it as in the game
 		CONFIG_TEST_FREE_MANA,
+		// How many of the level's enemies to put around the hero's spawn point, for testing. 0 puts none.
+		CONFIG_TEST_ENEMIES_AT_SPAWN,
 		CONFIG_END
 	};
 

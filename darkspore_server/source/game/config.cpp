@@ -76,6 +76,8 @@ namespace Game {
 				mConfig[CONFIG_TEST_MOB_HEALTH] = value;
 			} else if (name == "TEST_FREE_MANA") {
 				mConfig[CONFIG_TEST_FREE_MANA] = value;
+			} else if (name == "TEST_ENEMIES_AT_SPAWN") {
+				mConfig[CONFIG_TEST_ENEMIES_AT_SPAWN] = value;
 			} else if (name == "TEMPLATE_CREATURE_PARTS_PATH") {
 				mConfig[CONFIG_TEMPLATE_CREATURE_PARTS_PATH] = value;
 			} else {
@@ -103,6 +105,7 @@ namespace Game {
 		mConfig[CONFIG_TEMPLATE_CREATURE_PARTS_PATH] = "data/creature_parts_templates.json";
 		mConfig[CONFIG_TEST_MOB_HEALTH] = "0";
 		mConfig[CONFIG_TEST_FREE_MANA] = "0";
+		mConfig[CONFIG_TEST_ENEMIES_AT_SPAWN] = "0";
 
 		pugi::xml_document document;
 		if (auto parse_result = document.load_file(path.c_str())) {
@@ -180,6 +183,7 @@ namespace Game {
 				case CONFIG_TEMPLATE_CREATURE_PARTS_PATH: return "TEMPLATE_CREATURE_PARTS_PATH";
 				case CONFIG_TEST_MOB_HEALTH: return "TEST_MOB_HEALTH";
 				case CONFIG_TEST_FREE_MANA: return "TEST_FREE_MANA";
+				case CONFIG_TEST_ENEMIES_AT_SPAWN: return "TEST_ENEMIES_AT_SPAWN";
 				default: return "UNKNOWN";
 			}
 		};

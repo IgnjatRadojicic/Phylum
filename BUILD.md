@@ -32,6 +32,8 @@ The process of building the ReCap server with a Docker container can be executed
 ## Tests
 For testing abilities in the real game, set `TEST_MOB_HEALTH` in the server's `config.xml` to give every mob that much health. Zero, the default, leaves them as they are.
 
+Set `TEST_ENEMIES_AT_SPAWN` to a number (at most 12) to put that many of the level's special enemies in a ring 6 m around the hero's spawn point, so abilities can be tried straight away. Only specials are used: minions placed by hand have stayed invisible or crashed the client. Zero, the default, puts none. The server has no navigation mesh yet, so on a very small island one may stand past the edge.
+
 `build.ps1` builds and runs the unit tests in `darkspore_server/tests`, and stops if one fails.
 
 To check that game scripts have not got worse, run this with the game installed:

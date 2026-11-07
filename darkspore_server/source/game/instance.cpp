@@ -13,6 +13,8 @@
 #include "serverevent.h"
 #include "catalyst.h"
 #include "scheduler.h"
+#include "config.h"
+#include "testenemyring.h"
 
 #include "raknet/server.h"
 #include "sporenet/instance.h"
@@ -470,7 +472,8 @@ namespace Game {
 			if (mLevel.GetMarkerset(levelName + "_AI_WandererC.Markerset", markerset) || mLevel.GetMarkerset(levelName + "_AI_Wanderers_C.Markerset", markerset)) {
 				TestEnemy(markerset);
 			}
-			
+
+			SpawnTestEnemies(player);
 		}
 
 		// mLua->LoadFile("data/serverdata/lua/player_start.lua");
@@ -578,6 +581,37 @@ namespace Game {
 			}
 		}
 		return result;
+	}
+
+	void Instance::SpawnTestEnemies(const PlayerPtr& player) {
+		// A typo such as 1000 would flood the island, so it stays a handful.
+		constexpr uint32_t mostTestEnemies = 12;
+
+		const auto count = std::min(Config::GetU32(ConfigKey::CONFIG_TEST_ENEMIES_AT_SPAWN), mostTestEnemies);
+		if (count == 0 || !player || player->GetId() >= mPlayerSpawnpoints.size()) {
+			return;
+		}
+
+		// Only the level's specials (slots 3 to 5). Placed by hand, minions have never shown in game:
+		// on 1-1 ZelemBasicRanged stayed invisible and ZelemBasicHybrid crashed the client at
+		// 0x4F4146 (HANDOFF-2026-11-06-6-50PM.md). Specials placed the same way do show.
+		std::vector<uint32_t> enemyNouns;
+		const auto& nouns = NounDatabase::Instance();
+		for (uint32_t slot = 3; slot < 6; ++slot) {
+			if (const auto noun = mChainData.GetEnemyNoun(slot); nouns.Get(noun)) {
+				enemyNouns.push_back(noun);
+			}
+		}
+		if (enemyNouns.empty()) {
+			return;
+		}
+
+		const auto positions = TestEnemyRing::Positions(mPlayerSpawnpoints[player->GetId()], count);
+		for (size_t i = 0; i < positions.size(); ++i) {
+			if (const auto& object = mObjectManager->Create(enemyNouns[i % enemyNouns.size()])) {
+				object->SetPosition(positions[i]);
+			}
+		}
 	}
 
 	void Instance::MoveObject(const ObjectPtr& object, const Locomotion& locomotionData) {

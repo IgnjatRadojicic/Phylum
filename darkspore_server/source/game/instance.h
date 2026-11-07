@@ -132,6 +132,8 @@ namespace Game {
 			bool IsLevelLoaded() const;
 			bool LoadLevel();
 			std::vector<uint32_t> GetUsableEnemyNouns() const;
+			// TEST_ENEMIES_AT_SPAWN: the level's special enemies around the player's spawn point, for testing.
+			void SpawnTestEnemies(const PlayerPtr& player);
 
 			MarkerPtr GetMarker(uint32_t id) const;
 

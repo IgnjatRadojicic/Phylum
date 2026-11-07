@@ -140,6 +140,7 @@ add_executable(recap_tests
     tests/triggervolume_test.cpp
     tests/jumparc_test.cpp
     tests/recentdamage_test.cpp
+    tests/testenemyring_test.cpp
     source/game/scriptsource.cpp
     source/game/scriptgaps.cpp
     source/game/projectilesweep.cpp
@@ -158,7 +159,8 @@ add_executable(recap_tests
     source/game/triggeroccupancy.cpp
     source/game/triggerarea.cpp
     source/game/jumparc.cpp
-    source/game/recentdamage.cpp)
+    source/game/recentdamage.cpp
+    source/game/testenemyring.cpp)
 target_include_directories(recap_tests PRIVATE source ${doctest_SOURCE_DIR})
 target_link_libraries(recap_tests PRIVATE lua pugixml)
 
