@@ -513,8 +513,6 @@ namespace Game {
 			characterObject->SetVisible(true); // i == creatureIndex
 
 			characterObject->SetAttributeValue(AttributeType::InvisibleToSecurityTeleporters, 1);
-			characterObject->SetAttributeValue(AttributeType::AttackSpeedScale, 1);
-			characterObject->SetAttributeValue(AttributeType::CooldownScale, 1);
 
 			SendObjectUpdate(characterObject);
 		}
