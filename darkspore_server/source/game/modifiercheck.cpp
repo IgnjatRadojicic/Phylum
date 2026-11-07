@@ -128,6 +128,17 @@ namespace {
 			ModifierCheckCancel.ended = true
 		end
 
+		-- The same, starting a thread that ends at once before its first wait, as the missile
+		-- tempest starts its launches.
+		local withChild = {}
+		nAbility.RegisterAbility("ModifierCheckCancelledWithChild", withChild)
+		withChild[nAbilityFns.Activate] = cancelled[nAbilityFns.Activate]
+		withChild[nAbilityFns.Deactivate] = cancelled[nAbilityFns.Deactivate]
+		withChild[nAbilityFns.Tick] = function()
+			nThread.Create(nAbility.GetAgentID(), function() end)
+			nThread.WaitForXSeconds(100)
+		end
+
 		-- A modifier whose script dies at start. It has no duration, so only the failure can end it.
 		ModifierCheckBroken = { stops = 0 }
 		nModifier.RegisterModifier("ModifierCheckBroken", {
@@ -230,6 +241,7 @@ namespace {
 			nAbility.scripts.ModifierCheckFails = nil
 			nAbility.scripts.ModifierCheckCancelled = nil
 			nAbility.scripts.ModifierCheckStealthCast = nil
+			nAbility.scripts.ModifierCheckCancelledWithChild = nil
 			nAbility.scripts.ModifierCheckFinishes = nil
 		end
 
@@ -332,7 +344,8 @@ namespace {
 				CheckAuraSlowsEnemyInside();
 				CheckStealthEndsOnUsedAbility();
 				CheckStealthCastKeepsItsStealth();
-				CheckCancelledCastUndoesItsChanges();
+				CheckCancelledCastUndoesItsChanges("ModifierCheckCancelled", "cancelled-cast-undoes-its-changes");
+				CheckCancelledCastUndoesItsChanges("ModifierCheckCancelledWithChild", "cancelled-cast-with-child-undoes-its-changes");
 				CheckJumpLandsWhereItAimed();
 				CheckLineFindsMobOnIt();
 
@@ -1055,9 +1068,9 @@ namespace {
 			}
 
 			// A cast the player cancels still runs its Deactivate step, so its stat change comes off.
-			void CheckCancelledCastUndoesItsChanges() {
+			void CheckCancelledCastUndoesItsChanges(const char* abilityName, const char* checkName) {
 				auto agent = Spawn();
-				const auto ability = mLua.GetAbility(utils::hash_id("ModifierCheckCancelled"));
+				const auto ability = mLua.GetAbility(utils::hash_id(abilityName));
 				ability->FindNumberedTick();
 
 				const float before = agent->GetAttributeValue(Game::AttributeType::Strength);
@@ -1068,8 +1081,9 @@ namespace {
 				const float after = agent->GetAttributeValue(Game::AttributeType::Strength);
 				sol::table cancel = mState["ModifierCheckCancel"];
 				const bool ended = cancel["ended"].get_or(false);
+				cancel["ended"] = false;
 
-				Report("cancelled-cast-undoes-its-changes", during > before && after == before && ended && !agent->GetLuaThread(),
+				Report(checkName, during > before && after == before && ended && !agent->GetLuaThread(),
 					"before=" + std::to_string(before) + " during=" + std::to_string(during) + " after=" + std::to_string(after) +
 					" ended=" + std::to_string(ended));
 			}

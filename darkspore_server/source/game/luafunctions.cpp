@@ -1714,9 +1714,10 @@ namespace Game {
 			auto& objectManager = mGame.GetObjectManager();
 			auto object = LuaGetObject(objectManager, objectValue);
 			if (object) {
-				// Whatever the object is running stays the one that a cancel stops.
+				// Whatever the object is running stays the one that a cancel stops: a cast waiting,
+				// or the cast making this call before its first wait (as the missile tempest does).
 				thread = object->GetLuaThread();
-				if (thread && thread->is_waiting()) {
+				if (thread && (thread->is_waiting() || thread->lua_state() == L.lua_state())) {
 					thread = SpawnThread();
 				} else {
 					thread = SpawnThreadFor(object);
