@@ -12,6 +12,9 @@ namespace Game {
 	class ScriptCheck {
 		public:
 			static void WriteReport(const std::filesystem::path& reportPath);
+
+			// Casts every hero's abilities in real time (minutes), see HeroAbilitySweep.
+			static void WriteHeroReport(const std::filesystem::path& reportPath);
 	};
 }
 

@@ -3,6 +3,7 @@
 #include "scriptcheck.h"
 
 #include "gamemanager.h"
+#include "heroabilitysweep.h"
 #include "instance.h"
 #include "lua.h"
 #include "modifiercheck.h"
@@ -303,6 +304,23 @@ namespace Game {
 			}
 		}
 
+		std::cout.rdbuf(consoleBuffer);
+	}
+
+	void ScriptCheck::WriteHeroReport(const std::filesystem::path& reportPath) {
+		std::ofstream console("script-heroes-console.txt");
+		auto* consoleBuffer = std::cout.rdbuf(console.rdbuf());
+
+		const auto game = GameManager::CreateGame();
+		game->CreateWorld();
+		Lua& lua = game->GetLua();
+		lua.SetGapLogPath("script-heroes-missing.txt");
+		lua.SetTracePath("script-heroes-trace.txt");
+		std::filesystem::remove("script-heroes-trace.txt");
+		lua.Initialize();
+		lua.PreloadAbilities();
+
+		HeroAbilitySweep::Run(*game, lua, reportPath);
 		std::cout.rdbuf(consoleBuffer);
 	}
 }

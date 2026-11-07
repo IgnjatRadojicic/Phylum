@@ -211,6 +211,9 @@ namespace Game {
 			// console otherwise, and each line is flushed so a crash keeps it.
 			void Trace(const std::string& line);
 
+			// Also hands each trace line to a check (the hero ability sweep). Empty to stop.
+			void SetTraceObserver(std::function<void(const std::string&)> observer);
+
 			sol::table GetPrivateTable(uint32_t id) const;
 			sol::table CreatePrivateTable(uint32_t id);
 			void RemovePrivateTable(uint32_t id);
@@ -266,6 +269,7 @@ namespace Game {
 			std::string mGapLogPath = "script-missing.txt";
 			std::string mTracePath = "script-live.txt";
 			std::ofstream mTrace;
+			std::function<void(const std::string&)> mTraceObserver;
 
 			std::unordered_map<lua_State*, LuaThread*> mThreads;
 			std::unordered_map<uint32_t, AbilityPtr> mAbilities;

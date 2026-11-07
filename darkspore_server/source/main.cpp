@@ -39,6 +39,7 @@ Application* Application::sApplication = nullptr;
 
 bool Application::sVerboseTimestamps = false;
 bool Application::sCheckScripts = false;
+bool Application::sCheckHeroes = false;
 
 std::string Application::darksporeInstallPath = "../..";
 std::string Application::darksporeInstallVersion = "5.3.0.127";
@@ -59,6 +60,8 @@ Application& Application::InitApp(int argc, char* argv[]) {
                 exit(0);
             } else if (strcmp(argv[i], "--check-scripts") == 0) {
                 sCheckScripts = true;
+            } else if (strcmp(argv[i], "--check-heroes") == 0) {
+                sCheckHeroes = true;
             } else if (strcmp(argv[i], "--darkspore-path") == 0) {
                 i++;
                 darksporeInstallPath = std::string(argv[i]);
@@ -113,6 +116,13 @@ bool Application::OnInit() {
 		(void)Game::NounDatabase::Instance();
 		Game::GlobalLua::Instance().Initialize();
 		Game::ScriptCheck::WriteReport("script-report.txt");
+		exit(0);
+	}
+
+	if (sCheckHeroes) {
+		(void)Game::NounDatabase::Instance();
+		Game::GlobalLua::Instance().Initialize();
+		Game::ScriptCheck::WriteHeroReport("script-heroes.txt");
 		exit(0);
 	}
 

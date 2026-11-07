@@ -1455,6 +1455,13 @@ namespace Game {
 			mTrace.open(mTracePath, std::ios::app);
 		}
 		mTrace << GetGame().GetTime() << " " << line << std::endl;
+		if (mTraceObserver) {
+			mTraceObserver(line);
+		}
+	}
+
+	void Lua::SetTraceObserver(std::function<void(const std::string&)> observer) {
+		mTraceObserver = std::move(observer);
 	}
 
 	void Lua::RegisterGameScriptApi() {
