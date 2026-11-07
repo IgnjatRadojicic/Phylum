@@ -415,14 +415,29 @@ namespace Game {
 		PreloadLibraries();
 
 		// Each script registers itself under its own name when it runs.
-		size_t failed = 0;
-		for (const auto& [_, code] : GlobalLua::Instance().GetLoadedAbilities()) {
+		const auto run = [this](const sol::bytecode& code, bool report) {
 			sol::protected_function_result result = mState.safe_script(code.as_string_view(), &sol::script_pass_on_error);
-			if (!result.valid()) {
+			if (!result.valid() && report) {
 				sol::error err = result;
 				std::cout << err.what() << std::endl;
-				++failed;
 			}
+			return result.valid();
+		};
+
+		std::vector<const sol::bytecode*> retry;
+		for (const auto& [_, code] : GlobalLua::Instance().GetLoadedAbilities()) {
+			if (!run(code, false)) {
+				retry.push_back(&code);
+			}
+		}
+
+		PreloadModifiers();
+
+		// Some abilities read their modifier's table while they load (Blitz's LightningRogueSupport
+		// reads nModifier_LightningRogueSupport), and that only exists once the modifiers ran.
+		size_t failed = 0;
+		for (const auto* code : retry) {
+			failed += !run(*code, true);
 		}
 		std::cout << "Game ability scripts: " << mAbilities.size() << " registered, " << failed << " failed." << std::endl;
 
@@ -430,8 +445,6 @@ namespace Game {
 		for (const auto& [_, ability] : mAbilities) {
 			ability->FindNumberedTick();
 		}
-
-		PreloadModifiers();
 	}
 
 	void Lua::PreloadModifiers() {
