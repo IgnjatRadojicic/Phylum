@@ -91,6 +91,12 @@ Still approximate:
   was shared by all of an object's abilities and ran past a shorter sequence.
 - `nGameObject.GetObjectAngleRad(id, otherId)` (client 0xa0da40) is the turn from the object's facing
   to the other object about the up axis, from 0 to 2 pi; nothing when either is missing.
+- `nGameObject.IsPet(id)`: the client has no such function and the original server's is not known.
+  Here a pet is a creature that another creature owns, such as a summon; the melee and projectile
+  templates then raise its damage by the owner's PetDamage.
+- `nMathUtil.TransformVector(x, y, z, qx, qy, qz, qw)` rotates the vector by the quaternion, w last,
+  as the client does (0xa0c0b0, whose helper 0x44be50 is the usual rotation matrix). The ability
+  check tests it on a quarter turn.
 - `nGameObject.GetCurrentSpeed(id)` is the length of the object's velocity, raised by its movement
   speed buff when it moves on its own, as in the client (0xa0b2c0).
 - `GetWarmupAnimation` is not in the client either, so its one script fails there too.

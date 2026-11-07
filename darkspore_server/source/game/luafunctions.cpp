@@ -2279,6 +2279,7 @@ namespace Game {
 		object["SetMana"] = &Object::SetMana;
 
 		object["GetOwnerObject"] = &Object::GetOwnerObject;
+		object["IsCreature"] = &Object::IsCreature;
 		object["SetOwnerObject"] = &Object::SetOwnerObject;
 
 		object["PlayAnimationSequence"] = [this](sol::this_state L, sol::object objectValue, sol::table sequenceTable) {

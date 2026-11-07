@@ -700,8 +700,13 @@ namespace {
 			return owner and owner:GetId() or kObjIDNone
 		end
 
-		function nGameObject.IsPet()
-			return false
+		-- The client has no IsPet; the original server's is not known. A pet here is a creature that
+		-- another creature owns, such as a summon: the templates then add the owner's PetDamage.
+		-- A projectile has an owner too, but is no creature.
+		function nGameObject.IsPet(id)
+			local object = get(id)
+			local owner = object and object:GetOwnerObject()
+			return owner ~= nil and owner ~= object and object:IsCreature() and owner:IsCreature()
 		end
 
 		function nGameObject.IsAlive(id)
