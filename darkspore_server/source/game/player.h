@@ -100,6 +100,8 @@ namespace Game {
 
 			void GetStatus(uint32_t& status, float& progress) const;
 			void SetStatus(uint32_t status, float progress);
+			// Sent to the client, which then keeps its camera still (nPlayer.LockCamera).
+			void SetCameraLocked(bool locked);
 
 			ObjectPtr GetCharacterObject(uint32_t index) const;
 			ObjectPtr GetDeployedCharacterObject() const;

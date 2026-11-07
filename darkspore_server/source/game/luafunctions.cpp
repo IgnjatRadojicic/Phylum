@@ -2217,6 +2217,15 @@ namespace Game {
 			}
 			return ids;
 		};
+		// The client sets the player's mLockCamera flag (Darkspore.exe 0xa05020, 0xa05070).
+		const auto lockCamera = [this](uint32_t playerId, bool locked) {
+			if (const auto player = playerId < playerSlots ? mGame.GetPlayerByIndex(static_cast<uint8_t>(playerId)) : nullptr) {
+				player->SetCameraLocked(locked);
+			}
+		};
+		nPlayer["LockCamera"] = [lockCamera](uint32_t playerId) { lockCamera(playerId, true); };
+		nPlayer["UnlockCamera"] = [lockCamera](uint32_t playerId) { lockCamera(playerId, false); };
+
 		// Overdrive starts by itself once the bar is full, so charged is active.
 		nPlayer["IsOverdriveActive"] = [this](uint32_t playerId) {
 			const auto player = playerId < playerSlots ? mGame.GetPlayerByIndex(static_cast<uint8_t>(playerId)) : nullptr;

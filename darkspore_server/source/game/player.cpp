@@ -163,6 +163,13 @@ namespace Game {
 		return mbIsCharged;
 	}
 
+	void Player::SetCameraLocked(bool locked) {
+		if (mLockCamera != locked) {
+			mLockCamera = locked;
+			mDataBits.set(PlayerDataBits::LockCamera);
+		}
+	}
+
 	void Player::Setup() {
 		SetStatus(0, 0.f);
 

@@ -194,6 +194,8 @@ Approximate:
   all of them. `GetPlayerIdForObject(id)` gives the slot of the player that controls the object, or
   0 for any other object, as the client does (`Darkspore.exe` 0xa04910).
   `IsOverdriveActive(player)` is true while the player's overdrive is charged.
+- `nPlayer.LockCamera(player)` and `UnlockCamera(player)` set the player's `mLockCamera` flag, which
+  the client reads (client 0xa05020, 0xa05070). Quantum Blink locks it while it blinks.
 - `nThread.WaitForNearGoal(id, distance, fraction, timeout, giveUpIfNotCloser)` (client 0xa08d40)
   waits until the object's walk comes within distance of its goal and gives true, or gives false
   when the object is gone or the timeout (seconds, none when below 0) runs out. The server places a
