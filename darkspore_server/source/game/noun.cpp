@@ -1115,6 +1115,13 @@ namespace Game {
 						data->mId = utils::hash_id(name);
 						data->mPath = name;
 
+						// Seven heroes name their passive in mpClassAttributes (PC_EL_Mage: FireTempestPassive),
+						// so that finds no stats. Their own <class>.ClassAttributes has them.
+						if (!data->mAttributes) {
+							const auto className = name.substr(0, name.find('.'));
+							data->mAttributes = GetClassAttributes(utils::hash_id(className + ".ClassAttributes"));
+						}
+
 						mPlayerClasses.try_emplace(data->mId, data);
 					}
 				} else {
