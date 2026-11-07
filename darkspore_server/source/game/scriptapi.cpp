@@ -417,7 +417,8 @@ namespace {
 			local value = nThreadData.GetPrivateTable()[key]
 			if value == nil and type(key) == "number" then
 				local properties = dataOwner().properties
-				value = properties and properties[key + 1]
+				local passed = properties and properties[key + 1]
+				value = type(passed) == "number" and passed or nil
 			end
 			return value
 		end

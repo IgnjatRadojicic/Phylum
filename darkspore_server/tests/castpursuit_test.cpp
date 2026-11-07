@@ -93,3 +93,16 @@ TEST_CASE("a retry that comes without a target runs at the chased one") {
 	// With no chase, a cast without a target stays without one.
 	CHECK(pursuit.Decide(arrived, 300).targetId == 0);
 }
+
+TEST_CASE("a repeat cast at the chased target just past its range runs, further away it pursues") {
+	CastPursuit pursuit;
+	CHECK(pursuit.Decide(Far(), 0).decision == CastPursuit::Decision::Pursue);
+	auto justShort = Far();
+	justShort.gap = 12.5f;
+	CHECK(pursuit.Decide(justShort, 100).decision == CastPursuit::Decision::Run);
+
+	CHECK(pursuit.Decide(Far(), 200).decision == CastPursuit::Decision::Pursue);
+	auto stillFar = Far();
+	stillFar.gap = 14;
+	CHECK(pursuit.Decide(stillFar, 300).decision == CastPursuit::Decision::Pursue);
+}

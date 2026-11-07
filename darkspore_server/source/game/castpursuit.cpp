@@ -22,7 +22,11 @@ namespace Game {
 			return { Decision::Run, chasedTarget };
 		}
 
-		const bool outOfRange = cast.shouldPursue && cast.targetId != 0 && cast.range > 0 && cast.gap > cast.range;
+		// The player casting at the chased target again gets a little slack, so a hero that stopped
+		// just short is not sent walking again and again.
+		const bool chasedAgain = chasedTarget != 0 && chasedTarget == cast.targetId;
+		const float range = cast.range + (chasedAgain ? slack : 0.f);
+		const bool outOfRange = cast.shouldPursue && cast.targetId != 0 && cast.range > 0 && cast.gap > range;
 		if (!outOfRange) {
 			return { Decision::Run, cast.targetId };
 		}

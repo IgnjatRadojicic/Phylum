@@ -16,6 +16,8 @@ namespace Game {
 	class CastPursuit {
 		public:
 			static constexpr uint64_t timeoutMs = 8000;
+			// Metres beyond range a repeat cast at the chased target still runs (Darkspin's redirect is 0.75).
+			static constexpr float slack = 1.f;
 
 			struct Cast {
 				uint32_t casterId = 0;
