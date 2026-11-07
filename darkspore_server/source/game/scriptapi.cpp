@@ -1287,6 +1287,17 @@ namespace {
 			return x, y, z
 		end
 
+		-- A delay can come as a table holding the number (Psistorm sets timetohit = { timeToHit }).
+		for _, name in ipairs({ "WaitForXSeconds", "WaitUntilTime" }) do
+			local wait = nThread[name]
+			nThread[name] = function(seconds, ...)
+				if type(seconds) == "table" then
+					seconds = seconds[1]
+				end
+				return wait(tonumber(seconds) or 0, ...)
+			end
+		end
+
 		local transformVector = nMathUtil.TransformVector
 		function nMathUtil.TransformVector(x, y, z, orientationX, orientationY, orientationZ, orientationW)
 			local orientation = quat.new(orientationW or 1, orientationX or 0, orientationY or 0, orientationZ or 0)
