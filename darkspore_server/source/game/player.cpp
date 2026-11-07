@@ -167,6 +167,7 @@ namespace Game {
 		if (mLockCamera != locked) {
 			mLockCamera = locked;
 			mDataBits.set(PlayerDataBits::LockCamera);
+			SetUpdateBits(PlayerUpdateBits::PlayerBits);
 		}
 	}
 
