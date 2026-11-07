@@ -104,6 +104,15 @@ namespace {
 			ModifierCheckCast.stopped = nAbility.GetAgentID()
 		end
 
+		-- A cast that stealths its own caster, as ShadowRavagerSupport does before its first wait.
+		local stealthCast = {}
+		nAbility.RegisterAbility("ModifierCheckStealthCast", stealthCast)
+		stealthCast[nAbilityFns.Tick] = function()
+			local agent = nAbility.GetAgentID()
+			nModifier.RequestModifier(agent, agent, nUtil.SPID("StealthModifier"))
+			nThread.WaitForXSeconds(100)
+		end
+
 		-- A cast that raises a stat for as long as it runs, as charges and channels do.
 		ModifierCheckCancel = {}
 		local cancelled = {}
@@ -220,6 +229,7 @@ namespace {
 			nAbility.scripts.ModifierCheckWaits = nil
 			nAbility.scripts.ModifierCheckFails = nil
 			nAbility.scripts.ModifierCheckCancelled = nil
+			nAbility.scripts.ModifierCheckStealthCast = nil
 			nAbility.scripts.ModifierCheckFinishes = nil
 		end
 
@@ -321,6 +331,7 @@ namespace {
 				CheckDronePassiveSpawnsDrone();
 				CheckAuraSlowsEnemyInside();
 				CheckStealthEndsOnUsedAbility();
+				CheckStealthCastKeepsItsStealth();
 				CheckCancelledCastUndoesItsChanges();
 				CheckJumpLandsWhereItAimed();
 				CheckLineFindsMobOnIt();
@@ -754,6 +765,31 @@ namespace {
 				Report("stealth-ends-on-used-ability", id != 0 && hidden != Game::StealthType::None && after == Game::StealthType::None,
 					"id=" + std::to_string(id) + " hidden=" + std::to_string(static_cast<int>(hidden)) +
 					" after=" + std::to_string(static_cast<int>(after)));
+			}
+
+			// A cast that stealths its caster must not be broken by its own UsedAbility event, but the
+			// next ability the agent uses shows it again.
+			void CheckStealthCastKeepsItsStealth() {
+				auto agent = Spawn();
+				const auto stealthId = utils::hash_id("ModifierCheckStealthCast");
+				const auto waitsId = utils::hash_id("ModifierCheckWaits");
+				mLua.GetAbility(stealthId)->FindNumberedTick();
+				mLua.GetAbility(waitsId)->FindNumberedTick();
+
+				RakNet::CombatData cast {};
+				cast.abilityId = stealthId;
+				cast.abilityRank = 1;
+				mGame.UseAbility(agent, cast);
+				Wait(100);
+				const auto hidden = agent->GetStealthType();
+
+				cast.abilityId = waitsId;
+				mGame.UseAbility(agent, cast);
+				Wait(100);
+				const auto after = agent->GetStealthType();
+
+				Report("stealth-cast-keeps-its-stealth", hidden != Game::StealthType::None && after == Game::StealthType::None,
+					"hidden=" + std::to_string(static_cast<int>(hidden)) + " after=" + std::to_string(static_cast<int>(after)));
 			}
 
 			void CheckAuraSlowsEnemyInside() {

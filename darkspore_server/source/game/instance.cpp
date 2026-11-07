@@ -677,12 +677,12 @@ namespace Game {
 			return false;
 		}
 
-		// ability:tick(object, target, cursorPosition, rank)
-		if (!ability->Tick(object, mObjectManager->Get(combatData.targetId), combatData.cursorPosition, combatData.abilityRank)) {
-			return false;
-		}
+		// Raised before the script runs, so a cast that stealths its caster is not broken by its own
+		// event (modifier_stealth leaves stealth on the first UsedAbility it hears).
 		ReportUsedAbility(object->GetId(), static_cast<uint32_t>(ability->GetDescriptors()));
-		return true;
+
+		// ability:tick(object, target, cursorPosition, rank)
+		return ability->Tick(object, mObjectManager->Get(combatData.targetId), combatData.cursorPosition, combatData.abilityRank);
 	}
 
 	void Instance::WeaponAttack(const ObjectPtr& attacker, uint32_t targetId, uint32_t abilityId, const std::tuple<float, float>& damageRange) {
