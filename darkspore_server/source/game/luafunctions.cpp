@@ -2219,6 +2219,23 @@ namespace Game {
 			}
 			return ids;
 		};
+		// The deployed hero's place in the squad, from 0.
+		nPlayer["GetCurrentDeckIndex"] = [this](uint32_t playerId) -> uint32_t {
+			const auto player = playerId < playerSlots ? mGame.GetPlayerByIndex(static_cast<uint8_t>(playerId)) : nullptr;
+			return player ? player->GetCurrentDeckIndex() : 0;
+		};
+		// Each squad hero's passive modifier in squad order, 0 for an empty place (Soul Link starts the
+		// other heroes' passives on the caster, skipping its own place).
+		nPlayer["GetSquadPassiveGUIDs"] = [this](sol::this_state L, uint32_t playerId) {
+			auto guids = sol::state_view(L).create_table();
+			const auto player = playerId < playerSlots ? mGame.GetPlayerByIndex(static_cast<uint8_t>(playerId)) : nullptr;
+			for (uint8_t index = 0; player && index < 3; ++index) {
+				const auto playerClass = player->GetCreatureClass(index);
+				guids.add(playerClass ? playerClass->GetPassiveModifier() : 0u);
+			}
+			return guids;
+		};
+
 		// The client sets the player's mLockCamera flag (Darkspore.exe 0xa05020, 0xa05070).
 		const auto lockCamera = [this](uint32_t playerId, bool locked) {
 			if (const auto player = playerId < playerSlots ? mGame.GetPlayerByIndex(static_cast<uint8_t>(playerId)) : nullptr) {

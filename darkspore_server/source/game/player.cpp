@@ -89,6 +89,9 @@ namespace Game {
 		if (creatureIndex >= 3) {
 			creatureIndex = 0;
 		}
+		if (!mSquad) {
+			return nullptr;
+		}
 
 		const auto& creatureIds = mSquad->GetCreatureIds();
 		const auto& creature = mUser->GetCreatureById(creatureIds[creatureIndex]);
