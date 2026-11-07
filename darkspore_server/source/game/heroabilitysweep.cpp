@@ -31,6 +31,9 @@ namespace Game {
 		constexpr float allyDistance = 4;
 		constexpr float spotSpacing = 200;
 		constexpr int watchMilliseconds = 3000;
+		// A level-one weapon's spread, roughly.
+		constexpr float weaponDamageMin = 10;
+		constexpr float weaponDamageMax = 15;
 		constexpr int stepMilliseconds = 20;
 
 		// Records the missing engine functions a script asks for, as the script check does.
@@ -40,7 +43,6 @@ namespace Game {
 			ScriptGaps.Record = function(name)
 				HeroSweepGaps[#HeroSweepGaps + 1] = name
 				record(name)
-			end
 			end
 		)lua";
 
@@ -179,6 +181,10 @@ namespace Game {
 						mReport << " NO-OBJECTS\n";
 						return false;
 					}
+					// As the server does from the player's weapon before each cast (server.cpp), or basic attacks hit for 0.
+					if (const auto& attributes = hero->GetAttributeData()) {
+						attributes->SetWeaponDamage(weaponDamageMin, weaponDamageMax);
+					}
 					// As in a game, where it starts once the client knows the hero (Soul Ravager's souls).
 					PassiveModifiers(mLua).Start(hero);
 
@@ -201,21 +207,27 @@ namespace Game {
 					cast.cursorPosition = enemy->GetPosition();
 					cast.targetPosition = enemy->GetPosition();
 					mGame.UseAbility(hero, cast);
-					Step(watchMilliseconds);
-
-					// What it did.
-					const auto after = ObjectsNear(spot);
-					size_t spawned = 0;
-					for (const auto id : after) {
-						spawned += !before.contains(id);
-					}
-					const float damage = enemyHealth - enemy->GetHealth();
-					const float healed = hero->GetHealth() - heroHealth;
-					const float allyHealed = ally->GetHealth() - allyHealth;
+					// What it did, looked at on every update: a short modifier or a shot that already hit
+					// is gone by the end, and a cast's 3 s run a little longer in game time.
 					const auto& modifiers = mGame.GetModifiers().GetManager();
-					const auto onHero = modifiers.GetAll(hero->GetId()).size();
-					const auto onEnemy = modifiers.GetAll(enemy->GetId()).size();
-					const auto onAlly = modifiers.GetAll(ally->GetId()).size();
+					std::set<uint32_t> appeared;
+					size_t onHero = 0, onEnemy = 0, onAlly = 0;
+					float damage = 0, healed = 0, allyHealed = 0;
+					for (int waited = 0; waited < watchMilliseconds; waited += stepMilliseconds) {
+						Step(stepMilliseconds);
+						for (const auto id : ObjectsNear(spot)) {
+							if (!before.contains(id)) {
+								appeared.insert(id);
+							}
+						}
+						onHero = std::max(onHero, modifiers.GetAll(hero->GetId()).size());
+						onEnemy = std::max(onEnemy, modifiers.GetAll(enemy->GetId()).size());
+						onAlly = std::max(onAlly, modifiers.GetAll(ally->GetId()).size());
+						damage = std::max(damage, enemyHealth - enemy->GetHealth());
+						healed = std::max(healed, hero->GetHealth() - heroHealth);
+						allyHealed = std::max(allyHealed, ally->GetHealth() - allyHealth);
+					}
+					const size_t spawned = appeared.size();
 					const bool running = hero->GetLuaThread() != nullptr;
 					const auto moved = glm::distance(hero->GetPosition(), spot);
 
