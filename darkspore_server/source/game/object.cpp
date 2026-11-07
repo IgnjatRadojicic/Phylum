@@ -1190,6 +1190,14 @@ namespace Game {
 	}
 
 	float Object::GetUnbuffedAttributeValue(AttributeType type) const {
+		// A stat worked out from a primary stat (a hero's health from Strength) comes from the
+		// unbuffed primary, or a Strength buff at summon time would stay in the pet's health.
+		if (const auto it = mStatShareBases.find(type); it != mStatShareBases.end()) {
+			if (const auto share = GameStatShares().For(type)) {
+				return StatShares::Value(*share, it->second, GetUnbuffedAttributeValue(share->primary));
+			}
+		}
+
 		const auto idx = static_cast<uint8_t>(type);
 		return mAttributeStack.Has(idx) ? mAttributeStack.GetBase(idx) : GetAttributeValue(idx);
 	}
