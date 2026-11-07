@@ -176,3 +176,31 @@ Approximate:
   highest, on a parabola. The client's curve is not known; it only matters for where the server
   thinks the object is in the air.
 - Before this, `JumpInDirection` read its direction as a position and teleported the object there.
+
+## Players, walking and recent damage
+
+- A player id is the player's slot, 0 to 3. `nPlayer.GetPlayerIds()` lists the slots in use (scripts
+  walk it from 0 to its length - 1), `GetTotalNumberOfPlayers()` counts them,
+  `GetPlayerControlledObjectID(player)` gives the deployed hero and `GetPlayerControlledObjects()`
+  all of them. `GetPlayerIdForObject(id)` gives the slot of the player that controls the object, or
+  0 for any other object, as the client does (`Darkspore.exe` 0xa04910).
+  `IsOverdriveActive(player)` is true while the player's overdrive is charged.
+- `nThread.WaitForNearGoal(id, distance, fraction, timeout, giveUpIfNotCloser)` (client 0xa08d40)
+  waits until the object's walk comes within distance of its goal and gives true, or gives false
+  when the object is gone or the timeout (seconds, none when below 0) runs out. The server places a
+  walking object on its goal at once, so `Locomotion` counts down the ground distance the client
+  still walks, at the object's move speed. The fraction and the give-up flag are not used.
+- `nGameObject.GetRecentDamage(id, cap, seconds, includeAll)` (client 0xa03460, 0xa22cc0) adds up
+  the damage the object took in the last seconds and stops at the cap. Like the client, the server
+  keeps the last 1024 hits of the game (`RecentDamage`). The client leaves out some marked hits
+  unless includeAll is true; what marks them is not known, so every hit counts.
+- `nLocomotion.FindGoodMeleePosition(agent, target)` gives true and the spot touching the target on
+  the agent's side (the two body radii apart). Approximate: the client picks it on its navigation
+  mesh, away from other creatures.
+- `nGameObject.GetModifiedMoveSpeed(id)` is the move speed with modifiers, in or out of combat.
+- With no terrain, navigation mesh or physics on the server yet: `nLocomotion.GetTerrainHeight`
+  gives the point's own height, `nGameObject.SetNavCollision` does nothing, `nPhysics.IsDynamic`
+  is false (creatures have no moving physics body in the client either), and `AddPhysicsForObject`,
+  `RemovePhysicsForObject` and `SetObjectAsCollidable` do nothing.
+- `nObjectManager.GetObjectsInRadius_SortedByFurthestDistance` is the nearest-first list turned
+  around.

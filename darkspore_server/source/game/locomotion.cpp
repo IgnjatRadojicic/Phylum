@@ -158,6 +158,7 @@ namespace Game {
 				mJumpArc.reset();
 			}
 		}
+		mWalkDistanceLeft = std::max(0.f, mWalkDistanceLeft - mWalkSpeed * deltaTime);
 
 		switch (mObject->GetMovementType()) {
 			case MovementType::Pathfinding: {
@@ -580,6 +581,7 @@ LAB_009ef634:
 	
 	void Locomotion::Stop() {
 		mJumpArc.reset();
+		mWalkDistanceLeft = 0;
 
 		// reset data
 		mTargetId = 0;
@@ -697,6 +699,16 @@ LAB_009ef634:
 
 	bool Locomotion::IsJumping() const {
 		return mJumpArc.has_value();
+	}
+
+	void Locomotion::StartWalk(float distance, float speed) {
+		// No speed means the walk cannot be timed, so it counts as there.
+		mWalkSpeed = speed;
+		mWalkDistanceLeft = speed > 0 ? std::max(distance, 0.f) : 0.f;
+	}
+
+	float Locomotion::GetWalkDistanceLeft() const {
+		return mWalkDistanceLeft;
 	}
 
 	void Locomotion::WriteTo(RakNet::BitStream& stream) const {

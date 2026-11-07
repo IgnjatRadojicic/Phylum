@@ -210,6 +210,11 @@ namespace Game {
 				float minJumpHeight, float maxJumpHeight, float rangeToHitMaxJumpHeight, bool param_9);
 			bool IsJumping() const;
 
+			// The server puts a walking object on its goal at once while the client walks it there.
+			// This counts down the ground distance the client still has to walk, at its move speed.
+			void StartWalk(float distance, float speed);
+			float GetWalkDistanceLeft() const;
+
 			void WriteTo(RakNet::BitStream& stream) const;
 			void WriteReflection(RakNet::BitStream& stream) const;
 
@@ -264,6 +269,8 @@ namespace Game {
 			float mLobSeconds = 0;
 			std::optional<JumpArc> mJumpArc;
 			float mJumpSeconds = 0;
+			float mWalkDistanceLeft = 0;
+			float mWalkSpeed = 0;
 
 			std::deque<SweepHit> mPendingHits;
 			std::unordered_set<uint32_t> mHitIds;

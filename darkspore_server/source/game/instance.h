@@ -22,6 +22,8 @@
 #include <memory>
 #include <functional>
 
+#include "recentdamage.h"
+
 // Game
 namespace Game {
 	// GameInfo
@@ -149,6 +151,7 @@ namespace Game {
 
 			// A hit that landed, for the scripts that react to damage.
 			void ReportDamage(const DamageReport& hit);
+			float GetRecentDamage(uint32_t victim, float cap, float seconds) const;
 
 			// Starts the always-on modifier the object's class names, if it has one.
 			void StartPassive(const ObjectPtr& object);
@@ -254,6 +257,7 @@ namespace Game {
 			std::unique_ptr<ModifierSystem> mModifiers;
 			std::unique_ptr<ScriptTriggerVolumes> mTriggerVolumes;
 			std::unique_ptr<DamageEvents> mDamageEvents;
+			RecentDamage mRecentDamage;
 
 			std::unordered_map<uint32_t, MarkerPtr> mMarkers;
 			std::map<int64_t, PlayerPtr> mPlayers;

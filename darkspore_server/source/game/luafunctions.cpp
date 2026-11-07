@@ -2092,6 +2092,11 @@ namespace Game {
 			return mGame.GetPlayerByIndex(index);
 		};
 
+		// The damage an object took in the last seconds, at most cap.
+		gameMetatable["GetRecentDamage"] = [this](uint32_t victim, float cap, float seconds) {
+			return mGame.GetRecentDamage(victim, cap, seconds);
+		};
+
 		gameMetatable["Notify"] = [this](sol::this_state L, sol::table serverEventTable) {
 			auto serverEvent = LuaGetServerEvent(mGame.GetObjectManager(), serverEventTable);
 			mGame.SendServerEvent(serverEvent);
@@ -2168,6 +2173,54 @@ namespace Game {
 				auto serverEvent = LuaGetServerEvent(mGame.GetObjectManager(), serverEventTable);
 				mGame.SendServerEvent(player, serverEvent);
 			}
+		};
+
+		// A player id is the player's slot, 0 to 3: scripts walk GetPlayerIds() from 0 to its length - 1.
+		constexpr uint8_t playerSlots = 4;
+		const auto players = [this] {
+			std::vector<PlayerPtr> found;
+			for (uint8_t slot = 0; slot < playerSlots; ++slot) {
+				if (auto player = mGame.GetPlayerByIndex(slot)) {
+					found.push_back(std::move(player));
+				}
+			}
+			return found;
+		};
+
+		auto nPlayer = mState["nPlayer"].get_or_create<sol::table>();
+		nPlayer["GetPlayerIds"] = [players](sol::this_state L) {
+			auto ids = sol::state_view(L).create_table();
+			for (const auto& player : players()) {
+				ids.add(player->GetId());
+			}
+			return ids;
+		};
+		nPlayer["GetTotalNumberOfPlayers"] = [players]() {
+			return static_cast<uint32_t>(players().size());
+		};
+		// Like the client: an object no player controls gives player 0.
+		nPlayer["GetPlayerIdForObject"] = [this](uint32_t id) -> uint32_t {
+			const auto object = mGame.GetObjectManager().Get(id);
+			return object && object->IsPlayerControlled() ? object->GetPlayerIndex() : 0;
+		};
+		nPlayer["GetPlayerControlledObjectID"] = [this](uint32_t playerId) -> uint32_t {
+			const auto player = playerId < playerSlots ? mGame.GetPlayerByIndex(static_cast<uint8_t>(playerId)) : nullptr;
+			const auto object = player ? player->GetDeployedCharacterObject() : nullptr;
+			return object ? object->GetId() : 0;
+		};
+		nPlayer["GetPlayerControlledObjects"] = [players](sol::this_state L) {
+			auto ids = sol::state_view(L).create_table();
+			for (const auto& player : players()) {
+				if (const auto object = player->GetDeployedCharacterObject()) {
+					ids.add(object->GetId());
+				}
+			}
+			return ids;
+		};
+		// Overdrive starts by itself once the bar is full, so charged is active.
+		nPlayer["IsOverdriveActive"] = [this](uint32_t playerId) {
+			const auto player = playerId < playerSlots ? mGame.GetPlayerByIndex(static_cast<uint8_t>(playerId)) : nullptr;
+			return player != nullptr && player->IsOverdriveCharged();
 		};
 	}
 
@@ -2261,6 +2314,11 @@ namespace Game {
 
 		object["IsVisible"] = &Object::IsVisible;
 		object["SetVisible"] = &Object::SetVisible;
+		object["GetModifiedMovementSpeed"] = &Object::GetModifiedMovementSpeed;
+		object["GetBodyRadius"] = &Object::GetBodyRadius;
+		object["GetWalkDistanceLeft"] = [](const Object& self) {
+			return self.HasLocomotionData() ? self.GetLocomotionData()->GetWalkDistanceLeft() : 0.f;
+		};
 		object["IsJumping"] = [](const Object& self) {
 			return self.HasLocomotionData() && self.GetLocomotionData()->IsJumping();
 		};

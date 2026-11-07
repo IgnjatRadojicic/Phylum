@@ -59,6 +59,10 @@ namespace Game {
 				function object:GetOwnerObject() return nil end
 				function object:GetNpcType() return 0 end
 				function object:GetFootprintRadius() return 1 end
+				function object:GetBodyRadius() return 1 end
+				function object:GetModifiedMovementSpeed() return 10 end
+				function object:GetWalkDistanceLeft() return 0 end
+				function object:IsJumping() return false end
 				function object:GetWeaponDamage() return { 6, 12 } end
 				function object:GetAttributeSnapshot() return {} end
 				function object:GetAttributeValue() return 0 end
@@ -107,7 +111,8 @@ namespace Game {
 			-- Engine functions cannot take fake objects, so record calls to them instead.
 			local stubbed = {}
 			local safeTables = { nBit = true, nUtil = true, nGameSimulator = true }
-			local adapterTables = { nLocomotion = true, nObjectManager = true, nMathUtil = true }
+			-- nMathUtil only does math, so its script functions (such as the game's Clamp) run for real.
+			local adapterTables = { nLocomotion = true, nObjectManager = true }
 			for tableName, value in pairs(_G) do
 				local isEngineTable = tableName:match("^n%u") or tableName == "Locomotion" or tableName == "Ability"
 				if type(value) == "table" and isEngineTable and not safeTables[tableName] then
@@ -133,6 +138,13 @@ namespace Game {
 			nObjectManager.GetObjectsInRadius_SortedByDistance = function() return { 2 } end
 			nObjectManager.CreateObject = function() return 2 end
 			nObjectManager.CreateCreature = function() return 2 end
+			-- Answers a real game would give, so a script goes on to its own code.
+			nObjectManager.IsValidObject = function(id) return id == 1 or id == 2 end
+			nObjectManager.GetObjectsAlongLine = function() return { 2 } end
+			nObjectManager.GetObjectsInRadius_SortedByFurthestDistance = function() return { 2 } end
+			nLocomotion.GetTerrainHeight = function(x, y, z) return z end
+			nLocomotion.FindGoodMeleePosition = function() return true, 1, 0, 0 end
+			nLocomotion.FindRandomPositionFromPoint = function(x, y, z) return x, y, z end
 			nLocomotion.GetClosestSpawnPosition = function(_, x, y, z) return x, y, z end
 			nMathUtil.RotateVectorByAxisAngle = function(x, y, z) return x, y, z end
 			nMathUtil.TransformVector = function(x, y, z) return x, y, z end

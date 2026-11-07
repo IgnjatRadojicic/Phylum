@@ -18,6 +18,7 @@
 #include "sporenet/user.h"
 #include "utils/functions.h"
 
+#include <algorithm>
 #include <iostream>
 #include <array>
 #include <format>
@@ -262,9 +263,15 @@ namespace Game {
 	}
 
 	void Instance::ReportDamage(const DamageReport& hit) {
+		mRecentDamage.Record(hit.victim, hit.amount, mGameTime);
 		if (mDamageEvents) {
 			mDamageEvents->Report(hit);
 		}
+	}
+
+	float Instance::GetRecentDamage(uint32_t victim, float cap, float seconds) const {
+		const auto window = static_cast<uint64_t>(std::max(seconds, 0.f) * 1000.f);
+		return mRecentDamage.Total(victim, mGameTime > window ? mGameTime - window : 0, cap);
 	}
 
 	Lua& Instance::GetLua() {
@@ -569,7 +576,10 @@ namespace Game {
 				mServer->SendObjectTeleport(client, object, object->GetPosition(), object->GetOrientation());
 			}
 		} else {
-			object->SetPosition(locomotionData.GetPartialGoalPosition());
+			const auto& goal = locomotionData.GetPartialGoalPosition();
+			const glm::vec2 walk(goal.x - object->GetPosition().x, goal.y - object->GetPosition().y);
+			object->GetLocomotionData()->StartWalk(glm::length(walk), object->GetModifiedMovementSpeed());
+			object->SetPosition(goal);
 			for (const auto& [_, client] : mServer->GetClients()) {
 				mServer->SendObjectPlayerMove(client, object, locomotionData);
 			}

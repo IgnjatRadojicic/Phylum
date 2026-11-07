@@ -1104,6 +1104,15 @@ namespace {
 			end
 		end
 
+		function nObjectManager.GetObjectsInRadius_SortedByFurthestDistance(x, y, z, radius, types)
+			local nearest = nObjectManager.GetObjectsInRadius_SortedByDistance(x, y, z, radius, types)
+			local furthest = {}
+			for index = #nearest, 1, -1 do
+				furthest[#furthest + 1] = nearest[index]
+			end
+			return furthest
+		end
+
 		-- TargetUtils passes its type list where the radius goes. Read as a number that is 0,
 		-- leaving no type list, which is what the game's own engine made of it.
 		local alongLine = nObjectManager.GetObjectsAlongLine
@@ -1270,6 +1279,90 @@ namespace {
 			while object and object:IsJumping() do
 				nThread.WaitForXSeconds(0.05)
 			end
+		end
+
+		-- WaitForNearGoal(id, [distance, fraction, timeout, giveUpIfNotCloser]): until the object's walk
+		-- comes within distance of its goal (true), or the object is gone or the timeout runs out
+		-- (false). The server places the object at once, so it waits on what the client still walks.
+		-- The fraction and the give-up flag are left out: a counted walk always gets closer.
+		function nThread.WaitForNearGoal(id, distance, fraction, timeout, giveUpIfNotCloser)
+			distance = math.max(tonumber(distance) or 0, 0)
+			timeout = tonumber(timeout) or -1
+			while true do
+				local object = get(id)
+				if not object then
+					return false
+				end
+				if object:GetWalkDistanceLeft() <= distance then
+					return true
+				end
+				if timeout > 0 then
+					timeout = timeout - 0.05
+					if timeout <= 0 then
+						return false
+					end
+				end
+				nThread.WaitForXSeconds(0.05)
+			end
+		end
+
+		function nGameObject.GetModifiedMoveSpeed(id)
+			local object = get(id)
+			return object and object:GetModifiedMovementSpeed() or 0
+		end
+
+		-- GetRecentDamage(id, cap, seconds, [includeAll]): what the object took in the last seconds,
+		-- at most cap (RecentDamage).
+		function nGameObject.GetRecentDamage(id, cap, seconds, includeAll)
+			if not get(id) then
+				return 0
+			end
+			return Game.GetRecentDamage(id, tonumber(cap) or 0, tonumber(seconds) or 0)
+		end
+
+		-- The server has no navigation mesh yet, so there is nothing to walk through.
+		function nGameObject.SetNavCollision(id, collides)
+		end
+
+		-- The server has no physics bodies either. Creatures have no moving body in the client too,
+		-- so IsDynamic is false and scripts skip the push they give loose props.
+		nPhysics = nPhysics or {}
+		function nPhysics.IsDynamic(id)
+			return false
+		end
+		function nPhysics.AddPhysicsForObject(id)
+		end
+		function nPhysics.RemovePhysicsForObject(id)
+		end
+		function nPhysics.SetObjectAsCollidable(id, collidable)
+		end
+
+		-- The server keeps no terrain, so a point is already on the ground.
+		function nLocomotion.GetTerrainHeight(x, y, z)
+			return tonumber(z) or 0
+		end
+
+		-- FindGoodMeleePosition(agent, target): found, x, y, z. The spot touching the target on the
+		-- agent's side. Approximate: the client picks it on its navigation mesh, away from others.
+		function nLocomotion.FindGoodMeleePosition(agentId, targetId)
+			local agent, target = get(agentId), get(targetId)
+			if not agent or not target then
+				return false, 0, 0, 0
+			end
+
+			local from, to = agent:GetPosition(), target:GetPosition()
+			local dx, dy = from.x - to.x, from.y - to.y
+			local length = math.sqrt(dx * dx + dy * dy)
+			if length < 0.001 then
+				local facing = target:GetFacing()
+				dx, dy, length = facing.x, facing.y, math.sqrt(facing.x * facing.x + facing.y * facing.y)
+				if length < 0.001 then
+					dx, dy, length = 0, 1, 1
+				end
+			end
+
+			local reach = agent:GetBodyRadius() + target:GetBodyRadius()
+			return true, to.x + dx / length * reach, to.y + dy / length * reach, to.z
 		end
 	)lua";
 }
