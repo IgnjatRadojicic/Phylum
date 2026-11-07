@@ -135,8 +135,10 @@ namespace Game {
 		mActionEvents.reset();
 		mModifiers.reset(); // Holds tables that belong to Lua
 		mTriggerVolumes.reset(); // Holds Lua functions
-		mLua.reset();
+		// Objects before Lua: a trigger volume's passive ability holds Lua tables and functions,
+		// which must let go while the Lua state still exists.
 		mObjectManager.reset();
+		mLua.reset();
 	}
 
 	bool Instance::LoadLevel() {
