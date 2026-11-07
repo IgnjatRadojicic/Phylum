@@ -31,8 +31,11 @@ set_target_properties(recap_server PROPERTIES
     VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
 if(MSVC)
-    target_compile_options(recap_server PRIVATE /bigobj)
-    set_target_properties(recap_server PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE /INCREMENTAL:NO /Brepro")
+    # /Z7 + /DEBUG give a .pdb for crash stacks without changing the optimised code;
+    # /OPT:REF and /OPT:ICF keep the exe as small as a build without symbols.
+    target_compile_options(recap_server PRIVATE /bigobj /Z7)
+    set_target_properties(recap_server PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE /INCREMENTAL:NO /Brepro /DEBUG /OPT:REF /OPT:ICF")
+    target_link_libraries(recap_server PRIVATE dbghelp)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 

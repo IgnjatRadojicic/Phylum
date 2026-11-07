@@ -1,6 +1,7 @@
 
 // Include
 #include "main.h"
+#include "crashreport.h"
 #include "scheduler.h"
 #include "version.h"
 
@@ -299,6 +300,8 @@ QoS::Server* Application::get_qos_server() const {
 
 // main
 int main(int argc, char* argv[]) {
+	CrashReport::Install();
+
 	Application& app = Application::InitApp(argc, argv);
 	if (!app.OnInit()) {
 		app.OnExit();
