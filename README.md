@@ -4,6 +4,14 @@ An independent continuation of the [Resurrection Capsule](https://github.com/Res
 
 This is an unofficial community project, not affiliated with EA or Maxis. You need your own copy of Darkspore. Game scripts are extracted from your own install. Some data and images inherited from upstream ReCap are still in this repository, and the aim is to remove them too.
 
+## Goal
+
+Play the Darkspore campaign alone from start to finish, with working combat, enemies, bosses, loot and progression.
+
+The result should play recognisably like the original. It cannot be exact, because EA's server code is gone. Where the game's files hold a rule, we use it. Where they do not, we reconstruct it from the client and from videos, and mark it as approximate.
+
+Multiplayer, PvP and public hosting are out of scope.
+
 ## Status
 
 | Area | State |
@@ -11,10 +19,13 @@ This is an unofficial community project, not affiliated with EA or Maxis. You ne
 | Login, registration, entering levels | Working |
 | Levels in worlds 1 to 6 | Should load, only 1-1 has been tested |
 | Levels 7-1 and above | Do not load, the server's level table stops at world 6 |
-| Abilities | Run the game's own scripts. About 60% of scripted abilities pass the self-check, and basic attacks work in play |
-| Effects | Buffs, debuffs and shields have no effect yet, because modifiers are not built |
-| Damage | Random roll in the hero's weapon range, with no armour or resistances |
-| Enemies | Only one spawns per spawn group |
+| Scripts | The game's original bytecode runs on Lua 5.1, with 452 ability scripts registered |
+| Abilities | 238 of 278 pass the self-check, and basic attacks work in play |
+| Effects | Modifiers are built, and 381 of 483 modifier scripts start in the check. The rest need other engine functions |
+| Damage | Armour, resistances and damage types apply. Some details are approximate, see [docs/damage.md](./docs/damage.md) |
+| Hero stats | Built as the client does, from class base, primary stat shares and the weapon's damage range |
+| Cooldowns and mana | Come from the scripts |
+| Enemies | Only one spawns per spawn group, and enemy AI is not built yet |
 
 ## What this project changes
 
@@ -23,6 +34,7 @@ This is an unofficial community project, not affiliated with EA or Maxis. You ne
 - **Stuck actions:** ability replies now echo the sequence number of the client's command, and send a real cast start time.
 - **False level end:** squad abilities no longer tell the game the boss is dead.
 - **Ability scripts:** the server runs the game's original compiled scripts on Lua 5.1, instead of decompiled copies on LuaJIT. An adapter in `scriptapi.cpp` connects them to server functions.
+- **Effects:** a modifier system applies buffs, debuffs and passives, and sends them to the client. See [docs/modifiers.md](./docs/modifiers.md).
 - **Script check:** `recap_server --check-scripts` loads every script and tests each ability against fake objects, with no game needed.
 - **Build:** repaired the dead RakNet and LuaJIT sources, and added Windows scripts that need no Visual Studio install.
 
@@ -53,16 +65,29 @@ This is an unofficial community project, not affiliated with EA or Maxis. You ne
 ## Known issues
 
 - The game can crash on the vote screen after a level.
-- The game can crash while loading a level. The cause is unknown, and retrying usually works.
-- Abilities that need modifiers or other missing functions stop partway.
+- The game can crash while loading a level, on about half of recent loads. The cause is unknown, and retrying usually works.
+- Abilities that need functions the server does not have yet stop partway.
 
 ## Roadmap
 
-The game's scripts hold the real combat logic. The main goal is to finish the API they call, starting with modifiers, so that buffs and debuffs work.
+The game's scripts hold the real combat logic, so the work is mostly finishing the API they call and then building the systems around them. The full checklist, risks and open decisions are in [PLAN.md](./PLAN.md).
+
+| Stage | Done when | Progress |
+| --- | --- | --- |
+| 1. Combat foundation | Every hero's abilities run in play, effects apply and expire, and loading is reliable | In progress, 13 of 18 items done |
+| 2. A level that fights back | 1-1 has its full enemy population, enemies fight back, and you can win or lose | Not started |
+| 3. Bosses and finishing a level | A level can be completed through its boss, with objectives and medals tracked | Not started |
+| 4. Campaign flow | A full run through all six worlds is possible in one session | Not started |
+| 5. Rewards and progression | Playing earns gear and progress that persist between sessions | Not started |
+| 6. Polish | Someone else can follow this README and finish the campaign | Not started |
 
 ## Contributing
 
-Commits use the `feat(scope):` and `fix(scope):` style. Never add game files, including anything extracted from them.
+- Run the game's own scripts and data. Do not rewrite game rules that the files already contain.
+- `scriptapi.cpp` only translates. Real behaviour goes in C++, in small classes with one job.
+- Every change passes `scripts/windows/verify.ps1`, and new logic comes with tests.
+- Commits use the `feat(scope):` and `fix(scope):` style.
+- Never add game files, including anything extracted from them.
 
 For the wider project, see the [ReCap repository](https://github.com/Resurrection-Capsule/Resurrection-Capsule) and [Discord](https://discord.gg/btfTw62).
 
@@ -89,3 +114,5 @@ Resurrection Capsule server is free software: you can redistribute it and/or mod
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
+
+The full text is in [LICENSE](./LICENSE). Third-party library licenses are in [LICENSES.md](./LICENSES.md).
