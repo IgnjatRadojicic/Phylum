@@ -286,6 +286,9 @@ namespace Game {
 
 			void Reload();
 
+			// The globals its script functions run with (an ability's has _ABILITY).
+			const sol::environment& GetEnvironment() const { return mEnvironment; }
+
 		protected:
 			template<typename Result, typename... Args>
 			auto Call(sol::function fn, Args&&... args) const {

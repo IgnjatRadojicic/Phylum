@@ -26,9 +26,11 @@ namespace {
 		return game;
 	}
 
-	auto LuaGetAbility(sol::this_state L) {
-		Game::Ability* ability = sol::state_view(L)["_ABILITY"];
-		return ability;
+	// A cast's thread has its ability in its own globals. A raw read, so a thread with none
+	// (a modifier's) is not counted as a missing script function.
+	Game::Ability* LuaGetAbility(sol::this_state L) {
+		sol::optional<Game::Ability*> ability = sol::state_view(L).globals().raw_get<sol::optional<Game::Ability*>>("_ABILITY");
+		return ability.value_or(nullptr);
 	}
 
 	auto LuaGetPlayer(const Game::Instance& instance, sol::object& value) {
@@ -1727,7 +1729,14 @@ namespace Game {
 				thread = SpawnThread();
 			}
 
-			thread->call<void>(callback, args);
+			// A thread a cast starts (a shot in flight, an orb) still belongs to that cast's ability,
+			// so its waits get the ability's attack speed and channel time.
+			if (const auto ability = LuaGetAbility(L)) {
+				const sol::function function = callback;
+				thread->call<void>(ability->GetEnvironment(), function, args);
+			} else {
+				thread->call<void>(callback, args);
+			}
 		};
 
 		thread["GetValue"] = [this](sol::this_state L, std::string key) {
