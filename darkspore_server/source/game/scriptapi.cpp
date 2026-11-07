@@ -932,6 +932,10 @@ namespace {
 			end
 			local tick = scriptFunction(modifier, nAbilityFns.Tick, "tick", "hasTick")
 			if tick then
+				-- The client runs Activate at once but only readies Tick's thread (0x9dda00), which the
+				-- scheduler first resumes on the next update (0x8f10c0): a trap made by CreateObject
+				-- has its team and owner by then (modifier_pipeBomb_Passive reads its team in Tick).
+				nThread.Sleep(0)
 				tick(modifier)
 			end
 		end
@@ -1254,7 +1258,11 @@ namespace {
 			local query = nObjectManager[name]
 			-- The client reads the radius with lua_tonumber (0xa10260), so one that is no number is 0
 			-- (BabyToss passes its radius table).
+			-- Scripts pass one type as a number (modifier_pipeBomb_Passive: kType_Creature) or a list.
 			nObjectManager[name] = function(x, y, z, radius, types)
+				if type(types) == "number" then
+					types = { types }
+				end
 				return toIds(query(vector(x, y, z), tonumber(radius) or 0, type(types) == "table" and types or {}))
 			end
 		end
@@ -1422,6 +1430,31 @@ namespace {
 				nThread.Sleep(0)
 				local object = tonumber(objectId) and nObjectManager.GetObject(objectId) or nil
 			until not object or object:GetHealth() <= 0
+		end
+
+		-- WaitForValidTargetWithinRange(object, range): sleeps until a hostile creature is within range of
+		-- the object, or the object is gone (client 0xa07d50, wake test 0xa07c40 walks the object's
+		-- sensed objects nearest first). A range below 0 only yields once.
+		function nThread.WaitForValidTargetWithinRange(objectId, range)
+			range = tonumber(range) or 0
+			if range < 0 then
+				nThread.Sleep(0)
+				return
+			end
+			while true do
+				nThread.Sleep(0)
+				local object = tonumber(objectId) and nObjectManager.GetObject(objectId) or nil
+				if not object then
+					return
+				end
+				local team = object:GetTeam()
+				local p = object:GetPosition()
+				for _, id in ipairs(nObjectManager.GetObjectsInRadius(p.x, p.y, p.z, range, kType_Creature) or {}) do
+					if id ~= objectId and nGameObject.ValidateHostileTarget(team, id) then
+						return
+					end
+				end
+			end
 		end
 
 		-- Get/SetSimDataAsInt(player, key): whole-number counters kept on the player (client 0xa055c0,
