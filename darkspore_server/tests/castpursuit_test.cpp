@@ -21,16 +21,28 @@ TEST_CASE("a pursuing ability at a target out of range waits, and its retry on a
 	CastPursuit pursuit;
 	CHECK(pursuit.Decide(Far(), 1000).decision == CastPursuit::Decision::Pursue);
 	auto arrived = Far();
+	arrived.targetId = 0;
 	arrived.gap = 11;
 	CHECK(pursuit.Decide(arrived, 2500).decision == CastPursuit::Decision::Run);
 }
 
-TEST_CASE("the retry runs even if the target moved away again, so a chase cannot loop") {
+TEST_CASE("the arrival runs even if the target moved away again, so a chase cannot loop") {
 	CastPursuit pursuit;
 	CHECK(pursuit.Decide(Far(), 1000).decision == CastPursuit::Decision::Pursue);
-	CHECK(pursuit.Decide(Far(), 1200).decision == CastPursuit::Decision::Run);
+	auto arrived = Far();
+	arrived.targetId = 0;
+	CHECK(pursuit.Decide(arrived, 1200).decision == CastPursuit::Decision::Run);
 	// Only once: the next far cast is a new chase.
 	CHECK(pursuit.Decide(Far(), 1400).decision == CastPursuit::Decision::Pursue);
+}
+
+TEST_CASE("casting at the chased target again while still far keeps pursuing, it does not fire") {
+	CastPursuit pursuit;
+	CHECK(pursuit.Decide(Far(), 1000).decision == CastPursuit::Decision::Pursue);
+	CHECK(pursuit.Decide(Far(), 1100).decision == CastPursuit::Decision::Pursue);
+	auto near = Far();
+	near.gap = 9;
+	CHECK(pursuit.Decide(near, 1200).decision == CastPursuit::Decision::Run);
 }
 
 TEST_CASE("casts in range, without a target, without pursuit or without a range run at once") {

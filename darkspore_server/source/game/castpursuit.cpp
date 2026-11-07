@@ -7,9 +7,11 @@ namespace Game {
 	// CastPursuit
 	CastPursuit::Answer CastPursuit::Decide(const Cast& cast, uint64_t nowMs) {
 		const auto chase = mChases.find(cast.casterId);
+		// The client's arrival comes without a target. One that names it is the player casting again,
+		// which is checked like any cast.
 		const bool retry = chase != mChases.end() &&
 			chase->second.abilityId == cast.abilityId &&
-			(cast.targetId == 0 || chase->second.targetId == cast.targetId) &&
+			cast.targetId == 0 &&
 			nowMs <= chase->second.untilMs;
 		const uint32_t chasedTarget = chase != mChases.end() ? chase->second.targetId : 0;
 		if (chase != mChases.end()) {

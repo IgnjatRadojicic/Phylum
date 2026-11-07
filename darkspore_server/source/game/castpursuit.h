@@ -11,8 +11,8 @@ namespace Game {
 	// CastPursuit
 	// A hero's cast of a "shouldPursue" ability at a target out of its range does not run. The server
 	// answers "pursue": the client walks the hero to the target and sends the same cast again on
-	// arrival (Darkspin, from the client's sub_9E0660), sometimes without the target, which the chase
-	// remembers. That second cast runs wherever the hero is, so a moving target cannot cause an endless chase.
+	// arrival (Darkspin, from the client's sub_9E0660) without the target, which the chase remembers.
+	// That arrival runs wherever the hero is, so a moving target cannot cause an endless chase.
 	class CastPursuit {
 		public:
 			static constexpr uint64_t timeoutMs = 8000;
