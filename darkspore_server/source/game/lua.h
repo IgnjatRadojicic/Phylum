@@ -235,6 +235,10 @@ namespace Game {
 			}
 
 			void ReturnThreadToPool(LuaThread* thread);
+			// Ends a waiting thread at once, as if its script had finished: its cast ends, which runs
+			// the ability's Deactivate step where scripts undo their stat changes, and the thread goes
+			// back to the pool. A running thread cannot be ended from inside itself.
+			void CancelThread(LuaThread* thread);
 
 			// A pooled thread can be reused or deleted, so anything holding on to one keeps a ticket.
 			uint64_t TrackThread(LuaThread* thread);

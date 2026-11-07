@@ -559,7 +559,15 @@ namespace Game {
 		if (lua_status(thread->lua_state()) == LUA_YIELD) {
 			thread->mTicket = 0;
 			mTrackedThreads.erase(it);
-			thread->stop();
+			CancelThread(thread);
+		}
+	}
+
+	void Lua::CancelThread(LuaThread* thread) {
+		if (thread && lua_status(thread->lua_state()) == LUA_YIELD) {
+			// Or Update would resume it after it is pooled, or deleted.
+			mYieldedThreads.erase(thread);
+			ReturnThreadToPool(thread);
 		}
 	}
 
@@ -583,9 +591,9 @@ namespace Game {
 		}
 		thread->mOwner.reset();
 
-		// A Lua thread that failed can never run again, and one given its own globals
-		// would pass them on to whatever runs on it next.
-		if (lua_status(thread->lua_state()) > LUA_YIELD || thread->mHasEnvironment) {
+		// A Lua thread that failed or was cut off while waiting can never run again, and one
+		// given its own globals would pass them on to whatever runs on it next. 0 is a finished one.
+		if (lua_status(thread->lua_state()) != 0 || thread->mHasEnvironment) {
 			RenewThread(thread);
 		}
 

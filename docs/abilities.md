@@ -87,6 +87,10 @@ Still approximate:
 - A cast runs the ability's Activate step (`ability[nAbilityFns.Activate]`, or else `activate`) once,
   before its tick and in the same cast, unless `hasActivate` is false. Scripts keep what the tick
   needs there, such as Soul Ravager's shot count. Before this the server never ran it.
+- A cast the player cancels (`CancelAction`) ends like one that finished: its Deactivate step runs,
+  where scripts take off the stat changes they made, and its thread goes back to the pool. Before
+  this, a cancel stopped the thread without ending the cast, so those changes stuck. A change a
+  script undoes later in its own tick, rather than in Deactivate, still stays when the cast is cut.
 - Each ability walks its own `animationSequence`, step by step for each object. Before this the step
   was shared by all of an object's abilities and ran past a shorter sequence.
 - `nGameObject.GetObjectAngleRad(id, otherId)` (client 0xa0da40) is the turn from the object's facing

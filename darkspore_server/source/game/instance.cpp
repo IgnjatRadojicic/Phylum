@@ -792,7 +792,7 @@ namespace Game {
 			return;
 		}
 
-		luaThread->stop();
+		mLua->CancelThread(luaThread);
 		/*
 		sol::table privateTable = mLua->GetPrivateTable(object->GetId());
 		if (privateTable == sol::nil) {

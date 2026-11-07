@@ -104,6 +104,21 @@ namespace {
 			ModifierCheckCast.stopped = nAbility.GetAgentID()
 		end
 
+		-- A cast that raises a stat for as long as it runs, as charges and channels do.
+		ModifierCheckCancel = {}
+		local cancelled = {}
+		nAbility.RegisterAbility("ModifierCheckCancelled", cancelled)
+		cancelled[nAbilityFns.Activate] = function()
+			nThreadData.GetPrivateTable().boost = nAttribute.AddAttributeModifier(nAbility.GetAgentID(), nAttributeType.Strength, 5)
+		end
+		cancelled[nAbilityFns.Tick] = function()
+			nThread.WaitForXSeconds(100)
+		end
+		cancelled[nAbilityFns.Deactivate] = function()
+			nAttribute.RemoveAttributeModifier(nAbility.GetAgentID(), nThreadData.GetPrivateTable().boost)
+			ModifierCheckCancel.ended = true
+		end
+
 		-- A modifier whose script dies at start. It has no duration, so only the failure can end it.
 		ModifierCheckBroken = { stops = 0 }
 		nModifier.RegisterModifier("ModifierCheckBroken", {
@@ -204,6 +219,7 @@ namespace {
 			nModifier.registered[nUtil.SPID("ModifierCheckListener")] = nil
 			nAbility.scripts.ModifierCheckWaits = nil
 			nAbility.scripts.ModifierCheckFails = nil
+			nAbility.scripts.ModifierCheckCancelled = nil
 			nAbility.scripts.ModifierCheckFinishes = nil
 		end
 
@@ -305,6 +321,7 @@ namespace {
 				CheckDronePassiveSpawnsDrone();
 				CheckAuraSlowsEnemyInside();
 				CheckStealthEndsOnUsedAbility();
+				CheckCancelledCastUndoesItsChanges();
 				CheckJumpLandsWhereItAimed();
 				CheckLineFindsMobOnIt();
 
@@ -999,6 +1016,26 @@ namespace {
 				sol::optional<float> value = result;
 
 				Report("distance-can-be-read", value && *value == 5.f, "distance=" + std::to_string(value.value_or(-1.f)));
+			}
+
+			// A cast the player cancels still runs its Deactivate step, so its stat change comes off.
+			void CheckCancelledCastUndoesItsChanges() {
+				auto agent = Spawn();
+				const auto ability = mLua.GetAbility(utils::hash_id("ModifierCheckCancelled"));
+				ability->FindNumberedTick();
+
+				const float before = agent->GetAttributeValue(Game::AttributeType::Strength);
+				ability->Tick(agent, nullptr, glm::vec3(0.f), 1);
+				const float during = agent->GetAttributeValue(Game::AttributeType::Strength);
+
+				mLua.CancelThread(agent->GetLuaThread());
+				const float after = agent->GetAttributeValue(Game::AttributeType::Strength);
+				sol::table cancel = mState["ModifierCheckCancel"];
+				const bool ended = cancel["ended"].get_or(false);
+
+				Report("cancelled-cast-undoes-its-changes", during > before && after == before && ended && !agent->GetLuaThread(),
+					"before=" + std::to_string(before) + " during=" + std::to_string(during) + " after=" + std::to_string(after) +
+					" ended=" + std::to_string(ended));
 			}
 
 			void CheckFailedCastRunsDeactivate() {
