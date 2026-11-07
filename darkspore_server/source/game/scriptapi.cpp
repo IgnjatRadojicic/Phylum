@@ -1477,6 +1477,12 @@ namespace Game {
 			return true;
 		};
 
+		// Scripts run both in the client and here, and take the server's branch on false.
+		sol::table scenarioManager = mState.create_named_table("nScenarioManager");
+		scenarioManager["GetIsClient"] = [] {
+			return false;
+		};
+
 		sol::table bitOperations = mState.create_named_table("nBit");
 		bitOperations["Or"] = [](sol::variadic_args values) {
 			uint32_t result = 0;
