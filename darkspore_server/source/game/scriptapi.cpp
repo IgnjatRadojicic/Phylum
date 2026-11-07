@@ -53,13 +53,28 @@ namespace {
 			if folder == "Lua" or folder:match("^0x") then
 				directory = "lua"
 			end
-			local path = "data/serverdata/" .. directory .. "/" .. file .. ".lua"
-			if not io.open(path) then
-				-- Many files only exist under the hash of their name
-				path = "data/serverdata/" .. directory .. "/" .. HashedScriptName(file) .. ".lua"
+			-- Many files only exist under the hash of their name, and some sit in lua/ instead of the
+			-- folder they are asked by (Objectives!objective_LootCrystals.lua).
+			local path
+			for _, candidate in ipairs({ directory .. "/" .. file, directory .. "/" .. HashedScriptName(file),
+				"lua/" .. file, "lua/" .. HashedScriptName(file) }) do
+				local handle = io.open("data/serverdata/" .. candidate .. ".lua")
+				if handle then
+					handle:close()
+					path = "data/serverdata/" .. candidate .. ".lua"
+					break
+				end
 			end
-			local source = io.open(path) and ReadGameScript(path)
+			local source = path and ReadGameScript(path)
 			if not source then
+				-- The game asks for nine files it never shipped (and one misspelt folder, "Modifers!"),
+				-- yet those scripts work in it, so a missing one loads as nothing instead of failing.
+				if name:match("^[^!]+!.+%.lua$") then
+					if ScriptGaps then
+						ScriptGaps.Record("require." .. name)
+					end
+					return function() end
+				end
 				return nil
 			end
 			return loadstring(source, "@" .. path)
