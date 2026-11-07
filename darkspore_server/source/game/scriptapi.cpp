@@ -220,6 +220,9 @@ namespace {
 		local registerAbility = nAbility.RegisterAbility
 		function nAbility.RegisterAbility(name, ability)
 			nAbility.scripts[name] = ability
+			-- The client's RegisterAbility and RegisterModifier are one function (0xa67d70) with one
+			-- registry, and 8 modifiers register as abilities (modifier_arborealmight).
+			nModifier.registered[nUtil.SPID(name)] = ability
 			local tick = ability.tick
 			if tick then
 				ability.castTick = castingTick(tick)
@@ -1401,6 +1404,15 @@ namespace {
 			nThread.Sleep(0)
 			local agent = tonumber(agentId) and nObjectManager.GetObject(agentId) or nil
 			return agent ~= nil and agent:GetHealth() > 0
+		end
+
+		-- WaitForNotAlive(object): sleeps until the object is gone or at 0 health, checked each update
+		-- (client 0xa001d0, wake test 0xa00190). With no such object it only yields once.
+		function nThread.WaitForNotAlive(objectId)
+			repeat
+				nThread.Sleep(0)
+				local object = tonumber(objectId) and nObjectManager.GetObject(objectId) or nil
+			until not object or object:GetHealth() <= 0
 		end
 
 		-- A delay can come as a table holding the number (Psistorm sets timetohit = { timeToHit }).
