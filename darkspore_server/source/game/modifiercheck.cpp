@@ -345,6 +345,7 @@ namespace {
 				CheckStealthEndsOnUsedAbility();
 				CheckStealthCastKeepsItsStealth();
 				CheckTimeBubbleEnds();
+				CheckElectronSphereFlies();
 				CheckCancelledCastUndoesItsChanges("ModifierCheckCancelled", "cancelled-cast-undoes-its-changes");
 				CheckCancelledCastUndoesItsChanges("ModifierCheckCancelledWithChild", "cancelled-cast-with-child-undoes-its-changes");
 				CheckJumpLandsWhereItAimed();
@@ -837,6 +838,29 @@ namespace {
 
 				Report("time-bubble-ends", during > before && after == before,
 					"before=" + std::to_string(before) + " during=" + std::to_string(during) + " after=" + std::to_string(after));
+			}
+
+			// Blitz's Electron Sphere is a squad ability shot through the projectile template, which
+			// reads the hero's shared ability offset as three numbers. The sphere is an object.
+			void CheckElectronSphereFlies() {
+				auto agent = Spawn();
+				const auto count = [this, &agent] {
+					size_t objects = 0;
+					for (const auto& object : mGame.GetObjectManager().GetObjectsInRadius(Game::BoundingSphere(agent->GetPosition(), 60.f), {})) {
+						objects += !object->IsMarkedForDeletion();
+					}
+					return objects;
+				};
+
+				const auto before = count();
+				RakNet::CombatData cast {};
+				cast.abilityId = utils::hash_id("PlasmaRandom_LightningBall");
+				cast.abilityRank = 1;
+				cast.cursorPosition = agent->GetPosition() + glm::vec3(10.f, 0.f, 0.f);
+				mGame.UseAbility(agent, cast);
+				Wait(1000);
+				const auto during = count();
+				Report("electron-sphere-flies", during > before, "before=" + std::to_string(before) + " during=" + std::to_string(during));
 			}
 
 			void CheckAuraSlowsEnemyInside() {

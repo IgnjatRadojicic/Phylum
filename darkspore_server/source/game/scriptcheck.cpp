@@ -46,7 +46,7 @@ namespace Game {
 				function object:SetOrientation() end
 				function object:SetOwnerObject() end
 				function object:MarkForDeletion() end
-				function object:GetSharedAbilityOffset() return 0 end
+				function object:GetSharedAbilityOffset() return 0, 0, 0 end
 				function object:SetTeam() end
 				function object:SetVisible() end
 				function object:SetStealthType() end

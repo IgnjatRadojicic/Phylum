@@ -1176,7 +1176,8 @@ namespace LuaFunction {
 				}
 			}
 
-			return offset;
+			// Three numbers, as the projectile template reads them (a squad ability's shot offset).
+			return std::make_tuple(offset.x, offset.y, offset.z);
 		}
 
 		auto IncrementNumTimesUsed(sol::this_state L, sol::object objectValue) {
