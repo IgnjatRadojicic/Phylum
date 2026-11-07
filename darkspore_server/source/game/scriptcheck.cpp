@@ -124,6 +124,14 @@ namespace Game {
 								stubbed[label] = (stubbed[label] or 0) + 1
 								trail[#trail + 1] = "stub:" .. label
 							end
+						elseif type(field) == "function" then
+							-- Script functions run for real. The scripts carry no line numbers, so
+							-- the trail names them too, to show what gave back a nil.
+							local label = tableName .. "." .. name
+							value[name] = function(...)
+								trail[#trail + 1] = "call:" .. label
+								return field(...)
+							end
 						end
 					end
 				end
@@ -146,8 +154,6 @@ namespace Game {
 			nLocomotion.FindGoodMeleePosition = function() return true, 1, 0, 0 end
 			nLocomotion.FindRandomPositionFromPoint = function(x, y, z) return x, y, z end
 			nLocomotion.GetClosestSpawnPosition = function(_, x, y, z) return x, y, z end
-			nMathUtil.RotateVectorByAxisAngle = function(x, y, z) return x, y, z end
-			nMathUtil.TransformVector = function(x, y, z) return x, y, z end
 			nMathUtil.CircleIntersectsArc = function() return true end
 			-- Waits do nothing here, so a modifier that loops would never end. ModifierCheck runs them.
 			nModifier.RequestModifier = function() return kObjIDNone end
@@ -236,6 +242,9 @@ namespace Game {
 						good and "PASS" or (ok and "IDLE" or "FAIL"), basic and "basic" or "ability", name, calls.animation, calls.damage, ok and "" or tostring(err)))
 					if not ok then
 						file:write("TRAIL ", name, " ", table.concat(trail, " ", math.max(1, #trail - 3)), "\n")
+						-- Which functions it was in, by the names their callers used.
+						local stack = debug.traceback(thread, "", 0):gsub("stack traceback:", ""):gsub("%s+", " ")
+						file:write("STACK ", name, stack, "\n")
 					end
 				end
 			end

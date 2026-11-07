@@ -176,6 +176,13 @@ namespace {
 				if object then
 					nAbility.BeginCast(self, object, target, cursorPosition, rank)
 					WatchCastEnd(currentCast())
+					-- The cast's Activate step runs first, in the same cast: scripts keep what their
+					-- tick needs there (soulravager_active counts its shots). As modifiers do, a
+					-- numbered one wins over the named one, and hasActivate = false turns it off.
+					local activate = self.hasActivate ~= false and (self[nAbilityFns.Activate] or self.activate)
+					if activate then
+						activate(self)
+					end
 				end
 				return tick(self)
 			end
@@ -558,6 +565,23 @@ namespace {
 			return 0, 0, 0
 		end
 		nGameObject.GetObjectDirection = nGameObject.GetFacing
+
+		-- GetObjectAngleRad(id, otherId): the turn from the object's facing to the other object, about
+		-- the up axis, from 0 to 2 pi (client 0xa0da40). Nothing when either one is missing, as there.
+		function nGameObject.GetObjectAngleRad(id, otherId)
+			local object, other = get(id), get(otherId)
+			if not object or not other then
+				return
+			end
+
+			local from, to = object:GetPosition(), other:GetPosition()
+			local fx, fy = nGameObject.GetFacing(id)
+			if fx * fx + fy * fy < 0.000001 then
+				fx, fy = 0, 1
+			end
+			local angle = math.atan2(to.y - from.y, to.x - from.x) - math.atan2(fy, fx)
+			return angle % (2 * math.pi)
+		end
 
 		function nGameObject.GetCenterPoint(id)
 			local object = get(id)
