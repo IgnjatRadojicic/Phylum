@@ -1399,6 +1399,22 @@ namespace {
 			local reach = agent:GetBodyRadius() + target:GetBodyRadius()
 			return true, to.x + dx / length * reach, to.y + dy / length * reach, to.z
 		end
+
+		-- Whether an agent can get to a point (Chrono Blink, Blitz's strike, fleeing). Approximate:
+		-- the server has no navigation mesh yet, so every point counts as reachable.
+		function nLocomotion.IsPositionReachable(agentId, x, y, z)
+			return get(agentId) ~= nil
+		end
+		nLocomotion.IsPositionReachableExact = nLocomotion.IsPositionReachable
+
+		-- FindBallRollPosition(agent, x, y, z): found, x, y, z. The client rolls along its navigation
+		-- mesh toward the point to the last spot it reaches; with no mesh that is the point itself.
+		function nLocomotion.FindBallRollPosition(agentId, x, y, z)
+			if not get(agentId) then
+				return false, 0, 0, 0
+			end
+			return true, tonumber(x) or 0, tonumber(y) or 0, tonumber(z) or 0
+		end
 	)lua";
 }
 

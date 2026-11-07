@@ -155,6 +155,9 @@ namespace Game {
 			nObjectManager.GetObjectsInRadius_SortedByFurthestDistance = function() return { 2 } end
 			nLocomotion.GetTerrainHeight = function(x, y, z) return z end
 			nLocomotion.FindGoodMeleePosition = function() return true, 1, 0, 0 end
+			nLocomotion.IsPositionReachable = function() return true end
+			nLocomotion.IsPositionReachableExact = function() return true end
+			nLocomotion.FindBallRollPosition = function(_, x, y, z) return true, x, y, z end
 			nLocomotion.FindRandomPositionFromPoint = function(x, y, z) return x, y, z end
 			nLocomotion.GetClosestSpawnPosition = function(_, x, y, z) return x, y, z end
 			nMathUtil.CircleIntersectsArc = function() return true end
