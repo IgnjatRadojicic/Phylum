@@ -26,6 +26,7 @@ namespace Game {
 		constexpr const char* mobNounName = "ZelemBasicHybrid.Noun";
 		constexpr float durable = 100000;
 		constexpr float enemyDistance = 6;
+		constexpr float spotSpacing = 200;
 		constexpr int watchMilliseconds = 3000;
 		constexpr int stepMilliseconds = 20;
 
@@ -76,8 +77,8 @@ namespace Game {
 
 		class Sweep {
 			public:
-				Sweep(Instance& game, Lua& lua, std::ostream& report) :
-					mGame(game), mLua(lua), mReport(report), mPackets(std::make_shared<std::vector<std::string>>()) {
+				Sweep(Instance& game, Lua& lua, std::ostream& report, const std::string& classFilter) :
+					mGame(game), mLua(lua), mReport(report), mClassFilter(classFilter), mPackets(std::make_shared<std::vector<std::string>>()) {
 					const auto packets = mPackets;
 					mGame.StartOffline(std::make_shared<SporeNet::User>("hero-sweep"), [packets](std::string_view packet) {
 						packets->emplace_back(packet);
@@ -97,6 +98,9 @@ namespace Game {
 				void RunAll() {
 					size_t worked = 0, total = 0;
 					for (const auto& className : HeroClassNames()) {
+						if (!mClassFilter.empty() && className.find(mClassFilter) == std::string::npos) {
+							continue;
+						}
 						const auto noun = NounDatabase::Instance().Get(utils::hash_id(className + ".Noun"));
 						const auto playerClass = noun ? noun->GetPlayerClassData() : nullptr;
 						if (!playerClass) {
@@ -139,9 +143,11 @@ namespace Game {
 					return object;
 				}
 
-				std::set<uint32_t> ObjectsNear(const glm::vec3& position) const {
+				// radius 40 is what a cast counts as its own; cleanup takes half the spacing to the next spot,
+				// so pets and shots that strayed cannot reach the next cast.
+				std::set<uint32_t> ObjectsNear(const glm::vec3& position, float radius = 40.f) const {
 					std::set<uint32_t> ids;
-					for (const auto& object : mGame.GetObjectManager().GetObjectsInRadius(BoundingSphere(position, 40.f), {})) {
+					for (const auto& object : mGame.GetObjectManager().GetObjectsInRadius(BoundingSphere(position, radius), {})) {
 						if (!object->IsMarkedForDeletion()) {
 							ids.insert(object->GetId());
 						}
@@ -154,7 +160,7 @@ namespace Game {
 					const auto ability = mLua.GetAbility(abilityId);
 					// A grid inside the world's octree (+-2500), where object searches find things.
 					const auto index = mCasts++;
-					const glm::vec3 spot(-2000.f + 200.f * static_cast<float>(index % 20), -2000.f + 200.f * static_cast<float>(index / 20), 0.f);
+					const glm::vec3 spot(-2000.f + spotSpacing * static_cast<float>(index % 20), -2000.f + spotSpacing * static_cast<float>(index / 20), 0.f);
 					mReport << "  " << slot << " " << (ability ? ability->GetName() : std::to_string(abilityId));
 					if (!ability) {
 						mReport << " NO-SCRIPT\n";
@@ -230,7 +236,7 @@ namespace Game {
 					if (auto thread = hero->GetLuaThread()) {
 						mLua.CancelThread(thread);
 					}
-					for (const auto id : after) {
+					for (const auto id : ObjectsNear(spot, spotSpacing / 2)) {
 						if (auto object = mGame.GetObjectManager().Get(id)) {
 							object->MarkForDeletion();
 						}
@@ -242,6 +248,7 @@ namespace Game {
 				Instance& mGame;
 				Lua& mLua;
 				std::ostream& mReport;
+				std::string mClassFilter;
 				std::shared_ptr<std::vector<std::string>> mPackets;
 				std::vector<std::string> mErrors;
 				uint32_t mCasts = 0;
@@ -249,8 +256,8 @@ namespace Game {
 	}
 
 	// HeroAbilitySweep
-	void HeroAbilitySweep::Run(Instance& game, Lua& lua, const std::filesystem::path& reportPath) {
+	void HeroAbilitySweep::Run(Instance& game, Lua& lua, const std::filesystem::path& reportPath, const std::string& classFilter) {
 		std::ofstream report(reportPath);
-		Sweep(game, lua, report).RunAll();
+		Sweep(game, lua, report, classFilter).RunAll();
 	}
 }

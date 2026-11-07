@@ -40,6 +40,7 @@ Application* Application::sApplication = nullptr;
 bool Application::sVerboseTimestamps = false;
 bool Application::sCheckScripts = false;
 bool Application::sCheckHeroes = false;
+std::string Application::sHeroFilter;
 
 std::string Application::darksporeInstallPath = "../..";
 std::string Application::darksporeInstallVersion = "5.3.0.127";
@@ -62,6 +63,10 @@ Application& Application::InitApp(int argc, char* argv[]) {
                 sCheckScripts = true;
             } else if (strcmp(argv[i], "--check-heroes") == 0) {
                 sCheckHeroes = true;
+                // An optional name part runs only the hero classes that have it.
+                if (i + 1 < argc && strncmp(argv[i + 1], "--", 2) != 0) {
+                    sHeroFilter = argv[++i];
+                }
             } else if (strcmp(argv[i], "--darkspore-path") == 0) {
                 i++;
                 darksporeInstallPath = std::string(argv[i]);
@@ -122,7 +127,7 @@ bool Application::OnInit() {
 	if (sCheckHeroes) {
 		(void)Game::NounDatabase::Instance();
 		Game::GlobalLua::Instance().Initialize();
-		Game::ScriptCheck::WriteHeroReport("script-heroes.txt");
+		Game::ScriptCheck::WriteHeroReport("script-heroes.txt", sHeroFilter);
 		exit(0);
 	}
 

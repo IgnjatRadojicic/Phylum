@@ -4,6 +4,7 @@
 
 // Include
 #include <filesystem>
+#include <string>
 
 // Game
 namespace Game {
@@ -15,7 +16,8 @@ namespace Game {
 	// real time (a few seconds per ability), so it is a separate check (--check-heroes).
 	class HeroAbilitySweep {
 		public:
-			static void Run(Instance& game, Lua& lua, const std::filesystem::path& reportPath);
+			// classFilter: only the hero classes whose name has it (empty: all).
+			static void Run(Instance& game, Lua& lua, const std::filesystem::path& reportPath, const std::string& classFilter);
 	};
 }
 

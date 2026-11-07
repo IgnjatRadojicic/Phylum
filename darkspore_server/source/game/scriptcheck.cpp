@@ -307,7 +307,7 @@ namespace Game {
 		std::cout.rdbuf(consoleBuffer);
 	}
 
-	void ScriptCheck::WriteHeroReport(const std::filesystem::path& reportPath) {
+	void ScriptCheck::WriteHeroReport(const std::filesystem::path& reportPath, const std::string& classFilter) {
 		std::ofstream console("script-heroes-console.txt");
 		auto* consoleBuffer = std::cout.rdbuf(console.rdbuf());
 
@@ -320,7 +320,7 @@ namespace Game {
 		lua.Initialize();
 		lua.PreloadAbilities();
 
-		HeroAbilitySweep::Run(*game, lua, reportPath);
+		HeroAbilitySweep::Run(*game, lua, reportPath, classFilter);
 		std::cout.rdbuf(consoleBuffer);
 	}
 }

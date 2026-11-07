@@ -19,6 +19,7 @@ class Application {
 		static bool sVerboseTimestamps;
 		static bool sCheckScripts;
 		static bool sCheckHeroes;
+		static std::string sHeroFilter;
 		static std::string darksporeInstallPath;
 		static std::string darksporeInstallVersion;
 		
