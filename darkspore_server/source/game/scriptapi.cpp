@@ -404,8 +404,15 @@ namespace {
 			nThreadData.GetPrivateTable()[key] = value
 		end
 
+		-- In a modifier, a number nobody set is the value its RequestModifier passed, numbered from 0
+		-- like GetFloatProperty (Shadow Ravager's vulnerability reads the hit's damage as GetFloat(0)).
 		local function getData(key)
-			return nThreadData.GetPrivateTable()[key]
+			local value = nThreadData.GetPrivateTable()[key]
+			if value == nil and type(key) == "number" then
+				local properties = dataOwner().properties
+				value = properties and properties[key + 1]
+			end
+			return value
 		end
 
 		nThreadData.SetInt, nThreadData.GetInt = setData, getData
@@ -1173,9 +1180,11 @@ namespace {
 		end
 		nAbility.CallFunctionInContext = nModifier.CallFunctionInContext
 
-		-- Without an operation a change adds. Inside a modifier it ends with the modifier.
+		-- Without an operation a change adds. Inside a modifier it ends with the modifier. The client
+		-- reads the value with lua_tonumber (0xa04000), so one that is no number adds 0
+		-- (FireRavagerEnergyVulnerability passes its ranked table).
 		function nAttribute.AddAttributeModifier(id, attribute, value, operation)
-			return ModifierEngine.AddAttributeChange(id, attribute, value or 0, operation or nAttributeOp.kAdd, instanceOf(nil))
+			return ModifierEngine.AddAttributeChange(id, attribute, tonumber(value) or 0, operation or nAttributeOp.kAdd, instanceOf(nil))
 		end
 
 		function nAttribute.RemoveAttributeModifier(id, handle)
@@ -1204,8 +1213,10 @@ namespace {
 
 		for _, name in ipairs({ "GetObjectsInRadius", "GetObjectsInRadius_SortedByDistance" }) do
 			local query = nObjectManager[name]
+			-- The client reads the radius with lua_tonumber (0xa10260), so one that is no number is 0
+			-- (BabyToss passes its radius table).
 			nObjectManager[name] = function(x, y, z, radius, types)
-				return toIds(query(vector(x, y, z), radius, type(types) == "table" and types or {}))
+				return toIds(query(vector(x, y, z), tonumber(radius) or 0, type(types) == "table" and types or {}))
 			end
 		end
 
