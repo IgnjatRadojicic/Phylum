@@ -1287,6 +1287,15 @@ namespace {
 			return x, y, z
 		end
 
+		-- WaitForControlOfAgent(agent, timeout): whether this script now controls the agent (fear runs the
+		-- agent to random spots while it does). Control is not shared out on the server yet, so a living
+		-- agent is always controlled. One update passes first, so a loop on it never stalls the game.
+		function nThread.WaitForControlOfAgent(agentId, timeout)
+			nThread.Sleep(0)
+			local agent = tonumber(agentId) and nObjectManager.GetObject(agentId) or nil
+			return agent ~= nil and agent:GetHealth() > 0
+		end
+
 		-- A delay can come as a table holding the number (Psistorm sets timetohit = { timeToHit }).
 		for _, name in ipairs({ "WaitForXSeconds", "WaitUntilTime" }) do
 			local wait = nThread[name]
