@@ -8,6 +8,7 @@
 #include "noun.h"
 #include "object.h"
 #include "objectmanager.h"
+#include "passivemodifiers.h"
 
 #include "sporenet/user.h"
 #include "utils/functions.h"
@@ -37,6 +38,7 @@ namespace Game {
 			ScriptGaps.Record = function(name)
 				HeroSweepGaps[#HeroSweepGaps + 1] = name
 				record(name)
+			end
 			end
 		)lua";
 
@@ -173,6 +175,8 @@ namespace Game {
 						mReport << " NO-OBJECTS\n";
 						return false;
 					}
+					// As in a game, where it starts once the client knows the hero (Soul Ravager's souls).
+					PassiveModifiers(mLua).Start(hero);
 
 					Step(100);
 					const auto before = ObjectsNear(spot);
