@@ -191,6 +191,8 @@ namespace RakNet {
 			void SendActionCancel(const ClientPtr& client, uint8_t value, uint32_t otherValue);
 
 			void SendActionCommandResponse(const ClientPtr& client, uint8_t type);
+			// Answers a cast with "pursue": the client walks the hero to its target, then sends the cast again.
+			void SendActionPursuit(const ClientPtr& client, uint8_t sequence, uint32_t objectId);
 			void SendActionCommandResponse(const ClientPtr& client, const AbilityCommandResponse& data, uint8_t sequence);
 			void SendObjectJump(
 				const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& destination, const glm::vec3& direction,

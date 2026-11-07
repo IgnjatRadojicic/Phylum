@@ -22,6 +22,7 @@
 #include <memory>
 #include <functional>
 
+#include "castpursuit.h"
 #include "recentdamage.h"
 
 // Game
@@ -211,6 +212,10 @@ namespace Game {
 			};
 			CastAnswer PayForCast(const ObjectPtr& object, uint32_t abilityId, int32_t rank, uint32_t unscriptedCooldownMs);
 
+			// Whether a hero's cast waits for the client to walk the hero into range (CastPursuit).
+			// Asked before PayForCast: a waiting cast costs nothing. Gives the retry on arrival its target back.
+			bool PursueBeforeCast(const ObjectPtr& object, RakNet::CombatData& combatData);
+
 			// Runs the ability's script. PayForCast decides first whether it may.
 			bool UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData);
 			void WeaponAttack(const ObjectPtr& attacker, uint32_t targetId, uint32_t abilityId, const std::tuple<float, float>& damageRange);
@@ -264,6 +269,7 @@ namespace Game {
 			std::unique_ptr<DamageEvents> mDamageEvents;
 			std::unique_ptr<ActionEvents> mActionEvents;
 			RecentDamage mRecentDamage;
+			CastPursuit mCastPursuit;
 
 			std::unordered_map<uint32_t, MarkerPtr> mMarkers;
 			std::map<int64_t, PlayerPtr> mPlayers;

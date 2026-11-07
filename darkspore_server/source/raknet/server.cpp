@@ -792,7 +792,9 @@ namespace RakNet {
 						<< "," << static_cast<uint32_t>(command.data.unk[1])
 						<< "," << static_cast<uint32_t>(command.data.unk[2]) << std::endl;
 
-					if (combatData.abilityId != 0) {
+					if (combatData.abilityId != 0 && mGame.PursueBeforeCast(object, combatData)) {
+						SendActionPursuit(client, command.data.unk[0], object->GetId());
+					} else if (combatData.abilityId != 0) {
 						// The reply carries the cooldown, so the cast is paid for before it goes.
 						const auto answer = mGame.PayForCast(object, combatData.abilityId, combatData.abilityRank, 500);
 
@@ -1561,6 +1563,23 @@ namespace RakNet {
 			case 0x10:
 				// reset value sent to 0x02
 				break;
+		}
+
+		Send(outStream, client);
+	}
+
+	void Server::SendActionPursuit(const ClientPtr& client, uint8_t sequence, uint32_t objectId) {
+		BitStream outStream(57);
+		outStream.Write(PacketID::ActionCommandResponse);
+
+		// The layout of the accepted response, with type 0x08 and the hero at offset 4 (as Darkspin sends it).
+		Write<uint8_t>(outStream, sequence);
+		Write<uint8_t>(outStream, 0x08);
+		Write<uint8_t>(outStream, 0x00);
+		Write<uint8_t>(outStream, 0x00);
+		Write<uint32_t>(outStream, objectId);
+		for (int i = 0; i < 6; ++i) {
+			Write<uint64_t>(outStream, 0);
 		}
 
 		Send(outStream, client);

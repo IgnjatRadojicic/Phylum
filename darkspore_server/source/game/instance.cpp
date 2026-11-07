@@ -686,6 +686,39 @@ namespace Game {
 		return { true, duration };
 	}
 
+	bool Instance::PursueBeforeCast(const ObjectPtr& object, RakNet::CombatData& combatData) {
+		const auto& ability = mLua->GetAbility(combatData.abilityId);
+		if (!object || !ability) {
+			return false;
+		}
+
+		CastPursuit::Cast cast;
+		cast.casterId = object->GetId();
+		cast.abilityId = combatData.abilityId;
+		cast.targetId = combatData.targetId;
+		cast.shouldPursue = ability->ShouldPursue();
+		if (cast.shouldPursue && cast.targetId != 0) {
+			if (const auto& target = mObjectManager->Get(cast.targetId)) {
+				cast.range = ability->GetRange(combatData.abilityRank);
+				cast.gap = glm::distance(object->GetPosition(), target->GetPosition()) -
+					object->GetFootprintRadius() - target->GetFootprintRadius();
+			}
+		}
+
+		const auto answer = mCastPursuit.Decide(cast, GetTime());
+		const bool pursue = answer.decision == CastPursuit::Decision::Pursue;
+		if (!pursue && answer.targetId != combatData.targetId) {
+			mLua->Trace(std::format("ARRIVED ability={} object={} target={} (the retry came with {})",
+				cast.abilityId, cast.casterId, answer.targetId, combatData.targetId));
+			combatData.targetId = answer.targetId;
+		}
+		if (pursue) {
+			mLua->Trace(std::format("PURSUE ability={} object={} target={} gap={:.1f} range={:.1f}",
+				cast.abilityId, cast.casterId, cast.targetId, cast.gap, cast.range));
+		}
+		return pursue;
+	}
+
 	ObjectPtr Instance::SpawnCreature(uint32_t nounId, const glm::vec3& position, const glm::quat& orientation) {
 		const auto& object = mObjectManager->Create(nounId);
 		if (!object) {
@@ -825,6 +858,9 @@ namespace Game {
 		if (!player || !object) {
 			return;
 		}
+
+		// A cancelled chase: the same cast later is a new one, not the arrival.
+		mCastPursuit.Forget(object->GetId());
 
 		auto luaThread = object->GetLuaThread();
 		if (!luaThread) {

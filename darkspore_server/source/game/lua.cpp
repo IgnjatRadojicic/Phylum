@@ -732,6 +732,18 @@ namespace Game {
 		return data;
 	}
 
+	float Ability::GetRange(int32_t rank) const {
+		sol::state_view state(mLua.GetState());
+		sol::protected_function read = state["AbilityApi"]["Range"];
+		sol::protected_function_result result = read(mSelf, std::max(1, rank));
+		if (!result.valid()) {
+			sol::error error = result;
+			mLua.Trace("ERROR range ability=" + std::to_string(mId) + " " + error.what());
+			return 0.f;
+		}
+		return result.get<float>(0);
+	}
+
 	bool Ability::IsInRange(const ObjectPtr& object, const ObjectPtr& target, const glm::vec3& targetPosition, int32_t rank) const {
 		if (!object) {
 			return true;

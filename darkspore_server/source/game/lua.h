@@ -338,6 +338,8 @@ namespace Game {
 			// methods
 			// What the script says a cast at this rank costs, before the caster's attributes.
 			AbilityCostData GetCostData(const ObjectPtr& object, int32_t rank) const;
+			// The script's range at this rank, 0 when it has none.
+			float GetRange(int32_t rank) const;
 
 			bool IsInRange(const ObjectPtr& object, const ObjectPtr& target, const glm::vec3& targetPosition, int32_t rank) const;
 			bool IsAbleToHit(const ObjectPtr& object, const ObjectPtr& target, const glm::vec3& targetPosition, int32_t rank) const;

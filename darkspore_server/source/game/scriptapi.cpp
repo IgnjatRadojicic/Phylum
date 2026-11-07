@@ -151,7 +151,8 @@ namespace {
 			-- Where the caster stands decides where shots start. Never lets the trace break a cast.
 			local ok, at = pcall(function()
 				local p = object:GetPosition()
-				return string.format(" at=%.1f,%.1f,%.1f", p.x, p.y, p.z)
+				local targetId = target and target:GetId() or 0
+				return string.format(" at=%.1f,%.1f,%.1f target=%d", p.x, p.y, p.z, targetId)
 			end)
 			ScriptTrace("CAST ability=" .. tostring(ability.id) .. " object=" .. tostring(id) .. (ok and at or ""))
 			-- Each ability walks its own animation sequence: one object's abilities have sequences
@@ -315,6 +316,11 @@ namespace {
 				GetRankedValueHelper(ability.cooldown or 0, rank) or 0,
 				manual,
 				GetRankedValueHelper(ability.cooldownVariance or 0, rank) or 0
+		end
+
+		function AbilityApi.Range(ability, rank)
+			local range = GetRankedValueHelper(ability.range or 0, rank)
+			return type(range) == "number" and range or 0
 		end
 
 		function nAbility.GetAbilityAttributeValue(agentId, abilityId)
