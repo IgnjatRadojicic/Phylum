@@ -5,12 +5,18 @@ how the client raises them and what they carry. "L" is a line in the luac listin
 
 ## Delivery (client 0x9df330 → 0x9deca0)
 
-- An event goes to one object. Its running abilities and its modifiers each get it if their
-  `handledEvents` has the type.
-- The handler's result starts as `true`. Only an explicit `false` ends that ability or modifier
-  (it sets the instance's `+0x165`, through `0x9de9c0` and `0x9dea20`). A handler that returns
-  nothing keeps it running.
+- `nAbility.SendAbilityEvent(event, agentId)` delivers at once (0x9df330), then frees the event.
+- An event goes to one object. First its running abilities (the agent's list at `+8`), then its
+  modifiers (`+0x3c`), each if its `handledEvents` has the type.
+- The handler's result starts as `true`. Only an explicit `false` ends that ability or modifier.
+  A handler that returns nothing keeps it running. The end goes through `0x9de9c0` (abilities)
+  and `0x9dea20` (modifiers): an instance that is busy (`+0x164`) is only marked (`+0x165`) and
+  ends later; any other ends at once through `0x9e11f0`.
 - All data types share one slot array: slot n is at `+4n`, whatever its type.
+
+The server (`AbilityEventDelivery`) does the same. The casts come from `RunningCasts`, filled as a
+cast starts. A cast that is running when it is told to end (it sent the event to its own agent)
+ends at its next wait, and a modifier whose own thread is running ends at the next update.
 
 ## Sent by the server (done)
 

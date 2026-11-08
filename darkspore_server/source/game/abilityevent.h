@@ -10,14 +10,21 @@
 // Game
 namespace Game {
 	// The events scripts subscribe to with handledEvents (nAbilityEventFlags in the game's
-	// GlobalDefinitions.lua). Only the ones the server sends are listed.
+	// GlobalDefinitions.lua). Only the ones the server or the hero scripts send are listed
+	// (see docs/events.md); a script can send any type with nAbility.SendAbilityEvent.
 	enum class AbilityEventType : uint32_t {
 		TookDamage = 1,
+		BreakRoot = 2,
 		UsedAbility = 4,
+		InterruptModifier = 16,
 		StackModifier = 32,
 		NearbyDeath = 64,
+		StartedNewAction = 256,
+		LostModifierOfType = 4096,
 		DealtDamage = 8192,
-		Dodged = 65536
+		PlayerSwap = 32768,
+		Dodged = 65536,
+		Incorporeal = 262144
 	};
 
 	// AbilityEvent

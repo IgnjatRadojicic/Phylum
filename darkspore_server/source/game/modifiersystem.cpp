@@ -246,29 +246,49 @@ namespace Game {
 		mManager.Remove(id);
 	}
 
-	void ModifierSystem::SendEvent(uint32_t agent, const AbilityEvent& event) {
-		sol::state_view state(mGame.GetLua().GetState());
-
-		sol::table data = state.create_table();
-		data["eventType"] = static_cast<uint32_t>(event.GetType());
-		sol::table guids = state.create_table();
-		sol::table floats = state.create_table();
-		sol::table ints = state.create_table();
-		for (size_t slot = 1; slot <= AbilityEvent::SlotCount; ++slot) {
-			guids[slot] = event.GetGUID(slot);
-			floats[slot] = event.GetFloat(slot);
-			ints[slot] = event.GetInt(slot);
-		}
-		data["guids"] = guids;
-		data["floats"] = floats;
-		data["ints"] = ints;
-
+	void ModifierSystem::DeliverEvent(uint32_t agent, const sol::table& data) {
 		// A copy of the ids, because handlers can start and end modifiers.
 		for (const uint32_t id : mManager.GetAll(agent)) {
 			const auto it = mRuns.find(id);
-			if (it != mRuns.end()) {
-				CallScript("HandleEvent", sol::table(it->second.context), data);
+			if (it == mRuns.end()) {
+				continue;
 			}
+
+			sol::table context(it->second.context);
+			CallScript("HandleEvent", context, data);
+			if (context.get_or("endsByEvent", false)) {
+				EndByEvent(id);
+			}
+		}
+	}
+
+	bool ModifierSystem::HasModifiers(uint32_t agent) const {
+		return !mManager.GetAll(agent).empty();
+	}
+
+	void ModifierSystem::EndByEvent(uint32_t id) {
+		const auto it = mRuns.find(id);
+		if (it == mRuns.end()) {
+			return;
+		}
+
+		if (const auto instance = mManager.Get(id)) {
+			Trace("ending-on-event", instance->spec.guid, id, instance->agent, instance->initiator);
+		}
+
+		// A thread cannot be stopped while it runs, so a modifier that sent the event to its own
+		// agent ends at the next update instead, as the client defers an instance it is inside
+		// (0x9dea20 sets +0x165). Otherwise it ends now (0x9e11f0).
+		const auto& lua = mGame.GetLua();
+		bool running = lua.IsThreadExecuting(it->second.ticket);
+		for (const auto child : it->second.children) {
+			running = running || lua.IsThreadExecuting(child);
+		}
+
+		if (running) {
+			mManager.MarkForDelete(id);
+		} else {
+			Finish(id);
 		}
 	}
 

@@ -9,6 +9,7 @@
 #include "damageevents.h"
 #include "facing.h"
 #include "actionevents.h"
+#include "abilityeventdelivery.h"
 #include "passivemodifiers.h"
 #include "scripttriggervolumes.h"
 #include "serverevent.h"
@@ -109,8 +110,9 @@ namespace Game {
 		mTriggerVolumes = std::make_unique<ScriptTriggerVolumes>([this](const sol::main_function& callback, uint32_t volume, uint32_t objectId) {
 			mLua->CallCoroutine<void>(nullptr, sol::function(callback), volume, objectId);
 		});
-		mDamageEvents = std::make_unique<DamageEvents>(*mModifiers);
-		mActionEvents = std::make_unique<ActionEvents>(*mModifiers);
+		mEventDelivery = std::make_unique<AbilityEventDelivery>(*mLua, *mModifiers);
+		mDamageEvents = std::make_unique<DamageEvents>(*mEventDelivery);
+		mActionEvents = std::make_unique<ActionEvents>(*mEventDelivery);
 		mServer = std::make_unique<RakNet::Server>(*this);
 	}
 
@@ -136,6 +138,7 @@ namespace Game {
 		mServer.reset();
 		mDamageEvents.reset();
 		mActionEvents.reset();
+		mEventDelivery.reset();
 		mModifiers.reset(); // Holds tables that belong to Lua
 		mTriggerVolumes.reset(); // Holds Lua functions
 		// Objects before Lua: a trigger volume's passive ability holds Lua tables and functions,
@@ -286,6 +289,12 @@ namespace Game {
 	void Instance::ReportUsedAbility(uint32_t agent, uint32_t descriptors) {
 		if (mActionEvents) {
 			mActionEvents->UsedAbility(agent, descriptors);
+		}
+	}
+
+	void Instance::SendAbilityEvent(uint32_t agent, const AbilityEvent& event) {
+		if (mEventDelivery && agent != 0) {
+			mEventDelivery->SendEvent(agent, event);
 		}
 	}
 

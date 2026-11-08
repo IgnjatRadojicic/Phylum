@@ -5,6 +5,7 @@
 // Include
 #include "abilitycost.h"
 #include "attributes.h"
+#include "runningcasts.h"
 
 #include <fstream>
 #include <glm/glm.hpp>
@@ -106,6 +107,9 @@ namespace Game {
 
 			// A cast running on this thread, whose deactivate runs when the thread is freed.
 			sol::main_table mCastContext;
+
+			// Asked to end while it was running (Lua::EndCast), so it ends when it next waits.
+			bool mEndRequested = false;
 
 			ResumeCondition mResumeCondition;
 			std::function<void()> mOnNextResumeFailure;
@@ -249,11 +253,21 @@ namespace Game {
 			// back to the pool. A running thread cannot be ended from inside itself.
 			void CancelThread(LuaThread* thread);
 
+			// Ends a cast as CancelThread does. A cast that is running now, because it is the one
+			// asking, ends when it next waits, as the client defers an instance it is inside (0x9de9c0).
+			void EndCast(LuaThread* thread);
+
+			// The casts each agent has running, for the events that reach them.
+			const RunningCasts& GetRunningCasts() const;
+			sol::table GetCastContext(LuaThread* thread) const;
+
 			// A pooled thread can be reused or deleted, so anything holding on to one keeps a ticket.
 			uint64_t TrackThread(LuaThread* thread);
 			void StopThread(uint64_t ticket);
 			// Whether the tracked thread still waits to go on; a finished one is back in the pool.
 			bool IsThreadRunning(uint64_t ticket) const;
+			// Whether the tracked thread is running now, not waiting: it is on the call stack.
+			bool IsThreadExecuting(uint64_t ticket) const;
 
 		private:
 			// luafunctions.cpp
@@ -291,6 +305,7 @@ namespace Game {
 
 			std::unordered_set<LuaThread*> mYieldedThreads;
 			std::unordered_map<uint64_t, LuaThread*> mTrackedThreads;
+			RunningCasts mRunningCasts;
 			uint64_t mNextThreadTicket = 1;
 
 			std::vector<LuaThread*> mThreadPool;

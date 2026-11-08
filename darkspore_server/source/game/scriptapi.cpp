@@ -204,7 +204,7 @@ namespace {
 			return function(self, object, target, cursorPosition, rank)
 				if object then
 					nAbility.BeginCast(self, object, target, cursorPosition, rank)
-					WatchCastEnd(currentCast())
+					WatchCastEnd(currentCast(), object:GetId())
 					-- The cast's Activate step runs first, in the same cast: scripts keep what their
 					-- tick needs there (soulravager_active counts its shots). As modifiers do, a
 					-- numbered one wins over the named one, and hasActivate = false turns it off.
@@ -502,11 +502,20 @@ namespace {
 			end
 		end
 
-		-- Scripts read this back with GetAbilityEventType. Events do not reach anything yet.
+		-- Scripts read this back with GetAbilityEventType. No script fills the event's slots.
 		function nAbility.CreateAbilityEvent(eventType)
 			return { eventType = eventType }
 		end
-		function nAbility.SendAbilityEvent() end
+
+		-- SendAbilityEvent(event, agentId): delivered at once, to the agent's running casts and
+		-- modifiers (0x9df330). Quantum Blink sends BreakRoot to its own agent this way.
+		function nAbility.SendAbilityEvent(event, agentId)
+			local eventType = event and tonumber(event.eventType)
+			agentId = tonumber(agentId)
+			if eventType and agentId and agentId ~= kObjIDNone then
+				ModifierEngine.SendEvent(agentId, eventType)
+			end
+		end
 
 		-- A cast or modifier can take control of its agent, as a resurrect does while it channels
 		-- (Darkspore.exe 0xa65320, 0xa65360). The client reads no argument and binds the agent of the
@@ -1013,20 +1022,24 @@ namespace {
 			return flag ~= nil and nBit.And(flags or 0, flag) ~= 0
 		end
 
-		-- An event from the server (see AbilityEvent in abilityevent.h), for a script that lists
-		-- its type in handledEvents. As with stacking, the event reads as the modifier too.
+		-- An event (see AbilityEventDelivery) for a running modifier or cast whose script lists its
+		-- type in handledEvents. As with stacking, the event reads as the script too. The client
+		-- starts the answer at true, so only an explicit false ends the script (0x9deca0); one
+		-- that returns nothing keeps running.
 		function ModifierApi.HandleEvent(context, data)
+			context.endsByEvent = false
 			CastContext.Set(context)
-			local modifier = context.ability
-			if not hasFlag(modifier.handledEvents, data.eventType) then
+			local script = context.ability
+			if not hasFlag(script.handledEvents, data.eventType) then
 				return
 			end
-			local handler = scriptFunction(modifier, nAbilityFns.HandleEvent, "handleEvent", "hasHandleEvent")
+			local handler = scriptFunction(script, nAbilityFns.HandleEvent, "handleEvent", "hasHandleEvent")
 			if handler then
-				ScriptTrace("EVENT type=" .. data.eventType .. " modifier=" .. tostring(context.modifierId) .. " from=" .. tostring(data.guids[1]))
+				local who = context.modifierId and (" modifier=" .. context.modifierId) or (" cast=" .. tostring(context.instanceId))
+				ScriptTrace("EVENT type=" .. data.eventType .. who .. " from=" .. tostring(data.guids[1]))
 				local event = setmetatable({ eventType = data.eventType, guids = data.guids, floats = data.floats, ints = data.ints },
-					{ __index = modifier, __newindex = modifier })
-				context.handled = handler(event) == true
+					{ __index = script, __newindex = script })
+				context.endsByEvent = handler(event) == false
 			end
 		end
 
@@ -1858,9 +1871,11 @@ namespace Game {
 			gaps->Record(name);
 		};
 
-		mState["WatchCastEnd"] = [this](sol::this_state L, sol::table context) {
+		// The cast's agent hears the events sent to it while it runs (see AbilityEventDelivery).
+		mState["WatchCastEnd"] = [this](sol::this_state L, sol::table context, uint32_t agent) {
 			if (auto thread = GetThread(L)) {
 				thread->mCastContext = sol::main_table(context);
+				mRunningCasts.Add(agent, thread);
 			}
 		};
 
@@ -1871,6 +1886,9 @@ namespace Game {
 		sol::table modifierEngine = mState.create_named_table("ModifierEngine");
 		modifierEngine["AttributeFromScript"] = [](uint8_t attribute) {
 			return AttributeFromScript(attribute);
+		};
+		modifierEngine["SendEvent"] = [this](uint32_t agent, uint32_t eventType) {
+			GetGame().SendAbilityEvent(agent, AbilityEvent(static_cast<AbilityEventType>(eventType)));
 		};
 		modifierEngine["Request"] = [this](sol::table context, sol::table settings, uint32_t agent, uint32_t initiator) {
 			ModifierSpec spec;

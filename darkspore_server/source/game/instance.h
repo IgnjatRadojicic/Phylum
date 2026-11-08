@@ -111,6 +111,8 @@ namespace Game {
 	struct ModifierInstance;
 	class DamageEvents;
 	class ActionEvents;
+	class AbilityEvent;
+	class AbilityEventDelivery;
 	struct DamageReport;
 
 	// Instance
@@ -158,6 +160,8 @@ namespace Game {
 			float GetRecentDamage(uint32_t victim, float cap, float seconds) const;
 			void ReportDodge(uint32_t victim, uint32_t attacker);
 			void ReportUsedAbility(uint32_t agent, uint32_t descriptors);
+			// An event a script sends (nAbility.SendAbilityEvent), to the agent's casts and modifiers.
+			void SendAbilityEvent(uint32_t agent, const AbilityEvent& event);
 
 			// Starts the always-on modifier the object's class names, if it has one.
 			void StartPassive(const ObjectPtr& object);
@@ -266,6 +270,7 @@ namespace Game {
 			std::unique_ptr<Lua> mLua;
 			std::unique_ptr<ModifierSystem> mModifiers;
 			std::unique_ptr<ScriptTriggerVolumes> mTriggerVolumes;
+			std::unique_ptr<AbilityEventDelivery> mEventDelivery;
 			std::unique_ptr<DamageEvents> mDamageEvents;
 			std::unique_ptr<ActionEvents> mActionEvents;
 			RecentDamage mRecentDamage;

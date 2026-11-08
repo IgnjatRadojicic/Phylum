@@ -172,6 +172,9 @@ namespace Game {
 			// A script's own coroutine.yield means "go on next frame" (the time bubble's loop). The
 			// wait functions queue their thread themselves; queueing it again changes nothing.
 			mLua.YieldThread(this);
+			if (mEndRequested) {
+				mLua.CancelThread(this);
+			}
 		}
 	}
 
@@ -396,9 +399,14 @@ namespace Game {
 		// A resumed script can start threads of its own, so the set may change along the way.
 		const std::vector<LuaThread*> threads(mYieldedThreads.begin(), mYieldedThreads.end());
 		for (auto thread : threads) {
-			if (mYieldedThreads.contains(thread) && thread->resume()) {
+			if (!mYieldedThreads.contains(thread)) {
+				continue;
+			}
+			if (thread->resume()) {
 				mYieldedThreads.erase(thread);
 				ReturnThreadToPool(thread);
+			} else if (thread->mEndRequested) {
+				CancelThread(thread);
 			}
 		}
 	}
@@ -654,6 +662,11 @@ namespace Game {
 		return ticket != 0 && mTrackedThreads.contains(ticket);
 	}
 
+	bool Lua::IsThreadExecuting(uint64_t ticket) const {
+		const auto it = mTrackedThreads.find(ticket);
+		return it != mTrackedThreads.end() && lua_status(it->second->lua_state()) != LUA_YIELD;
+	}
+
 	void Lua::CancelThread(LuaThread* thread) {
 		if (thread && lua_status(thread->lua_state()) == LUA_YIELD) {
 			// Or Update would resume it after it is pooled, or deleted.
@@ -662,9 +675,33 @@ namespace Game {
 		}
 	}
 
+	void Lua::EndCast(LuaThread* thread) {
+		if (!thread) {
+			return;
+		}
+
+		if (lua_status(thread->lua_state()) == LUA_YIELD) {
+			CancelThread(thread);
+		} else {
+			thread->mEndRequested = true;
+		}
+	}
+
+	const RunningCasts& Lua::GetRunningCasts() const {
+		return mRunningCasts;
+	}
+
+	sol::table Lua::GetCastContext(LuaThread* thread) const {
+		return thread ? sol::table(thread->mCastContext) : sol::table();
+	}
+
 	void Lua::ReturnThreadToPool(LuaThread* thread) {
 		sol::main_table cast = std::move(thread->mCastContext);
 		thread->mCastContext = sol::main_table();
+		thread->mEndRequested = false;
+
+		// Before its Deactivate runs, so what that step raises does not reach the cast that is ending.
+		mRunningCasts.Remove(thread);
 
 		// Scripts key their cast by thread (see CastContext in scriptapi.cpp), and this one will be reused.
 		if (sol::optional<sol::protected_function> forget = mState["CastContext"]["Forget"]) {

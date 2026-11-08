@@ -233,6 +233,56 @@ namespace {
 			return entry and entry[field] or 0
 		end
 
+		-- A cast and a modifier that hear InterruptModifier and answer what ModifierCheckEvents.answer
+		-- holds: nil keeps them running, false ends them. order shows who heard it first.
+		ModifierCheckEvents = { order = "", castEnded = 0, modifierEnded = 0 }
+		local interrupt = nAbilityEventFlags.InterruptModifier
+		local listens = { handledEvents = interrupt }
+		nAbility.RegisterAbility("ModifierCheckListensCast", listens)
+		listens[nAbilityFns.Tick] = function()
+			nThread.WaitForXSeconds(100)
+		end
+		listens[nAbilityFns.HandleEvent] = function(event)
+			ModifierCheckEvents.order = ModifierCheckEvents.order .. "c"
+			return ModifierCheckEvents.answer
+		end
+		listens[nAbilityFns.Deactivate] = function()
+			ModifierCheckEvents.castEnded = ModifierCheckEvents.castEnded + 1
+		end
+
+		nModifier.RegisterModifier("ModifierCheckListensModifier", {
+			activationType = nActivationType.Unique,
+			handledEvents = interrupt,
+			handleEvent = function(event)
+				ModifierCheckEvents.order = ModifierCheckEvents.order .. "m"
+				return ModifierCheckEvents.answer
+			end,
+			deactivate = function()
+				ModifierCheckEvents.modifierEnded = ModifierCheckEvents.modifierEnded + 1
+			end
+		})
+
+		function ModifierCheckListensModifierGuid()
+			return nUtil.SPID("ModifierCheckListensModifier")
+		end
+
+		-- Sends the event to its own agent and ends itself on it, as a cast that breaks its own
+		-- root would if it handled BreakRoot: it is running then, so it ends at its next wait.
+		local selfSend = { handledEvents = interrupt }
+		nAbility.RegisterAbility("ModifierCheckSendsToItself", selfSend)
+		selfSend[nAbilityFns.Tick] = function()
+			nAbility.SendAbilityEvent(nAbility.CreateAbilityEvent(interrupt), nAbility.GetAgentID())
+			ModifierCheckEvents.afterSend = true
+			nThread.WaitForXSeconds(100)
+			ModifierCheckEvents.resumed = true
+		end
+		selfSend[nAbilityFns.HandleEvent] = function()
+			return false
+		end
+		selfSend[nAbilityFns.Deactivate] = function()
+			ModifierCheckEvents.selfEnded = true
+		end
+
 		function ModifierCheckBrokenGuid()
 			return nUtil.SPID("ModifierCheckBroken")
 		end
@@ -248,6 +298,9 @@ namespace {
 			nModifier.registered[nUtil.SPID("ModifierCheckBroken")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckParent")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckListener")] = nil
+			nModifier.registered[nUtil.SPID("ModifierCheckListensModifier")] = nil
+			nAbility.scripts.ModifierCheckListensCast = nil
+			nAbility.scripts.ModifierCheckSendsToItself = nil
 			nAbility.scripts.ModifierCheckWaits = nil
 			nAbility.scripts.ModifierCheckFails = nil
 			nAbility.scripts.ModifierCheckCancelled = nil
@@ -257,7 +310,8 @@ namespace {
 			nAbility.scripts.ModifierCheckFinishes = nil
 			-- RegisterAbility also lists an ability as a modifier (one registry, as in the client)
 			for _, name in ipairs({ "ModifierCheckWaits", "ModifierCheckFails", "ModifierCheckCancelled", "ModifierCheckDeactivateFails",
-				"ModifierCheckStealthCast", "ModifierCheckCancelledWithChild", "ModifierCheckFinishes" }) do
+				"ModifierCheckStealthCast", "ModifierCheckCancelledWithChild", "ModifierCheckFinishes",
+				"ModifierCheckListensCast", "ModifierCheckSendsToItself" }) do
 				nModifier.registered[nUtil.SPID(name)] = nil
 			end
 		end
@@ -373,6 +427,8 @@ namespace {
 				CheckReusedThreadHasPlainGlobals();
 				CheckChildThreadEndsWithIt();
 				CheckDamageReachesHandlers();
+				CheckEventAnswersEndOrKeep();
+				CheckCastEndedFromItselfEndsAtItsWait();
 				CheckThornsHitsMeleeAttackerBack();
 				CheckMobPassiveStartsOnce();
 				CheckKillObjectEndsPassive();
@@ -720,6 +776,70 @@ namespace {
 				Report("damage-reaches-handlers", good,
 					"took=" + std::to_string(firstType) + "/" + std::to_string(firstOther) + "/" + std::to_string(firstAmount) +
 					" dealt=" + std::to_string(secondType) + "/" + std::to_string(secondOther));
+			}
+
+			// An event reaches the agent's running cast first, then its modifiers (0x9deca0). A handler
+			// that returns nothing keeps both running; an explicit false ends both.
+			void CheckEventAnswersEndOrKeep() {
+				auto agent = Spawn();
+				const auto castId = utils::hash_id("ModifierCheckListensCast");
+				mLua.GetAbility(castId)->FindNumberedTick();
+				sol::protected_function modifierGuid = mState["ModifierCheckListensModifierGuid"];
+				const auto modifierId = Request(agent, agent, modifierGuid());
+
+				RakNet::CombatData cast {};
+				cast.abilityId = castId;
+				cast.abilityRank = 1;
+				mGame.UseAbility(agent, cast);
+				Wait(100);
+
+				sol::table events = mState["ModifierCheckEvents"];
+				const auto interrupt = Game::AbilityEvent(Game::AbilityEventType::InterruptModifier);
+				const auto& modifiers = mGame.GetModifiers().GetManager();
+
+				events["answer"] = sol::lua_nil;
+				mGame.SendAbilityEvent(agent->GetId(), interrupt);
+				Wait(100);
+				const std::string keptOrder = events.get_or<std::string>("order", "");
+				const bool castKept = agent->GetLuaThread() != nullptr && events.get_or("castEnded", 0) == 0;
+				const bool modifierKept = modifiers.Get(modifierId) != nullptr && events.get_or("modifierEnded", 0) == 0;
+				Report("event-nil-keeps-cast-and-modifier", modifierId != 0 && keptOrder == "cm" && castKept && modifierKept,
+					"order=" + keptOrder + " cast=" + std::to_string(castKept) + " modifier=" + std::to_string(modifierKept));
+
+				events["answer"] = false;
+				mGame.SendAbilityEvent(agent->GetId(), interrupt);
+				Wait(100);
+				const std::string endedOrder = events.get_or<std::string>("order", "");
+				const bool castEnded = agent->GetLuaThread() == nullptr && events.get_or("castEnded", 0) == 1;
+				const bool modifierEnded = modifiers.Get(modifierId) == nullptr && events.get_or("modifierEnded", 0) == 1;
+				Report("event-false-ends-cast-and-modifier", endedOrder == "cmcm" && castEnded && modifierEnded,
+					"order=" + endedOrder + " cast=" + std::to_string(castEnded) + " modifier=" + std::to_string(modifierEnded));
+
+				// Ended, so they hear no more.
+				mGame.SendAbilityEvent(agent->GetId(), interrupt);
+				const std::string afterOrder = events.get_or<std::string>("order", "");
+				Report("ended-scripts-hear-no-more-events", afterOrder == "cmcm", "order=" + afterOrder);
+			}
+
+			// A cast that sends an event to its own agent and ends on it is running then, so it ends at
+			// its next wait instead of going on (the client defers it, 0x9de9c0).
+			void CheckCastEndedFromItselfEndsAtItsWait() {
+				auto agent = Spawn();
+				const auto castId = utils::hash_id("ModifierCheckSendsToItself");
+				mLua.GetAbility(castId)->FindNumberedTick();
+
+				RakNet::CombatData cast {};
+				cast.abilityId = castId;
+				cast.abilityRank = 1;
+				mGame.UseAbility(agent, cast);
+				Wait(200);
+
+				sol::table events = mState["ModifierCheckEvents"];
+				const bool sent = events.get_or("afterSend", false);
+				const bool ended = events.get_or("selfEnded", false);
+				const bool resumed = events.get_or("resumed", false);
+				Report("cast-ended-from-itself-ends-at-its-wait", sent && ended && !resumed && agent->GetLuaThread() == nullptr,
+					"sent=" + std::to_string(sent) + " ended=" + std::to_string(ended) + " resumed=" + std::to_string(resumed));
 			}
 
 			// ZelemBasicMelee's AI definition names its passive, which no script requests.

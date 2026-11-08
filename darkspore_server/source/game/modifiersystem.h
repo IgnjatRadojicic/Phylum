@@ -22,12 +22,14 @@ namespace Game {
 	// ModifierSystem
 	// Runs modifiers in a game: ModifierManager's decisions become script calls, attribute changes
 	// and packets. Scripts reach it through the adapter in scriptapi.cpp.
-	class ModifierSystem : public AbilityEventSink {
+	class ModifierSystem {
 		public:
 			explicit ModifierSystem(Instance& game);
 
-			// Hands the event to each modifier running on the agent whose script handles it.
-			void SendEvent(uint32_t agent, const AbilityEvent& event) override;
+			// Hands an event (made by AbilityEventDelivery) to each modifier running on the agent. One
+			// whose handler answers false ends.
+			void DeliverEvent(uint32_t agent, const sol::table& data);
+			bool HasModifiers(uint32_t agent) const;
 
 			// The context is the table a modifier's script functions run with. Returns the instance
 			// id, or zero if the request was refused.
@@ -72,6 +74,7 @@ namespace Game {
 			void Start(uint32_t id, sol::table context);
 			void Stack(uint32_t id);
 			void Finish(uint32_t id);
+			void EndByEvent(uint32_t id);
 
 			bool CallScript(const char* function, sol::table context, sol::object argument = sol::lua_nil);
 			void SendUpdated(uint32_t id, bool restarted);
