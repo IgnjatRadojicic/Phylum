@@ -1,16 +1,30 @@
-# Resurrection Capsule: Original Lua + C++ Server
+# Phylum
 
-An independent continuation of the [Resurrection Capsule](https://github.com/Resurrection-Capsule/Resurrection-Capsule) (ReCap) server, a local server that lets you play Darkspore offline. It runs the game's original compiled Lua scripts on a C++ server, and focuses on making combat work. Tested on the Steam Demo (5.3.0.103). Based on [recap_server_cpp](https://github.com/Resurrection-Capsule/recap_server_cpp), with its full commit history kept.
+Phylum is a local server for Darkspore. Its goal is to bring back the closest one-to-one copy of the original game that can be made: the same combat, enemies, bosses, loot and progression, behaving the way they did when EA's servers were still running.
 
-This is an unofficial community project, not affiliated with EA or Maxis. You need your own copy of Darkspore. Game scripts are extracted from your own install. Some data and images inherited from upstream ReCap are still in this repository, and the aim is to remove them too.
+Phylum comes from ReCap, the [Resurrection Capsule](https://github.com/Resurrection-Capsule/Resurrection-Capsule) project. It started as a fork of [recap_server_cpp](https://github.com/Resurrection-Capsule/recap_server_cpp), and that repository's full commit history is kept here. Tested on the Steam Demo (5.3.0.103).
+
+This is an unofficial community project, not affiliated with EA or Maxis. You need your own copy of Darkspore. Game scripts are extracted from your own install. Some data and images inherited from ReCap are still in this repository, and the aim is to remove them too.
+
+## Where we come from
+
+We fully respect all the work that has been done before us. ReCap's developers and community spent years keeping Darkspore alive: they rebuilt the login and network protocols, moved the server from Python to C++, mapped how the game used to work, and kept a community together after the official servers closed. Phylum would not exist without them. Their names stay in the credits below, and their history stays in this repository.
 
 ## Goal
 
-Play the Darkspore campaign alone from start to finish, with working combat, enemies, bosses, loot and progression.
+The aim is a server that plays like the original, as close to one-to-one as the evidence allows. EA's server code is gone, so an exact copy cannot be promised, but every rule should come from the game itself wherever the game holds it. Where it does not, the rule is reconstructed and marked as approximate, so it can be replaced when better evidence turns up.
 
-The result should play recognisably like the original. It cannot be exact, because EA's server code is gone. Where the game's files hold a rule, we use it. Where they do not, we reconstruct it from the client and from videos, and mark it as approximate.
+The first milestone is the campaign played alone from start to finish. Multiplayer comes after that.
 
-Multiplayer, PvP and public hosting are out of scope.
+## How we do it
+
+- **The game's own scripts run unchanged.** Darkspore's abilities, effects, enemy conditions and objectives are compiled Lua scripts. Phylum runs that original bytecode on Lua 5.1, instead of decompiled or rewritten copies, so the logic inside them is the original logic.
+- **C++ rebuilds the engine underneath.** The scripts call engine functions, such as dealing damage, starting an effect, finding targets or moving an object. Phylum's C++ server provides those functions, built as small classes with one job each. An adapter in `scriptapi.cpp` only translates between the scripts and the server.
+- **Mapping the scripts.** Every game script is disassembled into one listing, so we can read exactly what a script does. A contract check compares every engine function the scripts call against what the server provides, and a gap log records any missing function a script reaches in play.
+- **Reading the client.** Where the game client holds a rule the server needs, such as a packet layout, a data table or an engine function, we read it from `Darkspore.exe` and cite the address in the code and docs.
+- **The game's data files.** Numbers come straight from the game: tuning tables, level configurations, class attributes and AI definitions.
+- **Marking what is approximate.** Where nothing in the game settles a rule, it is reconstructed from gameplay videos and other community work, and recorded as approximate in [docs](./docs).
+- **Checking every change.** Unit tests, a self-check that runs every ability script, modifier and projectile checks, and testing in the real game.
 
 ## Status
 
@@ -89,7 +103,7 @@ The game's scripts hold the real combat logic, so the work is mostly finishing t
 - Commits use the `feat(scope):` and `fix(scope):` style.
 - Never add game files, including anything extracted from them.
 
-For the wider project, see the [ReCap repository](https://github.com/Resurrection-Capsule/Resurrection-Capsule) and [Discord](https://discord.gg/btfTw62).
+For the project Phylum comes from, see the [ReCap repository](https://github.com/Resurrection-Capsule/Resurrection-Capsule) and its [Discord](https://discord.gg/btfTw62).
 
 ## Credits
  * dalkon, for migrating the project from Python to C++, and developing the majority of the ReCap server code from 2019 to 2022
@@ -110,9 +124,9 @@ For the wider project, see the [ReCap repository](https://github.com/Resurrectio
 
 [![GNU GPLv3 Image](https://www.gnu.org/graphics/gplv3-127x51.png)](http://www.gnu.org/licenses/gpl-3.0.en.html)
 
-Resurrection Capsule server is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Phylum, like the Resurrection Capsule server it comes from, is free software: you can
+redistribute it and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
 
 The full text is in [LICENSE](./LICENSE). Third-party library licenses are in [LICENSES.md](./LICENSES.md).
