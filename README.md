@@ -1,4 +1,5 @@
 # Phylum
+<img width="1254" height="1254" alt="asdasd" src="https://github.com/user-attachments/assets/49d9a905-4911-4b0a-bb39-3b00672bee68" />
 
 Phylum is a local server for Darkspore. Its goal is to bring back the closest one-to-one copy of the original game that can be made: the same combat, enemies, bosses, loot and progression, behaving the way they did when EA's servers were still running.
 
