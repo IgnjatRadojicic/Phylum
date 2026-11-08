@@ -244,8 +244,14 @@ namespace Game {
 		mAbilities[3] = utils::xml_get_text_node(node, "specialAbility3");
 		mAbilities[4] = utils::xml_get_text_node(node, "passiveAbility");
 
-		if (auto sharedAbilityNode = node.child("sharedAbilityOffset")) {
-			mSharedAbilityOffset = ReadVec3(sharedAbilityNode);
+		// The export names two fields sharedAbilityOffset: the vec3 offset, then (as text) the hero's passive modifier.
+		std::string passiveName;
+		for (const auto& child : node.children("sharedAbilityOffset")) {
+			if (child.first_child().type() == pugi::node_element) {
+				mSharedAbilityOffset = ReadVec3(child);
+			} else if (std::string text = child.text().get(); !text.empty()) {
+				passiveName = std::move(text);
+			}
 		}
 
 		mCreatureType = utils::xml_get_text_node<uint32_t>(node, "creatureType");
@@ -268,6 +274,10 @@ namespace Game {
 			// Some heroes name a modifier here instead (SoulRavagerPassive, GraspingDead...),
 			// which is their passive. Whether it is one is only known once scripts are loaded.
 			mPassiveModifier = utils::hash_id(classAttributesName);
+		}
+
+		if (!passiveName.empty()) {
+			mPassiveModifier = utils::hash_id(passiveName);
 		}
 	}
 
