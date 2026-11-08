@@ -13,12 +13,13 @@ namespace Game {
 
 	void BehaviorRunner::Run(const std::string& name) {
 		auto& lua = mAgent.GetGame().GetLua();
-		if (name == mName && lua.IsThreadRunning(mTicket)) {
+		if (name == mName && (mMissing || lua.IsThreadRunning(mTicket))) {
 			return;
 		}
 
 		// A behavior whose update ended is left and started again, as the client's selector does.
 		Exit();
+		mMissing = false;
 		if (name.empty()) {
 			return;
 		}
@@ -26,6 +27,11 @@ namespace Game {
 		mName = name;
 		const bool defined = sol::state_view(lua.GetState())[name].get_type() == sol::type::table;
 		lua.Trace(std::format("BEHAVIOR object={} start={}{}", mAgent.GetId(), name, defined ? "" : " missing"));
+		if (!defined) {
+			// Traced once; trying again every think would only repeat the line.
+			mMissing = true;
+			return;
+		}
 		if (Call(name, 1, false)) {
 			Call(name, 2, true);
 		}

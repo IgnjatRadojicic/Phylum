@@ -41,6 +41,8 @@ namespace Game {
 			Object& mAgent;
 			std::string mName;
 			uint64_t mTicket = 0;
+			// No script defines mName, so it is not started again until the name changes.
+			bool mMissing = false;
 	};
 }
 
