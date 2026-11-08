@@ -228,26 +228,25 @@ namespace Game {
 	};
 
 	// AI
+	// Belongs to its object, so it holds it by reference (a shared pointer to its owner kept every
+	// NPC alive), and its target weakly, so a target that is gone is dropped.
 	class AI {
 		public:
-			AI(const ObjectPtr& object);
+			explicit AI(Object& object);
 
 			void OnTick();
 
 		private:
-			bool SearchForTarget();
+			// What every NPC did before gambits ran: the first-aggro cast at the first player in
+			// aggro range, and turning to face them.
+			void TickWithoutGambits();
+			ObjectPtr FindPlayerInAggroRange() const;
 
-			bool UseAbility(uint32_t id);
-			void UseAbility();
+			bool Cast(uint32_t abilityId, const ObjectPtr& target, const glm::vec3& position);
 
 		private:
-			std::map<uint32_t, float> mAggroMap;
-
-			ObjectPtr mObject;
-			ObjectPtr mTargetObject;
-
-			uint8_t mNode = 0;
-			uint8_t mGambit = 0;
+			Object& mObject;
+			std::weak_ptr<Object> mTarget;
 
 			bool mFirstAggro = false;
 	};

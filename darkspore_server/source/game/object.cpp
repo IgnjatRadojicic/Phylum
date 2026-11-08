@@ -393,127 +393,67 @@ namespace Game {
 	}
 
 	// AI
-	AI::AI(const ObjectPtr& object) : mObject(object) {
-		// TODO: Make some booleans to determine if certain variables are accessable
-	}
+	AI::AI(Object& object) : mObject(object) {}
 
 	void AI::OnTick() {
-		if (!SearchForTarget()) {
-			return;
+		TickWithoutGambits();
+	}
+
+	void AI::TickWithoutGambits() {
+		auto target = mTarget.lock();
+		if (!target) {
+			target = FindPlayerInAggroRange();
+			if (!target) {
+				return;
+			}
+			mTarget = target;
 		}
 
-		const auto& aidefinition = mObject->GetNoun()->GetAIDefinition();
+		const auto& aidefinition = mObject.GetNoun()->GetAIDefinition();
 		if (!aidefinition) {
 			return;
 		}
 
 		// First time we see a target.
 		if (!mFirstAggro) {
-			UseAbility(aidefinition->GetFirstAggroAbility());
+			Cast(aidefinition->GetFirstAggroAbility(), target, target->GetPosition());
 			mFirstAggro = true;
 		}
 
-		UseAbility();
-
-		// Turrets and traps face their target in their AI definition but have no locomotion.
-		if (aidefinition->FaceTarget() && mObject->HasLocomotionData()) {
-			mObject->GetLocomotionData()->SetFacing(mTargetObject->GetPosition());
+		if (aidefinition->FaceTarget() && mObject.HasLocomotionData()) {
+			mObject.GetLocomotionData()->SetFacing(target->GetPosition());
 		}
 	}
 
-	bool AI::SearchForTarget() {
-		if (mTargetObject) {
-			return true;
-		}
-
-		const auto& data = mObject->GetNoun()->GetNonPlayerClassData();
+	ObjectPtr AI::FindPlayerInAggroRange() const {
+		const auto& data = mObject.GetNoun()->GetNonPlayerClassData();
 		if (!data) {
 			// If we don't have class data then we cannot have a target.
-			return false;
+			return nullptr;
 		}
-#if 1
-		const auto& objectManager = mObject->GetObjectManager();
 
-		const auto searchRadius = data->GetAggroRange();
-		const auto& objects = objectManager.GetObjectsInRadius(BoundingSphere(mObject->GetPosition(), searchRadius), { NounType::Creature });
+		const auto& objects = mObject.GetObjectManager().GetObjectsInRadius(BoundingSphere(mObject.GetPosition(), data->GetAggroRange()), { NounType::Creature });
 		for (const auto& possibleTarget : objects) {
 			if (possibleTarget->IsPlayerControlled()) {
-				mTargetObject = possibleTarget;
-				break;
+				return possibleTarget;
 			}
 		}
-#endif
-		if (mTargetObject) {
-			return true;
-		}
-
-		return false;
+		return nullptr;
 	}
 
-	bool AI::UseAbility(uint32_t id) {
-		if (!mObject->HasCooldown(id)) {
-			const auto& ability = mObject->GetGame().GetLua().GetAbility(id);
-			if (ability) {
-				// Before the script runs, as for players (Instance::UseAbility).
-				mObject->GetGame().ReportUsedAbility(mObject->GetId(), static_cast<uint32_t>(ability->GetDescriptors()));
-				return ability->Tick(mObject, mTargetObject, mTargetObject->GetPosition(), 1);
-			}
-		}
-		return false;
-	}
-
-	void AI::UseAbility() {
-		const auto& aidefinition = mObject->GetNoun()->GetAIDefinition();
-		const auto& nodes = aidefinition->GetNodes();
-		if (nodes.empty()) {
-			// No nodes, no AI.
-			return;
+	bool AI::Cast(uint32_t abilityId, const ObjectPtr& target, const glm::vec3& position) {
+		if (mObject.HasCooldown(abilityId)) {
+			return false;
 		}
 
-		if (mNode >= nodes.size()) {
-			// Reset data
-			mNode = 0;
-			mGambit = 0;
+		const auto& ability = mObject.GetGame().GetLua().GetAbility(abilityId);
+		if (!ability) {
+			return false;
 		}
 
-		const auto& node = nodes[mNode];
-		const auto& condition = node.GetConditionData();
-		if (condition) {
-			// test some stuff, if false return
-		}
-
-		const auto& phase = node.GetPhaseData();
-		if (phase) {
-			const auto& gambit = phase->GetGambit();
-			switch (phase->GetType()) {
-				case PhaseType::PrioritizedList: {
-					for (const auto& gambitData : gambit) {
-						if (UseAbility(gambitData.GetAbility())) {
-							break;
-						}
-					}
-					break;
-				}
-
-				case PhaseType::Sequential: {
-					const auto& gambitData = gambit[mGambit];
-					if (UseAbility(gambitData.GetAbility())) {
-						mGambit++;
-						mGambit = mGambit == gambit.size() ? 0 : mGambit;
-					}
-					break;
-				}
-
-				case PhaseType::Random: {
-					mGambit = utils::random::get<uint8_t>(0, static_cast<uint8_t>(gambit.size() - 1));
-
-					const auto& gambitData = gambit[mGambit];
-					UseAbility(gambitData.GetAbility());
-
-					break;
-				}
-			}
-		}
+		// Before the script runs, as for players (Instance::UseAbility).
+		mObject.GetGame().ReportUsedAbility(mObject.GetId(), static_cast<uint32_t>(ability->GetDescriptors()));
+		return ability->Tick(mObject.shared_from_this(), target, position, 1);
 	}
 
 	// Object
@@ -627,7 +567,7 @@ namespace Game {
 			}
 		} else {
 			// All nonplayer objects should have an AI object
-			mAI = std::make_unique<AI>(shared_from_this());
+			mAI = std::make_unique<AI>(*this);
 
 			const auto& data = mNoun->GetNonPlayerClassData();
 			if (!data) {
