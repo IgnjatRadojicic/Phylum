@@ -275,7 +275,13 @@ namespace Game {
 	}
 
 	std::vector<ObjectPtr> ObjectManager::GetObjectsInRadius(const BoundingSphere& region, const std::vector<NounType>& types) const {
-		return mOctTree->GetObjectsInRadius(region, types);
+		auto objects = mOctTree->GetObjectsInRadius(region, types);
+		// A hero waiting in the squad is not in the world: nothing finds, hits or buffs it (Tork's
+		// Field Medic buff used to land on a parked Meditron).
+		std::erase_if(objects, [](const ObjectPtr& object) {
+			return object->IsInSquadReserve();
+		});
+		return objects;
 	}
 
 	// Approximate: how far from a mob's centre a shot still counts, and how far to look for mobs.

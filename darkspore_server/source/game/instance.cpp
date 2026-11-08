@@ -541,7 +541,12 @@ namespace Game {
 			}
 
 			characterObject->SetPosition(spawnpoint);
-			characterObject->SetVisible(true); // i == creatureIndex
+			// Only the deployed hero is in the world; the others wait hidden until a swap brings them
+			// in (Darkspin does the same). Shown, they stood at the spawn with name labels and could
+			// be clicked as a cast's target.
+			const bool deployed = i == player->GetCurrentDeckIndex();
+			characterObject->SetVisible(deployed);
+			characterObject->SetInSquadReserve(!deployed);
 
 			characterObject->SetAttributeValue(AttributeType::InvisibleToSecurityTeleporters, 1);
 
@@ -835,11 +840,30 @@ namespace Game {
 		// A hero that leaves the field hears PlayerSwap (the Field Medic buff ends on it; no client or
 		// script code raises it, so it was the server's), then stops what it was casting, so a
 		// channel's changes come off.
-		if (outgoing && outgoing != player->GetDeployedCharacterObject()) {
+		const auto incoming = player->GetDeployedCharacterObject();
+		if (outgoing && outgoing != incoming) {
 			if (mActionEvents) {
 				mActionEvents->PlayerSwap(outgoing->GetId());
 			}
 			CancelAction(player, outgoing);
+
+			// The incoming hero takes the outgoing one's place, and the outgoing one leaves the world,
+			// before the deploy (Darkspin's hero switch: hide, teleport, show, deploy). Left out, every
+			// hero swapped away stayed standing where it was.
+			if (incoming) {
+				incoming->SetPosition(outgoing->GetPosition());
+				incoming->SetOrientation(outgoing->GetOrientation());
+				outgoing->SetVisible(false);
+				outgoing->SetInSquadReserve(true);
+				incoming->SetVisible(true);
+				incoming->SetInSquadReserve(false);
+
+				SendObjectUpdate(outgoing);
+				for (const auto& [_, client] : mServer->GetClients()) {
+					mServer->SendObjectTeleport(client, incoming, incoming->GetPosition(), incoming->GetOrientation());
+				}
+				SendObjectUpdate(incoming);
+			}
 		}
 
 		// set player current creature

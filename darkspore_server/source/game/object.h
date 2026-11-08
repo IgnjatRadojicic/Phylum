@@ -522,6 +522,10 @@ namespace Game {
 			bool IsVisible() const;
 			void SetVisible(bool visible);
 
+			// A squad hero that is not deployed: hidden, and out of the world for searches.
+			bool IsInSquadReserve() const { return mInSquadReserve; }
+			void SetInSquadReserve(bool reserve) { mInSquadReserve = reserve; }
+
 			bool IsDirty() const;
 			void SetDirty(bool dirty);
 
@@ -662,6 +666,7 @@ namespace Game {
 
 			bool mbPlayerControlled = false;
 			bool mVisible = true;
+			bool mInSquadReserve = false;
 			bool mbHasCollision = true;
 			bool mDisableRepulsion = false;
 
