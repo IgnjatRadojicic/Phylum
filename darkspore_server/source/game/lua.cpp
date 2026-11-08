@@ -700,7 +700,11 @@ namespace Game {
 		// Last, because this thread is free again and the script can start others.
 		if (cast.valid()) {
 			sol::function endCast = mState["nAbility"]["EndCast"];
-			SpawnThread()->call<void>(endCast, sol::table(cast));
+			if (!SpawnThread()->call<void>(endCast, sol::table(cast))) {
+				// A Deactivate that failed stopped EndCast before the cast's changes came off.
+				sol::function endChanges = mState["nAbility"]["EndCastChanges"];
+				SpawnThread()->call<void>(endChanges, sol::table(cast));
+			}
 		}
 		// CollectGarbage();
 	}

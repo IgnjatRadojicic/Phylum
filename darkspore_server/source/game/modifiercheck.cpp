@@ -139,6 +139,17 @@ namespace {
 			nThread.WaitForXSeconds(100)
 		end
 
+		-- A cast that leaves its change to the engine and whose Deactivate dies.
+		local deactivateFails = {}
+		nAbility.RegisterAbility("ModifierCheckDeactivateFails", deactivateFails)
+		deactivateFails[nAbilityFns.Activate] = function()
+			nAttribute.AddAttributeModifier(nAbility.GetAgentID(), nAttributeType.Strength, 5)
+		end
+		deactivateFails[nAbilityFns.Tick] = cancelled[nAbilityFns.Tick]
+		deactivateFails[nAbilityFns.Deactivate] = function()
+			error("this deactivate fails on purpose")
+		end
+
 		-- A modifier whose script dies at start. It has no duration, so only the failure can end it.
 		ModifierCheckBroken = { stops = 0 }
 		nModifier.RegisterModifier("ModifierCheckBroken", {
@@ -240,11 +251,12 @@ namespace {
 			nAbility.scripts.ModifierCheckWaits = nil
 			nAbility.scripts.ModifierCheckFails = nil
 			nAbility.scripts.ModifierCheckCancelled = nil
+			nAbility.scripts.ModifierCheckDeactivateFails = nil
 			nAbility.scripts.ModifierCheckStealthCast = nil
 			nAbility.scripts.ModifierCheckCancelledWithChild = nil
 			nAbility.scripts.ModifierCheckFinishes = nil
 			-- RegisterAbility also lists an ability as a modifier (one registry, as in the client)
-			for _, name in ipairs({ "ModifierCheckWaits", "ModifierCheckFails", "ModifierCheckCancelled",
+			for _, name in ipairs({ "ModifierCheckWaits", "ModifierCheckFails", "ModifierCheckCancelled", "ModifierCheckDeactivateFails",
 				"ModifierCheckStealthCast", "ModifierCheckCancelledWithChild", "ModifierCheckFinishes" }) do
 				nModifier.registered[nUtil.SPID(name)] = nil
 			end
@@ -351,6 +363,7 @@ namespace {
 				CheckDistanceCanBeRead();
 				CheckMeleeArcFindsTargets();
 				CheckFailedCastRunsDeactivate();
+				CheckFailedDeactivateUndoesItsChanges();
 				CheckDeactivateCanDeleteObjects(slow);
 				CheckDeactivateCanRequestItself();
 				CheckMarkedObjectsOutlastDeactivate();
@@ -1191,6 +1204,23 @@ namespace {
 				Report(checkName, during > before && after == before && ended && !agent->GetLuaThread(),
 					"before=" + std::to_string(before) + " during=" + std::to_string(during) + " after=" + std::to_string(after) +
 					" ended=" + std::to_string(ended));
+			}
+
+			// The client holds a cast's changes outside the script, so a Deactivate that dies cannot keep them.
+			void CheckFailedDeactivateUndoesItsChanges() {
+				auto agent = Spawn();
+				const auto ability = mLua.GetAbility(utils::hash_id("ModifierCheckDeactivateFails"));
+				ability->FindNumberedTick();
+
+				const float before = agent->GetAttributeValue(Game::AttributeType::Strength);
+				ability->Tick(agent, nullptr, glm::vec3(0.f), 1);
+				const float during = agent->GetAttributeValue(Game::AttributeType::Strength);
+
+				mLua.CancelThread(agent->GetLuaThread());
+				const float after = agent->GetAttributeValue(Game::AttributeType::Strength);
+
+				Report("failed-deactivate-undoes-its-changes", during > before && after == before,
+					"before=" + std::to_string(before) + " during=" + std::to_string(during) + " after=" + std::to_string(after));
 			}
 
 			void CheckFailedCastRunsDeactivate() {

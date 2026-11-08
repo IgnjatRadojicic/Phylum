@@ -239,9 +239,13 @@ namespace {
 			if deactivate then
 				deactivate(ability)
 			end
+			nAbility.EndCastChanges(context)
+		end
 
-			-- Then the attribute changes the cast made come off, as a modifier's do (0x9e11f0 -> 0x9ddd40):
-			-- the pet spawns add Immobilized in Activate and leave Deactivate empty.
+		-- The attribute changes a cast made come off when it ends, as a modifier's do (0x9e11f0 -> 0x9ddd40):
+		-- the pet spawns add Immobilized in Activate and leave Deactivate empty. The client holds them
+		-- outside the script, so they come off even when Deactivate fails (the server calls this then).
+		function nAbility.EndCastChanges(context)
 			for _, change in ipairs(context.attributeChanges or {}) do
 				ModifierEngine.RemoveAttributeChange(change.id, change.handle, 0)
 			end
