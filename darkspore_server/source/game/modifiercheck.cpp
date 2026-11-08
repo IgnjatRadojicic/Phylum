@@ -442,6 +442,8 @@ namespace {
 
 				mPackets->clear();
 				const auto id = Request(agent, caster, slow);
+				// The slow changes speed in its Tick, which starts on the next update (as in the client).
+				mGame.GetLua().Update();
 				const float during = agent->GetAttributeValue(AttributeType::MovementSpeedBuff);
 				const auto remaining = Manager().GetRemainingMs(id, mGame.GetTime());
 				Report("slow-lowers-speed", id != 0 && during < before && Saw("ModifierCreated"),
@@ -1062,8 +1064,10 @@ namespace {
 				reused->AddAttributeChange(static_cast<uint8_t>(Game::AttributeType::Strength), 5, Game::AttributeOp::Add);
 				EndNow(id);
 
-				Report("reused-id-keeps-its-changes", reused->GetId() == otherId && Strength(reused) == before + 5,
-					"reused=" + std::to_string(reused->GetId() == otherId) + " before=" + std::to_string(before) + " after=" + std::to_string(Strength(reused)));
+				// Ids are never reused now (a stale id cannot reach a new object), so this checks that a
+				// modifier whose object went away takes nothing from the next object at its end.
+				Report("removed-object-leaves-new-changes", reused->GetId() != otherId && Strength(reused) == before + 5,
+					"newId=" + std::to_string(reused->GetId() != otherId) + " before=" + std::to_string(before) + " after=" + std::to_string(Strength(reused)));
 			}
 
 			void CheckMarkedObjectsOutlastDeactivate() {
