@@ -7,6 +7,7 @@
 #include "modifiersystem.h"
 #include "castpayment.h"
 #include "damageevents.h"
+#include "facing.h"
 #include "actionevents.h"
 #include "passivemodifiers.h"
 #include "scripttriggervolumes.h"
@@ -626,7 +627,10 @@ namespace Game {
 
 		const auto goalFlags = locomotionData.GetGoalFlags();
 		if (goalFlags & 0x002) {
-			object->SetOrientation(glm::quat(locomotionData.GetFacing()));
+			// The facing is a direction. With no length across the ground the object keeps its turn.
+			if (const auto orientation = OrientationFromDirection(locomotionData.GetFacing())) {
+				object->SetOrientation(*orientation);
+			}
 		}
 
 		bool teleport = goalFlags & 0x020;
@@ -1266,7 +1270,8 @@ namespace Game {
 				} else {
 					// The client flies a projectile itself from its parameters.
 					if (!object->IsProjectile() && (locomotion->GetGoalFlags() & 0x20)) {
-						mServer->SendObjectTeleport(client, object, object->GetPosition(), locomotion->GetFacing());
+						mServer->SendObjectTeleport(client, object, object->GetPosition(),
+							OrientationFromDirection(locomotion->GetFacing()).value_or(object->GetOrientation()));
 					} else {
 #if 0 // If unreliable update
 						mServer->SendLocomotionDataUnreliableUpdate(client, object, locomotion->GetGoalPosition());
