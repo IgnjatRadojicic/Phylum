@@ -55,3 +55,7 @@ Needs no Visual Studio install. From PowerShell, in `scripts/windows`:
    ```powershell
    .\build.ps1 -GameBin "C:\Program Files (x86)\Steam\steamapps\common\Darkspore\DarksporeBin"
    ```
+4. Once the game's server data is installed, and again whenever it is rebuilt, write the AI's gambits into it. The installer's export leaves them out, and without them pets, turrets and sprites do nothing:
+   ```powershell
+   python ..\phase_gambits.py --game "C:\Program Files (x86)\Steam\steamapps\common\Darkspore"
+   ```

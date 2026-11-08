@@ -404,7 +404,7 @@ namespace Game {
 
 	// GambitDefinition
 	namespace {
-		// <entry><name/><type>0x4edcd7a9</type><value/></entry>, as tools/data/phase_gambits.py writes them.
+		// <entry><name/><type>0x4edcd7a9</type><value/></entry>, as scripts/phase_gambits.py writes them.
 		AIProperties ReadAIProperties(const pugi::xml_node& node) {
 			AIProperties properties;
 			for (const auto& child : node) {
@@ -464,7 +464,7 @@ namespace Game {
 		ReadListNode(node, "gambit", mGambit);
 
 		// The installer's export leaves the gambits out and writes their count as the phase type.
-		// Only phases rebuilt from the binary assets (tools/data/phase_gambits.py) have the real type,
+		// Only phases rebuilt from the binary assets (scripts/phase_gambits.py) have the real type,
 		// which is 0, a prioritized list, in all 171 of the game's phases.
 		if (utils::xml_get_text_node(node, "gambitSource") == "binary") {
 			mType = utils::xml_get_text_node<PhaseType>(node, "phaseType");
@@ -1389,7 +1389,7 @@ namespace Game {
 		std::cout << " done. (loaded: " << mPhases.size() << ", gambits: " << gambits << ", failed: " << failed << ")" << std::endl;
 		if (gambits == 0) {
 			std::cout << "NounDatabase: the phases have no gambits (the installer's export drops them), so pets and turrets will not act. "
-				"Run tools/data/phase_gambits.py to write them from AssetData_Binary.package." << std::endl;
+				"Run scripts/phase_gambits.py to write them from AssetData_Binary.package." << std::endl;
 		}
 		return true;
 	}
