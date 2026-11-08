@@ -560,10 +560,10 @@ namespace LuaFunction {
 
 			auto object = LuaGetObject(objectManager, objectValue);
 			if (object && object->HasLocomotionData()) {
-				const auto& locomotion = object->GetLocomotionData();
-				locomotion->ClearTargetObject();
-
-				game.MoveObject(object, *locomotion);
+				// The client only clears the target and sends the movement data (0xa006e0 -> 0xa20210);
+				// nothing walks. MoveObject placed a hero that had not moved yet at its unset goal, 0,0,0
+				// (QuantumBlink then slid it back from there through the air).
+				object->GetLocomotionData()->ClearTargetObject();
 			}
 		}
 

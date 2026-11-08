@@ -502,6 +502,9 @@ LAB_009ef634:
 		// set data
 		mGoalFlags = 0x001;
 		mGoalPosition = position;
+		// MoveObject places the object at the partial goal; a script's move goes all the way there.
+		// A player's move sets its own partial goal right after (ActionCommand handler).
+		mPartialGoalPosition = position;
 		mAllowedStopDistance = 0;
 		mDesiredStopDistance = 0;
 
