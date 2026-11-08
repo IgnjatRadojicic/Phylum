@@ -29,6 +29,9 @@ namespace Game {
 			// Returns the modifier's instance id, or 0.
 			uint32_t Start(const std::shared_ptr<Object>& object);
 
+			// Ends it on the object, if it is running; its Deactivate runs as on any end.
+			void Stop(const std::shared_ptr<Object>& object);
+
 		private:
 			Lua& mLua;
 	};

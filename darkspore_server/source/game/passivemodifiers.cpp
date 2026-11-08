@@ -2,7 +2,9 @@
 // Include
 #include "passivemodifiers.h"
 
+#include "instance.h"
 #include "lua.h"
+#include "modifiersystem.h"
 #include "noun.h"
 #include "object.h"
 
@@ -40,5 +42,22 @@ namespace Game {
 			return 0;
 		}
 		return result.get<uint32_t>();
+	}
+
+	void PassiveModifiers::Stop(const std::shared_ptr<Object>& object) {
+		if (!object || !object->GetNoun()) {
+			return;
+		}
+
+		const uint32_t guid = NamedBy(*object->GetNoun());
+		if (guid == 0) {
+			return;
+		}
+
+		auto& modifiers = mLua.GetGame().GetModifiers();
+		if (const auto running = modifiers.GetManager().FindFirst(object->GetId(), guid)) {
+			modifiers.MarkForDelete(running->id);
+			mLua.Trace("PASSIVE agent=" + std::to_string(object->GetId()) + " guid=" + std::to_string(guid) + " stopped");
+		}
 	}
 }

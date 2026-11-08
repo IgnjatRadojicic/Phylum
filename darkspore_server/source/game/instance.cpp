@@ -547,6 +547,11 @@ namespace Game {
 			const bool deployed = i == player->GetCurrentDeckIndex();
 			characterObject->SetVisible(deployed);
 			characterObject->SetInSquadReserve(!deployed);
+			if (!deployed) {
+				// Its passive started when it was created. Left on, parked Sage grew saplings that
+				// followed it, and parked Char's passive kept hitting the mob beside the spawn.
+				StopPassive(characterObject);
+			}
 
 			characterObject->SetAttributeValue(AttributeType::InvisibleToSecurityTeleporters, 1);
 
@@ -857,6 +862,8 @@ namespace Game {
 				outgoing->SetInSquadReserve(true);
 				incoming->SetVisible(true);
 				incoming->SetInSquadReserve(false);
+				StopPassive(outgoing);
+				StartPassive(incoming);
 
 				SendObjectUpdate(outgoing);
 				for (const auto& [_, client] : mServer->GetClients()) {
@@ -1253,8 +1260,14 @@ namespace Game {
 	}
 
 	void Instance::StartPassive(const ObjectPtr& object) {
-		if (mLua && mScriptsReady) {
+		if (mLua && mScriptsReady && !object->IsInSquadReserve()) {
 			PassiveModifiers(*mLua).Start(object);
+		}
+	}
+
+	void Instance::StopPassive(const ObjectPtr& object) {
+		if (mLua && mScriptsReady) {
+			PassiveModifiers(*mLua).Stop(object);
 		}
 	}
 

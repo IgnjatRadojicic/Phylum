@@ -169,7 +169,10 @@ namespace Game {
 			ActionEvents* GetActionEvents();
 
 			// Starts the always-on modifier the object's class names, if it has one.
+			// Not on a parked hero: only the deployed one has its passive (Soul Link borrows the
+			// parked ones' passives, which only makes sense if they are off).
 			void StartPassive(const ObjectPtr& object);
+			void StopPassive(const ObjectPtr& object);
 
 			Lua& GetLua();
 			const Lua& GetLua() const;
