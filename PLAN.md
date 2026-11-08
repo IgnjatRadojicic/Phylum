@@ -22,12 +22,12 @@ Multiplayer, PvP and public hosting are out of scope.
 | --- | --- |
 | Original script bytecode on Lua 5.1 | Done |
 | Script adapter | Working, some placeholders remain |
-| Ability scripts registered | 452 |
-| Modifier scripts started by the check | 381 of 483, the rest need other engine functions |
-| Abilities passing the self-check | 238 of 278 |
+| Ability scripts registered | 478 |
+| Modifier scripts started by the check | 766 started, 214 fail on engine functions the server lacks (mostly level and objective ones) |
+| Abilities passing the self-check | 345 of 475; hero sweep 112 of 115 (the 3 left are the Verdanth boss, which the sweep cannot set up; 2026-11-08) |
 | Basic attacks in play | Working |
-| Client crash while loading a level | Open, hits about half of recent loads |
-| Client crash on the vote screen | Open |
+| Client crash while loading a level | Believed fixed (hero matrix), being tested by hand |
+| Client crash on the vote screen | Believed fixed (hero matrix), being tested by hand |
 
 ## Stage 1: Combat foundation
 
@@ -41,16 +41,16 @@ Make every hero's abilities work.
 - [x] Send modifiers the ability events beyond stacking, such as `TookDamage` and `DealtDamage`
 - [x] Start hero and mob passive modifiers
 - [x] Stop a modifier's child threads when it ends, which `modifier_cryosboss_passive` needs
-- [ ] Check whether stat changes made by abilities stick after an interrupted cast
+- [x] Check whether stat changes made by abilities stick after an interrupted cast (they end with the cast, even if Deactivate fails)
 - [x] Clear a pooled Lua thread's old cast context, so a reused thread cannot read it
 - [x] Reconstruct how attribute changes combine (the order is approximate, see `docs/modifiers.md`)
 - [x] Fix projectile abilities (see `docs/projectiles.md` for what is still approximate)
-- [ ] Implement `CreateThreadForObject` and the remaining `nAbility` functions
-- [ ] Work out `TransformVector`, and replace adapter placeholders such as `IsPet`
+- [x] Implement `CreateThreadForObject` and the remaining `nAbility` functions (only `GetWarmupAnimation` is left, used once)
+- [x] Work out `TransformVector`, and replace adapter placeholders such as `IsPet` (the client has no `IsPet`: a creature owned by a creature)
 - [x] Apply cooldowns and mana from scripts, instead of the fixed reply cooldown
 - [x] Apply armour, resistances and damage types in `TakeDamage` (see `docs/damage.md` for what is still approximate)
 - [x] Build hero stats as the client does: class base and primary stat shares, and the weapon's damage range (part stats and stat caps wait for equipping, see `docs/damage.md`)
-- [ ] Raise the remaining ability events, such as `Dodged`, `NearbyDeath` and `UsedAbility`
+- [x] Raise the remaining ability events, such as `Dodged`, `NearbyDeath` and `UsedAbility` (still unsent: `ModifierInstanceAdded`/`Removed`, `BreakRoot`, `StartedNewAction`, `InterruptModifier`, `PlayerSwap`, `NearbyDamage`, `LostModifierOfType`, `Incorporeal`; `CrystalBonus` in stage 5)
 
 Done when: every hero's abilities run in play, effects apply and expire, and loading is reliable.
 
