@@ -1,6 +1,7 @@
 
 // Include
 #include "lua.h"
+#include "conditionregistry.h"
 
 #include "instance.h"
 #include "scriptsource.h"
@@ -365,7 +366,8 @@ namespace Game {
 	}
 
 	// Lua
-	Lua::Lua(Instance& game) : LuaBase(), mGame(game) {}
+	Lua::Lua(Instance& game) : LuaBase(), mGame(game),
+		mConditions(std::make_unique<ConditionRegistry>([this](const std::string& line) { Trace(line); })) {}
 	Lua::~Lua() {
 		while (!mThreads.empty()) {
 			auto it = mThreads.begin();
@@ -421,8 +423,39 @@ namespace Game {
 		}
 	}
 
+	void Lua::PreloadConditions() {
+		// The AI's conditions, one per file (Condition_Closest.lua); a few libraries add more.
+		const std::filesystem::path folder = "data/serverdata/lua";
+		if (!std::filesystem::exists(folder)) {
+			return;
+		}
+
+		sol::protected_function require = mState["require"];
+
+		size_t failed = 0;
+		for (const auto& entry : std::filesystem::directory_iterator(folder)) {
+			const auto name = entry.path().filename().string();
+			if (entry.path().extension() != ".lua" || !utils::string_iequals(std::string_view(name).substr(0, 10), "condition_")) {
+				continue;
+			}
+
+			sol::protected_function_result result = require("Lua!" + name);
+			if (!result.valid()) {
+				sol::error err = result;
+				std::cout << err.what() << std::endl;
+				++failed;
+			}
+		}
+		std::cout << "Game condition scripts: " << mConditions->Size() << " registered, " << failed << " failed." << std::endl;
+	}
+
+	ConditionRegistry& Lua::GetConditions() {
+		return *mConditions;
+	}
+
 	void Lua::PreloadAbilities() {
 		PreloadLibraries();
+		PreloadConditions();
 
 		// Each script registers itself under its own name when it runs.
 		const auto run = [this](const sol::bytecode& code, bool report) {

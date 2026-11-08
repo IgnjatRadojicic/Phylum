@@ -1,5 +1,6 @@
 
 // Include
+#include "conditionregistry.h"
 #include "difficultytuning.h"
 #include "magicnumbers.h"
 #include "instance.h"
@@ -1708,6 +1709,27 @@ namespace Game {
 		// Scripts keep an asset as an id and hand it back to the engine.
 		sol::table util = mState["nUtil"];
 		util["GetAsset"] = preload;
+
+		// The AI's conditions (ConditionRegistry). The client finds the agent from the id GetProperty
+		// gets, and reads the gambit it is checking; here that is the condition running now.
+		sol::table condition = mState.create_named_table("nCondition");
+		condition["RegisterCondition"] = [this](const std::string& name, sol::table definition) {
+			mConditions->Register(name, std::move(definition));
+		};
+		condition["GetProperty"] = [this](sol::this_state L, sol::object, const std::string& name) -> sol::object {
+			const auto* property = mConditions->GetProperty(name);
+			if (!property) {
+				return sol::lua_nil;
+			}
+			return std::visit([L](const auto& value) -> sol::object {
+				using T = std::decay_t<decltype(value)>;
+				if constexpr (std::is_same_v<T, std::monostate>) {
+					return sol::lua_nil;
+				} else {
+					return sol::make_object(L, value);
+				}
+			}, property->value);
+		};
 
 		sol::table simulator = mState.create_named_table("nGameSimulator");
 		simulator["GetGameTime"] = [this]() {

@@ -24,6 +24,7 @@ namespace Game {
 	class LuaBase;
 	class Lua;
 	class Ability;
+	class ConditionRegistry;
 
 	using AbilityPtr = std::shared_ptr<Ability>;
 
@@ -208,6 +209,9 @@ namespace Game {
 			AbilityPtr GetAbility(const std::string& abilityName);
 			AbilityPtr GetAbility(uint32_t abilityId);
 
+			// The AI's conditions, which scripts register through nCondition.
+			ConditionRegistry& GetConditions();
+
 			void RegisterGameScriptApi();
 			void SetGapLogPath(const std::string& path);
 			void SetTracePath(const std::string& path);
@@ -252,6 +256,7 @@ namespace Game {
 		private:
 			// luafunctions.cpp
 			void PreloadLibraries();
+			void PreloadConditions();
 			void PreloadModifiers();
 
 			void RegisterEnums();
@@ -279,6 +284,7 @@ namespace Game {
 			std::unordered_map<lua_State*, LuaThread*> mThreads;
 			std::unordered_map<uint32_t, AbilityPtr> mAbilities;
 			std::unordered_map<uint32_t, sol::table> mPrivateTables;
+			std::unique_ptr<ConditionRegistry> mConditions;
 
 			std::unordered_set<LuaThread*> mYieldedThreads;
 			std::unordered_map<uint64_t, LuaThread*> mTrackedThreads;
