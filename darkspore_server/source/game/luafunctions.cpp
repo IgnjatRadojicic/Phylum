@@ -6,6 +6,7 @@
 #include "objectmanager.h"
 #include "castpayment.h"
 #include "damageevents.h"
+#include "actionevents.h"
 #include "serverevent.h"
 #include "scripttriggervolumes.h"
 
@@ -363,6 +364,12 @@ namespace LuaFunction {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
 			if (object && object->HasLocomotionData()) {
+				// The client breaks the object's roots before it moves (0xa09a90 raises BreakRoot at
+				// 0xa09b2c). TeleportAndFace does not.
+				if (auto events = game.GetActionEvents()) {
+					events->BreakRoot(object->GetId());
+				}
+
 				object->SetInputSyncStamp(object->GetInputSyncStamp() + 1);
 
 				const auto& locomotion = object->GetLocomotionData();

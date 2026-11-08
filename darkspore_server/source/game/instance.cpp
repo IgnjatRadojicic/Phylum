@@ -292,6 +292,10 @@ namespace Game {
 		}
 	}
 
+	ActionEvents* Instance::GetActionEvents() {
+		return mActionEvents.get();
+	}
+
 	void Instance::SendAbilityEvent(uint32_t agent, const AbilityEvent& event) {
 		if (mEventDelivery && agent != 0) {
 			mEventDelivery->SendEvent(agent, event);

@@ -31,13 +31,18 @@ ends at its next wait, and a modifier whose own thread is running ends at the ne
 
 ## For heroes, still to send
 
-- **BreakRoot (2).** Raised by actions, not by a root ending.
+- **BreakRoot (2).** Sent (the scripts' own sends, and `TeleportObject`). Raised by actions, not
+  by a root ending.
   - Quantum Blink, Lightning Rogue Active and Time Ravager Support send it to their own agent on
     activate (L7428, L52095, L95830).
   - `nLocomotion.TeleportObject` (0xa09a90) raises it on the object before it moves (0xa09b2c).
     `TeleportAndFace` does not.
-  - No slots. `nModifier_Root_Template` returns false on it, so the root ends (Entangle and the
-    other roots inherit that).
+  - No slots. `nModifier_Root_Template`'s `handleEvent` returns false on it, but no root ends:
+    every root that uses the template (Entangle, BioEntangle, EntanglingRush, DrainRoot,
+    AC_Freeze, SupportHealer_Root, VerdanthBasicRootmob_Root) sets a numbered `HandleEvent` that
+    calls `handleEvent` and drops its answer (`CALL 1 3 1`, `RETURN 0 1`). The client calls only
+    the numbered function (it has no "handleEvent" string), so a nil answer keeps the root. The
+    server does the same; a teleport out of a root leaves it on.
 - **InterruptModifier (16).** Only scripts send it. Gravity Storm's Deactivate sends it to each
   lifted target while the storm is still interruptible (L47908). `nModifier_GravityStorm` then skips
   its slam. No slots.

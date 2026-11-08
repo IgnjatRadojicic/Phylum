@@ -266,6 +266,20 @@ namespace {
 			return nUtil.SPID("ModifierCheckListensModifier")
 		end
 
+		-- Ends on BreakRoot, as nModifier_Root_Template's handleEvent answers. The game's roots never
+		-- do: each sets a numbered HandleEvent that calls handleEvent and drops its answer.
+		nModifier.RegisterModifier("ModifierCheckBreaksOnTeleport", {
+			activationType = nActivationType.Unique,
+			handledEvents = nAbilityEventFlags.BreakRoot,
+			[nAbilityFns.HandleEvent] = function(event)
+				return nAbility.GetAbilityEventType(event) ~= nAbilityEventFlags.BreakRoot
+			end
+		})
+
+		function ModifierCheckBreaksOnTeleportGuid()
+			return nUtil.SPID("ModifierCheckBreaksOnTeleport")
+		end
+
 		-- Sends the event to its own agent and ends itself on it, as a cast that breaks its own
 		-- root would if it handled BreakRoot: it is running then, so it ends at its next wait.
 		local selfSend = { handledEvents = interrupt }
@@ -299,6 +313,7 @@ namespace {
 			nModifier.registered[nUtil.SPID("ModifierCheckParent")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckListener")] = nil
 			nModifier.registered[nUtil.SPID("ModifierCheckListensModifier")] = nil
+			nModifier.registered[nUtil.SPID("ModifierCheckBreaksOnTeleport")] = nil
 			nAbility.scripts.ModifierCheckListensCast = nil
 			nAbility.scripts.ModifierCheckSendsToItself = nil
 			nAbility.scripts.ModifierCheckWaits = nil
@@ -429,6 +444,7 @@ namespace {
 				CheckDamageReachesHandlers();
 				CheckEventAnswersEndOrKeep();
 				CheckCastEndedFromItselfEndsAtItsWait();
+				CheckTeleportBreaksRoot();
 				CheckThornsHitsMeleeAttackerBack();
 				CheckMobPassiveStartsOnce();
 				CheckKillObjectEndsPassive();
@@ -840,6 +856,34 @@ namespace {
 				const bool resumed = events.get_or("resumed", false);
 				Report("cast-ended-from-itself-ends-at-its-wait", sent && ended && !resumed && agent->GetLuaThread() == nullptr,
 					"sent=" + std::to_string(sent) + " ended=" + std::to_string(ended) + " resumed=" + std::to_string(resumed));
+			}
+
+			// A teleport raises BreakRoot before the object moves (0xa09b2c); TeleportAndFace raises
+			// none. The game's EntangleModifier hears it but stays, as in the client: its numbered
+			// HandleEvent drops the template's false.
+			void CheckTeleportBreaksRoot() {
+				auto agent = Spawn();
+				sol::protected_function spid = mState["nUtil"]["SPID"];
+				sol::protected_function breaksGuid = mState["ModifierCheckBreaksOnTeleportGuid"];
+				const auto breaks = Request(agent, agent, breaksGuid());
+				const auto entangle = Request(agent, agent, spid("EntangleModifier"));
+				Wait(100);
+				const auto& modifiers = mGame.GetModifiers().GetManager();
+				const bool started = breaks != 0 && entangle != 0 && modifiers.Get(breaks) && modifiers.Get(entangle);
+
+				const auto at = agent->GetPosition();
+				sol::protected_function teleportAndFace = mState["nLocomotion"]["TeleportAndFace"];
+				teleportAndFace(agent->GetId(), at.x + 1.f, at.y, at.z, 1.f, 0.f, 0.f);
+				const bool keptByFace = modifiers.Get(breaks) != nullptr;
+
+				sol::protected_function teleport = mState["nLocomotion"]["TeleportObject"];
+				teleport(agent->GetId(), at.x + 2.f, at.y, at.z);
+				const bool broken = modifiers.Get(breaks) == nullptr;
+				const bool entangleStays = modifiers.Get(entangle) != nullptr;
+
+				Report("teleport-breaks-root", started && keptByFace && broken && entangleStays,
+					"started=" + std::to_string(started) + " keptByFace=" + std::to_string(keptByFace) +
+					" broken=" + std::to_string(broken) + " entangleStays=" + std::to_string(entangleStays));
 			}
 
 			// ZelemBasicMelee's AI definition names its passive, which no script requests.

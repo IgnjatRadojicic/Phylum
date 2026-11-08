@@ -162,6 +162,8 @@ namespace Game {
 			void ReportUsedAbility(uint32_t agent, uint32_t descriptors);
 			// An event a script sends (nAbility.SendAbilityEvent), to the agent's casts and modifiers.
 			void SendAbilityEvent(uint32_t agent, const AbilityEvent& event);
+			// What raises the action events (StartedNewAction, BreakRoot and the rest). Null outside a world.
+			ActionEvents* GetActionEvents();
 
 			// Starts the always-on modifier the object's class names, if it has one.
 			void StartPassive(const ObjectPtr& object);

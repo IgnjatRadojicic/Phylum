@@ -27,4 +27,32 @@ namespace Game {
 			mSink.SendEvent(witness.id, event);
 		}
 	}
+
+	void ActionEvents::StartedNewAction(uint32_t agent) {
+		SendPlain(agent, AbilityEventType::StartedNewAction);
+	}
+
+	void ActionEvents::BreakRoot(uint32_t object) {
+		SendPlain(object, AbilityEventType::BreakRoot);
+	}
+
+	void ActionEvents::LostModifierOfType(uint32_t agent, uint32_t guid) {
+		if (agent == 0) {
+			return;
+		}
+
+		AbilityEvent event(AbilityEventType::LostModifierOfType);
+		event.SetGUID(1, guid);
+		mSink.SendEvent(agent, event);
+	}
+
+	void ActionEvents::PlayerSwap(uint32_t outgoing) {
+		SendPlain(outgoing, AbilityEventType::PlayerSwap);
+	}
+
+	void ActionEvents::SendPlain(uint32_t agent, AbilityEventType type) {
+		if (agent != 0) {
+			mSink.SendEvent(agent, AbilityEvent(type));
+		}
+	}
 }
