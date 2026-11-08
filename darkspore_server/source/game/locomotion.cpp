@@ -15,6 +15,13 @@ constexpr size_t TEST_VALUE = 0x37800000U;
 // unknown functions
 namespace {
 	void Func(Game::Object& object) {}
+
+	// The way from one point to another, or the current facing when they are the same point
+	// (a direction of length 0 would make the facing NaN).
+	glm::vec3 FacingToward(const glm::vec3& from, const glm::vec3& to, const glm::vec3& current) {
+		const auto direction = to - from;
+		return glm::length(direction) > 0.0001f ? glm::normalize(direction) : current;
+	}
 }
 
 // Game
@@ -582,7 +589,7 @@ LAB_009ef634:
 		mGoalFlags = 0x002 | 0x040;
 		mGoalPosition = mObject->GetPosition();
 		mTargetPosition = facingPosition;
-		mFacing = glm::normalize(mTargetPosition - mGoalPosition);
+		mFacing = FacingToward(mGoalPosition, mTargetPosition, mFacing);
 
 		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
@@ -661,7 +668,7 @@ LAB_009ef634:
 		mGoalFlags = 0x100 | 0x002;
 		mGoalPosition = mObject->GetPosition();
 		mTargetId = object->GetId();
-		mFacing = glm::normalize(object->GetPosition() - mGoalPosition);
+		mFacing = FacingToward(mGoalPosition, object->GetPosition(), mFacing);
 
 		auto radius = mObject->GetFootprintRadius();
 		mAllowedStopDistance = radius;
