@@ -15,6 +15,13 @@ TEST_CASE("mana is the script's cost plus the coefficient times the attribute") 
 	CHECK_FALSE(cost.manual);
 }
 
+TEST_CASE("a free ability stays free whatever its coefficient") {
+	const auto cost = AbilityCost::For({ 0, 0.08f, 5 }, { 100 });
+
+	CHECK(cost.mana == 0.f);
+	CHECK(cost.cooldownMs == 5000);
+}
+
 TEST_CASE("a cast in overdrive costs no mana but still cools down") {
 	CasterStats caster { 100 };
 	caster.overdrive = true;

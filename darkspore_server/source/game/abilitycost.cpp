@@ -11,7 +11,9 @@ namespace Game {
 		CastCost cost;
 		cost.manual = data.manual;
 
-		if (!caster.overdrive) {
+		// The client adds the attribute share only to a cost that is not 0 (0x9dd7cf): a free
+		// ability stays free whatever its coefficient.
+		if (!caster.overdrive && data.manaCost != 0.f) {
 			cost.mana = std::max(0.f, data.manaCost + data.manaCoefficient * caster.attributeValue);
 		}
 
