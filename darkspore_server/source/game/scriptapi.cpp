@@ -347,7 +347,7 @@ namespace {
 			local step = sequence and sequence[currentCast().sequenceIndex + 1]
 			return step and step.release or 0
 		end
-
+	)lua" R"lua(
 		function nAbility.PlayAnimationSequence()
 			local cast = currentCast()
 			local step = cast.ability.animationSequence[cast.sequenceIndex + 1]
@@ -549,6 +549,15 @@ namespace {
 			if type(ability) == "table" then
 				return ability
 			end
+			-- A running modifier's id, as GetModifiersMatchingDescriptor hands out (Expunge reads its namespace).
+			local context = ability ~= nil and ModifierEngine.GetContext(ability)
+			if context and context.ability then
+				return context.ability
+			end
+			local registered = nModifier.registered and nModifier.registered[ability]
+			if registered then
+				return registered
+			end
 			for name, script in pairs(nAbility.scripts) do
 				if nUtil.SPID(name) == ability then
 					return script
@@ -619,6 +628,12 @@ namespace {
 				return unpackVector(object:GetPosition())
 			end
 			return 0, 0, 0
+		end
+
+		-- Client 0xa01190: 0 when there is no such object (a charge cast with no target adds both radii).
+		function nGameObject.GetFootprintRadius(id)
+			local object = get(id)
+			return object and object:GetFootprintRadius() or 0
 		end
 
 		-- A deactivate step removes effects it may never have added (ZelemBossBlink); nil removes nothing.
