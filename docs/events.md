@@ -70,9 +70,13 @@ ends at its next wait, and a modifier whose own thread is running ends at the ne
   cancelled. Not in the client or any script, so it was the server's. The Field Medic
   health buff ends on it (L158238). No slots. Sent to the hero leaving (judgement call; Darkspin
   keeps the buff instead).
-- **Incorporeal (262144).** In a projectile's hit test (0xa2f7f0), a target with `Incorporeal`
-  above 0 that wins a roll lets it pass, at most once per projectile and target (an 8-entry list at
-  0xa2f7c0). Raise at 0xa2f763: GUID 1 the target, GUID 2 the projectile. Ghostform's buff, ranks
+- **Incorporeal (262144).** Sent (`ProjectilePassList`, from the projectile's flight). In a
+  projectile's hit test (0xa2f7f0), a target already on the projectile's pass list lets it pass;
+  otherwise one with `Incorporeal` (0x37) above a [0, 1) roll, or with any `Intangible` (0x1d),
+  lets it pass and is written down (an 8-entry list at 0xa2f7c0; with the list full it is not, and
+  no event goes out). The event goes out only when a target is written down, so at most once per
+  projectile and target. The server rolls only for a creature the shot really reaches, not every
+  creature its sweep comes near. Raise at 0xa2f763: GUID 1 the target, GUID 2 the projectile. Ghostform's buff, ranks
   7 and 8, renews itself on it.
 
 ## For enemies (stage 2)

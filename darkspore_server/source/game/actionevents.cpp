@@ -50,6 +50,16 @@ namespace Game {
 		SendPlain(outgoing, AbilityEventType::PlayerSwap);
 	}
 
+	void ActionEvents::Incorporeal(uint32_t target, uint32_t projectile) {
+		if (target == 0) {
+			return;
+		}
+
+		AbilityEvent event(AbilityEventType::Incorporeal);
+		event.SetGUID(1, target).SetGUID(2, projectile);
+		mSink.SendEvent(target, event);
+	}
+
 	void ActionEvents::SendPlain(uint32_t agent, AbilityEventType type) {
 		if (agent != 0) {
 			mSink.SendEvent(agent, AbilityEvent(type));

@@ -6,6 +6,7 @@
 #include "predefined.h"
 #include "jumparc.h"
 #include "lobarc.h"
+#include "projectilepasslist.h"
 #include "projectilesweep.h"
 
 #include <glm/glm.hpp>
@@ -232,6 +233,8 @@ namespace Game {
 
 		private:
 			bool CanHit(const ObjectPtr& collidingObject) const;
+			// Whether a creature the shot reached lets it through (Incorporeal, Intangible).
+			bool PassesThrough(uint32_t creatureId);
 			glm::vec3 GetProjectileHalfExtent() const;
 
 			// Goal and partial goal at the object's position, so a stop stays where it is.
@@ -289,6 +292,7 @@ namespace Game {
 
 			std::deque<SweepHit> mPendingHits;
 			std::unordered_set<uint32_t> mHitIds;
+			ProjectilePassList mPassedThrough;
 
 			std::bitset<LocomotionDataBits::Count> mDataBits;
 	};

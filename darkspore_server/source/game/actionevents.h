@@ -31,6 +31,8 @@ namespace Game {
 	//   LostModifierOfType: to an agent whose last modifier of a GUID ended, GUID 1 that modifier's
 	//     GUID (0x9e1261). Stealth Attack ends when its stealth goes.
 	//   PlayerSwap: to the hero that leaves the field. No slots. The Field Medic buff ends on it.
+	//   Incorporeal: to a creature a projectile first goes through (see ProjectilePassList), GUID 1
+	//     the creature, GUID 2 the projectile (0xa2f720). Ghostform's buff renews itself on it.
 	class ActionEvents {
 		public:
 			explicit ActionEvents(AbilityEventSink& sink);
@@ -41,6 +43,7 @@ namespace Game {
 			void BreakRoot(uint32_t object);
 			void LostModifierOfType(uint32_t agent, uint32_t guid);
 			void PlayerSwap(uint32_t outgoing);
+			void Incorporeal(uint32_t target, uint32_t projectile);
 
 		private:
 			void SendPlain(uint32_t agent, AbilityEventType type);

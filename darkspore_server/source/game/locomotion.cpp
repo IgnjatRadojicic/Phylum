@@ -5,7 +5,10 @@
 #include "objectmanager.h"
 #include "instance.h"
 
+#include "actionevents.h"
+
 #include "raknet/types.h"
+#include "utils/functions.h"
 
 #include <algorithm>
 
@@ -850,31 +853,53 @@ LAB_009ef634:
 		reflector.end();
 	}
 
+	// Incorporeal and Intangible are not here: they are rolled once the shot reaches the creature
+	// (PassesThrough), because this also sorts out creatures the sweep only comes near.
 	bool Locomotion::CanHit(const ObjectPtr& collidingObject) const {
-		if (collidingObject->GetAttributeValue(AttributeType::Incorporeal) <= 0 && collidingObject->GetAttributeValue(AttributeType::Intangible) == 0) {
-			const auto collidingId = collidingObject->GetId();
-			if (mTargetId == collidingId) {
-				return true;
-			}
+		const auto collidingId = collidingObject->GetId();
+		if (mTargetId == collidingId) {
+			return true;
+		}
 
-			if (mObject->GetOwnerObject() == collidingObject) {
-				return false;
-			}
+		if (mObject->GetOwnerObject() == collidingObject) {
+			return false;
+		}
 
-			const auto& noun = mObject->GetNoun();
-			if (noun) {
-				const auto& projectile = noun->GetProjectileData();
-				if (projectile) {
-					switch (projectile->GetTargetType()) {
-						case TargetType::Enemies: return mObject->GetTeam() != collidingObject->GetTeam();
-						case TargetType::Allies: return mObject->GetTeam() == collidingObject->GetTeam();
-						case TargetType::Any: return true;
-						case TargetType::None: return false;
-					}
+		const auto& noun = mObject->GetNoun();
+		if (noun) {
+			const auto& projectile = noun->GetProjectileData();
+			if (projectile) {
+				switch (projectile->GetTargetType()) {
+					case TargetType::Enemies: return mObject->GetTeam() != collidingObject->GetTeam();
+					case TargetType::Allies: return mObject->GetTeam() == collidingObject->GetTeam();
+					case TargetType::Any: return true;
+					case TargetType::None: return false;
 				}
 			}
 		}
 		return false;
+	}
+
+	// The client's hit test (0xa2f7f0) checks its pass list first, then rolls Incorporeal (0x37)
+	// against a random number and tests Intangible (0x1d). A creature written down for the first
+	// time hears Incorporeal (0xa2f720), from the creature's side: GUID 1 itself, GUID 2 the shot.
+	bool Locomotion::PassesThrough(uint32_t creatureId) {
+		auto& game = mObject->GetGame();
+		const auto creature = game.GetObjectManager().Get(creatureId);
+		if (!creature) {
+			return false;
+		}
+
+		const auto result = mPassedThrough.Check(creatureId,
+			creature->GetAttributeValue(AttributeType::Incorporeal),
+			creature->GetAttributeValue(AttributeType::Intangible),
+			utils::random::get<float>(0.f, 1.f));
+		if (result == ProjectilePassList::Result::PassesFirstTime) {
+			if (auto events = game.GetActionEvents()) {
+				events->Incorporeal(creatureId, mObject->GetId());
+			}
+		}
+		return result != ProjectilePassList::Result::Hits;
 	}
 
 	glm::vec3 Locomotion::GetProjectileHalfExtent() const {
@@ -1008,6 +1033,11 @@ LAB_009ef634:
 		// them one at a time, so they wait here.
 		for (const auto& hit : SweepCreatures(position, position + movementSpeed)) {
 			if (reachesRange && hit.distance >= rangeLeft) {
+				continue;
+			}
+
+			// Looked at last, so only a creature the shot really reaches rolls.
+			if (PassesThrough(hit.id)) {
 				continue;
 			}
 

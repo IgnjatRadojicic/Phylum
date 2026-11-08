@@ -60,6 +60,9 @@ namespace {
 	struct Mob {
 		glm::vec2 position;
 		uint8_t team = enemyTeam;
+		// A shot passes a mob that wins a roll against Incorporeal, or has Intangible (0xa2f7f0).
+		float incorporeal = 0;
+		float intangible = 0;
 	};
 
 	struct Shot {
@@ -82,7 +85,9 @@ namespace {
 			{ "fast-shot-cannot-skip-a-mob", false, 600, 90, { { { 10, 0 } } }, { 0 } },
 			{ "mob-beside-path-is-missed", false, 20, 30, { { { 10, 20 } } }, {} },
 			{ "mob-past-range-is-missed", false, 20, 8, { { { 25, 0 } } }, {} },
-			{ "ally-is-not-hit", false, 20, 30, { { stack, shooterTeam } }, {} }
+			{ "ally-is-not-hit", false, 20, 30, { { stack, shooterTeam } }, {} },
+			{ "intangible-mob-is-passed", false, 20, 30, { { { 7, 0 }, enemyTeam, 0, 1 }, { { 14, 0 } } }, { 1 } },
+			{ "incorporeal-mob-is-passed", false, 20, 30, { { { 7, 0 }, enemyTeam, 1, 0 }, { { 14, 0 } } }, { 1 } }
 		};
 	}
 
@@ -274,6 +279,10 @@ namespace Game {
 			std::vector<uint32_t> mobIds;
 			for (const auto& mob : shot.mobs) {
 				auto object = spawn(mobNoun, mob.position, mob.team);
+				if (object) {
+					object->SetAttributeValue(Game::AttributeType::Incorporeal, mob.incorporeal);
+					object->SetAttributeValue(Game::AttributeType::Intangible, mob.intangible);
+				}
 				mobIds.push_back(object ? object->GetId() : 0);
 			}
 			for (size_t index : shot.expected) {

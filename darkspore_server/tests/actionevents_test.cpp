@@ -74,6 +74,18 @@ TEST_CASE("losing the last modifier of a kind tells its agent which kind") {
 	CHECK(sink.sent[0].event.GetGUID(1) == 0xABCD1234);
 }
 
+TEST_CASE("a projectile going through a creature tells the creature, and which projectile") {
+	RecordingSink sink;
+	ActionEvents events(sink);
+	events.Incorporeal(7, 40);
+
+	REQUIRE(sink.sent.size() == 1);
+	CHECK(sink.sent[0].agent == 7);
+	CHECK(sink.sent[0].event.GetType() == AbilityEventType::Incorporeal);
+	CHECK(sink.sent[0].event.GetGUID(1) == 7);
+	CHECK(sink.sent[0].event.GetGUID(2) == 40);
+}
+
 TEST_CASE("events with no object reach no one") {
 	RecordingSink sink;
 	ActionEvents events(sink);
