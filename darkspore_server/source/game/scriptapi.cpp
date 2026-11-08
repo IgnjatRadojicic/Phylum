@@ -160,7 +160,8 @@ namespace {
 			local ok, at = pcall(function()
 				local p = object:GetPosition()
 				local targetId = target and target:GetId() or 0
-				return string.format(" at=%.1f,%.1f,%.1f target=%d", p.x, p.y, p.z, targetId)
+				local c = cursorPosition or p
+				return string.format(" at=%.1f,%.1f,%.1f cursor=%.1f,%.1f,%.1f target=%d", p.x, p.y, p.z, c.x, c.y, c.z, targetId)
 			end)
 			ScriptTrace("CAST ability=" .. tostring(ability.id) .. " object=" .. tostring(id) .. (ok and at or ""))
 			-- Each ability walks its own animation sequence: one object's abilities have sequences

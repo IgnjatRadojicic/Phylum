@@ -2,6 +2,8 @@
 
 #include "game/jumparc.h"
 
+#include <limits>
+
 using Game::JumpArc;
 
 TEST_CASE("a jump covers its distance at its speed and lands on the ground") {
@@ -13,6 +15,16 @@ TEST_CASE("a jump covers its distance at its speed and lands on the ground") {
 	CHECK(arc->GetPositionAt(5).z == doctest::Approx(0));
 	CHECK_FALSE(arc->IsFinished(0.4f));
 	CHECK(arc->IsFinished(0.5f));
+}
+
+TEST_CASE("a jump to a position that is not a number never starts") {
+	// Quantum Blink cast at the hero's own spot slid to inf/NaN, and the client crashed on it.
+	const float inf = std::numeric_limits<float>::infinity();
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	CHECK_FALSE(JumpArc::Build({ 0, 0, 0 }, { inf, inf, 0 }, inf, 100, 0, 0, 0));
+	CHECK_FALSE(JumpArc::Build({ 0, 0, 0 }, { nan, nan, nan }, nan, 100, 0, 0, 0));
+	CHECK_FALSE(JumpArc::Build({ nan, 0, 0 }, { 1, 0, 0 }, 5, 100, 0, 0, 0));
+	CHECK_FALSE(JumpArc::Build({ 0, 0, 0 }, { 1, 0, 0 }, 5, nan, 0, 0, 0));
 }
 
 TEST_CASE("a jump's height grows with its distance up to the maximum") {

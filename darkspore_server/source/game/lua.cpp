@@ -949,7 +949,10 @@ namespace Game {
 		// A script can run long after its hero is free, while a shot flies, so it never blocks a new cast.
 		LuaThread* thread = object ? mLua.SpawnThreadFor(object) : mLua.SpawnThread();
 
-		thread->call<void>(mEnvironment, mTickFn, mSelf, object, target, cursorPosition, rank);
+		// A copy: sol hands Lua a pointer to a vector passed by reference, and this one is gone once
+		// the script first waits. Quantum Blink read its target there after its wind-up, got
+		// garbage, and slid the hero off the map.
+		thread->call<void>(mEnvironment, mTickFn, mSelf, object, target, glm::vec3(cursorPosition), rank);
 		return true;
 	}
 

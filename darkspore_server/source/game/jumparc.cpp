@@ -1,6 +1,7 @@
 
 // Include
 #include "jumparc.h"
+#include "finitevector.h"
 
 #include <algorithm>
 
@@ -9,6 +10,11 @@ namespace Game {
 	std::optional<JumpArc> JumpArc::Build(const glm::vec3& start, const glm::vec3& direction, float distance, float speed,
 		float minHeight, float maxHeight, float rangeToHitMaxHeight
 	) {
+		// NaN fails every comparison, so it is ruled out first; see finitevector.h.
+		if (!IsFinite(start) || !IsFinite(direction) || !std::isfinite(distance) || !std::isfinite(speed)) {
+			return std::nullopt;
+		}
+
 		const float length = glm::length(direction);
 		if (distance <= 0 || speed <= 0 || length <= 0.0001f) {
 			return std::nullopt;

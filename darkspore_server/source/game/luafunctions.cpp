@@ -9,6 +9,7 @@
 #include "actionevents.h"
 #include "serverevent.h"
 #include "scripttriggervolumes.h"
+#include "finitevector.h"
 
 #include "utils/functions.h"
 #include "utils/log.h"
@@ -353,11 +354,35 @@ namespace LuaFunction {
 			}
 		}
 
+		// A position a script worked out that is not a number moves nothing (see finitevector.h). It is
+		// traced with the script's stack, so the script that made it can be found.
+		bool AcceptScriptPosition(sol::this_state L, Game::Instance& game, const char* function, const Game::ObjectPtr& object, const glm::vec3& position) {
+			if (Game::IsFinite(position)) {
+				return true;
+			}
+
+			std::string stack;
+			sol::protected_function traceback = sol::state_view(L)["debug"]["traceback"];
+			if (traceback.valid()) {
+				if (auto result = traceback(); result.valid() && result.get_type() == sol::type::string) {
+					stack = result.get<std::string>();
+					std::replace(stack.begin(), stack.end(), '\n', '|');
+				}
+			}
+
+			game.GetLua().Trace(std::format("BAD POSITION {} object={} at={},{},{} {}", function, object->GetId(), position.x, position.y, position.z, stack));
+			return false;
+		}
+
 		// Darkspore.exe 0xa099c0: a position, then the direction to face from there.
 		auto TeleportAndFace(sol::this_state L, sol::object objectValue, glm::vec3 position, glm::vec3 direction) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
 			if (object && object->HasLocomotionData()) {
+				if (!AcceptScriptPosition(L, game, "TeleportAndFace", object, position)) {
+					return;
+				}
+
 				object->SetInputSyncStamp(object->GetInputSyncStamp() + 1);
 
 				// SetFacing used to follow SetGoalPosition here and put the goal back where the object
@@ -372,6 +397,10 @@ namespace LuaFunction {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
 			if (object && object->HasLocomotionData()) {
+				if (!AcceptScriptPosition(L, game, "TeleportObject", object, position)) {
+					return;
+				}
+
 				// The client breaks the object's roots before it moves (0xa09a90 raises BreakRoot at
 				// 0xa09b2c). TeleportAndFace does not.
 				if (auto events = game.GetActionEvents()) {
@@ -400,7 +429,7 @@ namespace LuaFunction {
 		) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
-			if (!object || !object->HasLocomotionData()) {
+			if (!object || !object->HasLocomotionData() || !AcceptScriptPosition(L, game, "JumpInDirection", object, direction * distance)) {
 				return false;
 			}
 
@@ -424,7 +453,7 @@ namespace LuaFunction {
 		auto SlideToPoint(sol::this_state L, sol::object objectValue, glm::vec3 position, float speed) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
-			if (!object || !object->HasLocomotionData()) {
+			if (!object || !object->HasLocomotionData() || !AcceptScriptPosition(L, game, "SlideToPoint", object, position)) {
 				return false;
 			}
 
@@ -440,7 +469,7 @@ namespace LuaFunction {
 		auto MoveToPointExact(sol::this_state L, sol::object objectValue, glm::vec3 position, sol::optional<bool> setSomeFlag) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
-			if (object && object->HasLocomotionData()) {
+			if (object && object->HasLocomotionData() && AcceptScriptPosition(L, game, "MoveToPointExact", object, position)) {
 				const auto& locomotion = object->GetLocomotionData();
 				locomotion->SetGoalPosition(position);
 
@@ -455,7 +484,7 @@ namespace LuaFunction {
 		auto MoveToCircleEdge(sol::this_state L, sol::object objectValue, glm::vec3 position, float distance, sol::optional<bool> setSomeFlag) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
-			if (object && object->HasLocomotionData()) {
+			if (object && object->HasLocomotionData() && AcceptScriptPosition(L, game, "MoveToCircleEdge", object, position)) {
 				const auto& locomotion = object->GetLocomotionData();
 				locomotion->SetGoalPositionWithDistance(position, distance);
 
@@ -479,7 +508,7 @@ namespace LuaFunction {
 
 			auto& objectManager = game.GetObjectManager();
 			auto object = LuaGetObject(objectManager, objectValue);
-			if (object && object->HasLocomotionData()) {
+			if (object && object->HasLocomotionData() && AcceptScriptPosition(L, game, "MoveToPointWithinRange", object, position)) {
 				const auto& locomotion = object->GetLocomotionData();
 				locomotion->SetGoalPositionWithDistance(position, distance);
 

@@ -329,6 +329,14 @@ namespace {
 			ModifierCheckEvents.selfEnded = true
 		end
 
+		-- Reads where it was cast only after a wait, as Quantum Blink does after its wind-up.
+		local readsLater = {}
+		nAbility.RegisterAbility("ModifierCheckReadsTargetLater", readsLater)
+		readsLater[nAbilityFns.Tick] = function()
+			nThread.WaitForXSeconds(0.05)
+			ModifierCheckEvents.targetX, ModifierCheckEvents.targetY, ModifierCheckEvents.targetZ = nAbility.GetTargetPosition()
+		end
+
 		function ModifierCheckBrokenGuid()
 			return nUtil.SPID("ModifierCheckBroken")
 		end
@@ -348,6 +356,7 @@ namespace {
 			nModifier.registered[nUtil.SPID("ModifierCheckBreaksOnTeleport")] = nil
 			nAbility.scripts.ModifierCheckListensCast = nil
 			nAbility.scripts.ModifierCheckSendsToItself = nil
+			nAbility.scripts.ModifierCheckReadsTargetLater = nil
 			nAbility.scripts.ModifierCheckChannel = nil
 			nAbility.scripts.ModifierCheckWatcher = nil
 			nAbility.scripts.ModifierCheckWaits = nil
@@ -360,7 +369,8 @@ namespace {
 			-- RegisterAbility also lists an ability as a modifier (one registry, as in the client)
 			for _, name in ipairs({ "ModifierCheckWaits", "ModifierCheckFails", "ModifierCheckCancelled", "ModifierCheckDeactivateFails",
 				"ModifierCheckStealthCast", "ModifierCheckCancelledWithChild", "ModifierCheckFinishes",
-				"ModifierCheckListensCast", "ModifierCheckSendsToItself", "ModifierCheckChannel", "ModifierCheckWatcher" }) do
+				"ModifierCheckListensCast", "ModifierCheckSendsToItself", "ModifierCheckChannel", "ModifierCheckWatcher",
+				"ModifierCheckReadsTargetLater" }) do
 				nModifier.registered[nUtil.SPID(name)] = nil
 			end
 		end
@@ -478,6 +488,7 @@ namespace {
 				CheckDamageReachesHandlers();
 				CheckEventAnswersEndOrKeep();
 				CheckCastEndedFromItselfEndsAtItsWait();
+				CheckCastKeepsItsTargetPoint();
 				CheckTeleportBreaksRoot();
 				CheckChannelEndsOnNewAction();
 				CheckLostModifierEndsWatcher(slow);
@@ -893,6 +904,27 @@ namespace {
 				const bool resumed = events.get_or("resumed", false);
 				Report("cast-ended-from-itself-ends-at-its-wait", sent && ended && !resumed && agent->GetLuaThread() == nullptr,
 					"sent=" + std::to_string(sent) + " ended=" + std::to_string(ended) + " resumed=" + std::to_string(resumed));
+			}
+
+			// A cast keeps the point it was cast at for its whole run, also after it first waits.
+			void CheckCastKeepsItsTargetPoint() {
+				auto agent = Spawn();
+				const auto castId = utils::hash_id("ModifierCheckReadsTargetLater");
+				mLua.GetAbility(castId)->FindNumberedTick();
+
+				RakNet::CombatData cast {};
+				cast.abilityId = castId;
+				cast.abilityRank = 1;
+				cast.cursorPosition = glm::vec3(12.5f, -7.25f, 3.f);
+				mGame.UseAbility(agent, cast);
+				Wait(200);
+
+				sol::table events = mState["ModifierCheckEvents"];
+				const float x = events.get_or("targetX", 0.f);
+				const float y = events.get_or("targetY", 0.f);
+				const float z = events.get_or("targetZ", 0.f);
+				Report("cast-keeps-its-target-point", x == 12.5f && y == -7.25f && z == 3.f,
+					std::format("read={},{},{}", x, y, z));
 			}
 
 			// A teleport raises BreakRoot before the object moves (0xa09b2c); TeleportAndFace raises
