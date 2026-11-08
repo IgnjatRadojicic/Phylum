@@ -196,6 +196,10 @@ namespace Game {
 			void SetGoalFlags(uint32_t flags);
 			void SetFacing(const glm::vec3& facingPosition);
 			void Stop();
+
+			// Darkspore.exe 0xa099c0: moves at once to a position and faces a direction from there.
+			// A direction with no length keeps the facing.
+			void TeleportAndFace(const glm::vec3& position, const glm::vec3& direction);
 			void TurnToFaceTargetObject(const ObjectPtr& object);
 			void MoveToPointWhileFacingTarget(const glm::vec3& position, const ObjectPtr& object);
 			void ApplyExternalVelocity(const glm::vec3& velocity);
@@ -221,6 +225,9 @@ namespace Game {
 		private:
 			bool CanHit(const ObjectPtr& collidingObject) const;
 			glm::vec3 GetProjectileHalfExtent() const;
+
+			// Goal and partial goal at the object's position, so a stop stays where it is.
+			void HoldPosition();
 			std::vector<SweepHit> SweepCreatures(const glm::vec3& from, const glm::vec3& to);
 			void SteerToTarget();
 			void FlyLob(float deltaTime);

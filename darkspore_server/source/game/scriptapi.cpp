@@ -1534,13 +1534,13 @@ namespace {
 		nGameObject.SetTargetPosition = nLocomotion.SetTargetPosition
 
 		-- TeleportAndFace(id, x, y, z, dx, dy, dz): the client reads six numbers and turns the last three,
-		-- a direction, into the facing (0xa099c0); the server faces a point, so it gets position + direction.
+		-- a direction, into the facing (0xa099c0).
 		local teleportAndFace = Locomotion.TeleportAndFace
 		function nLocomotion.TeleportAndFace(id, x, y, z, dx, dy, dz)
 			local object = get(id)
 			if object then
 				x, y, z = tonumber(x) or 0, tonumber(y) or 0, tonumber(z) or 0
-				return teleportAndFace(object, vector(x, y, z), vector(x + (tonumber(dx) or 0), y + (tonumber(dy) or 0), z + (tonumber(dz) or 0)))
+				return teleportAndFace(object, vector(x, y, z), vector(tonumber(dx) or 0, tonumber(dy) or 0, tonumber(dz) or 0))
 			end
 		end
 

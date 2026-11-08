@@ -343,19 +343,17 @@ namespace LuaFunction {
 			}
 		}
 
-		auto TeleportAndFace(sol::this_state L, sol::object objectValue, glm::vec3 position, glm::vec3 facingPosition) {
+		// Darkspore.exe 0xa099c0: a position, then the direction to face from there.
+		auto TeleportAndFace(sol::this_state L, sol::object objectValue, glm::vec3 position, glm::vec3 direction) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
 			if (object && object->HasLocomotionData()) {
 				object->SetInputSyncStamp(object->GetInputSyncStamp() + 1);
 
+				// SetFacing used to follow SetGoalPosition here and put the goal back where the object
+				// stood, so it never moved.
 				const auto& locomotion = object->GetLocomotionData();
-				locomotion->Stop();
-
-				locomotion->SetGoalPosition(position);
-				locomotion->SetFacing(facingPosition);
-				locomotion->SetGoalFlags(locomotion->GetGoalFlags() | 0x020);
-
+				locomotion->TeleportAndFace(position, direction);
 				game.MoveObject(object, *locomotion);
 			}
 		}
@@ -390,9 +388,13 @@ namespace LuaFunction {
 				return false;
 			}
 
-			const glm::vec3 facing = faceX ? glm::vec3(*faceX, faceY.value_or(0.f), faceZ.value_or(0.f)) : direction;
+			// The client takes both ends on the ground (GetGroundPosition 0xa0aff0, and its jump 0xa15240
+			// snaps to it), so a jump goes across the ground. The server has no ground, and a knockback
+			// from a caster standing higher pointed down and threw the creature under the floor.
+			const glm::vec3 across(direction.x, direction.y, 0.f);
+			const glm::vec3 facing = faceX ? glm::vec3(*faceX, faceY.value_or(0.f), faceZ.value_or(0.f)) : across;
 			const auto& locomotion = object->GetLocomotionData();
-			const auto* arc = locomotion->Jump(direction, distance, speed, facing,
+			const auto* arc = locomotion->Jump(across, distance, speed, facing,
 				minHeight.value_or(0.f), maxHeight.value_or(0.f), rangeToHitMaxHeight.value_or(0.f), true);
 			if (!arc) {
 				return false;

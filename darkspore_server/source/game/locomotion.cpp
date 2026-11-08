@@ -555,6 +555,7 @@ LAB_009ef634:
 		// mGoalFlags = 1 & 0x040;
 		mTargetId = object->GetId();
 		mGoalPosition = object->GetPosition();
+		mPartialGoalPosition = mGoalPosition;
 		mAllowedStopDistance = distance;
 		mDesiredStopDistance = distance;
 
@@ -599,7 +600,26 @@ LAB_009ef634:
 		// set data
 		mGoalFlags = 0x020;
 
+		// It stops where it is: 0x020 places the object at its goal, which for something that never
+		// moved (a pet, a turret, a hero before its first step) was still 0,0,0.
+		HoldPosition();
+
 		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
+	}
+
+	void Locomotion::TeleportAndFace(const glm::vec3& position, const glm::vec3& direction) {
+		Stop();
+		mGoalPosition = position;
+		mPartialGoalPosition = position;
+		if (glm::length(direction) > 0.0001f) {
+			mFacing = glm::normalize(direction);
+			mGoalFlags |= 0x002;
+		}
+	}
+
+	void Locomotion::HoldPosition() {
+		mGoalPosition = mObject->GetPosition();
+		mPartialGoalPosition = mGoalPosition;
 	}
 
 	void Locomotion::TurnToFaceTargetObject(const ObjectPtr& object) {
@@ -635,6 +655,7 @@ LAB_009ef634:
 		// set data
 		mGoalFlags = 0x001 | 0x100;
 		mGoalPosition = position;
+		mPartialGoalPosition = position;
 		mTargetId = object->GetId();
 
 		mAllowedStopDistance = 0;
@@ -651,6 +672,8 @@ LAB_009ef634:
 		// set data
 		mGoalFlags = 0x008;
 		mExternalLinearVelocity = velocity;
+		// The push starts from here, not from an old goal.
+		mPartialGoalPosition = mObject->GetPosition();
 
 		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
@@ -659,6 +682,7 @@ LAB_009ef634:
 		// set data
 		mGoalFlags = 0x020;
 		mExternalLinearVelocity = glm::zero<glm::vec3>();
+		HoldPosition();
 
 		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
@@ -679,6 +703,9 @@ LAB_009ef634:
 
 		mTargetId = object->GetId();
 		mGoalFlags |= 0x100;
+		// A move in progress already stands at its partial goal (MoveObject puts it there), so this
+		// only matters for something that never moved, whose partial goal was 0,0,0.
+		mPartialGoalPosition = mObject->GetPosition();
 	}
 
 	const JumpArc* Locomotion::SlideToPoint(const glm::vec3& position, float speed) {
@@ -699,7 +726,8 @@ LAB_009ef634:
 
 		const glm::vec3 flatFacing(facing.x, facing.y, 0.f);
 		if (glm::length(flatFacing) > 0.0001f) {
-			mFacing = mObject->GetPosition() + glm::normalize(flatFacing);
+			// A direction, as everywhere else mFacing is set.
+			mFacing = glm::normalize(flatFacing);
 		}
 		return &*mJumpArc;
 	}

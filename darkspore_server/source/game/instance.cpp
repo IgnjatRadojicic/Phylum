@@ -656,9 +656,10 @@ namespace Game {
 		}
 
 		if (mLua) {
+			const auto& from = arc.GetStart();
 			const auto& to = arc.GetDestination();
-			mLua->Trace(std::format("JUMP object={} to={:.1f},{:.1f},{:.1f} seconds={:.2f} height={:.1f}",
-				object->GetId(), to.x, to.y, to.z, arc.GetDuration(), arc.GetHeight()));
+			mLua->Trace(std::format("JUMP object={} from={:.1f},{:.1f},{:.1f} to={:.1f},{:.1f},{:.1f} seconds={:.2f} height={:.1f}",
+				object->GetId(), from.x, from.y, from.z, to.x, to.y, to.z, arc.GetDuration(), arc.GetHeight()));
 		}
 
 		for (const auto& [_, client] : mServer->GetClients()) {

@@ -27,6 +27,7 @@ namespace Game {
 			glm::vec3 GetGroundAt(float seconds) const;
 			bool IsFinished(float seconds) const;
 
+			const glm::vec3& GetStart() const;
 			const glm::vec3& GetDestination() const;
 			const glm::vec3& GetDirection() const;
 			float GetHeight() const;

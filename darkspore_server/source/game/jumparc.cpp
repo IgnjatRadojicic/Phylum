@@ -43,6 +43,10 @@ namespace Game {
 		return seconds >= mDuration;
 	}
 
+	const glm::vec3& JumpArc::GetStart() const {
+		return mStart;
+	}
+
 	const glm::vec3& JumpArc::GetDestination() const {
 		return mDestination;
 	}
