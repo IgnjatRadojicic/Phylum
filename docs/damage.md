@@ -35,21 +35,47 @@ dodged, resisted or stopped by immunity.
 - **The client** has `Dodge`, `Resist`, `Immune` and `Critical` combat flags.
 - **Scripts** set the reductions as fractions: 0.15, 0.25 and 0.5, and 1 for a full physical shield.
 
+## The attacker's side (from the client's tooltip)
+
+The client works out the damage its ability tooltips show in `0x9e5b10`, called from the token
+translator `0x43a9d0` once for the minimum token (t = 0, rounded to nearest) and once for the
+maximum (t = 1, rounded up). That is the best record of the lost server's formula, so the server
+uses the same steps (`AttackerDamage`):
+
+1. **Weapon floor.** A basic attack that is not over time takes at least the weapon's minimum or
+   maximum damage (character asset `+0xe8`, `+0xec`).
+2. **Primary stat.** × (1 + (primary − `PrimaryAttributeIgnoreAmount`) × the ability's damage
+   coefficient) (`0x9e4e60`). The ignored amount is MagicNumbers `+0x34`, the file's only integer, 8.
+3. **Bonuses.** × the multiplier from `0x9e4f40`. It starts at 1, or for a basic attack at
+   1 + (`PhysicalDefense` + `EnergyDefense`) × `DefenseBoostBasicDamage`. Then it adds `DamageBuff`,
+   the damage type's `…TypeDamage` (not for Generic), `ProjectileDamageIncrease` (`IsProjectile`),
+   `EnergyDamageBuff` (energy source), `AoEDamage` (`IsAoE`), and `DoTDamageDoneIncrease` (`IsDoT`)
+   or else `DirectAttackDamagePercent`. For `IsPhysicalDamage` it adds `PhysicalDamageDoneIncrease`,
+   plus `PhysicalDamageDoneByAbilityIncrease` when the hit is not basic. Energy works the same way.
+4. **Direct attack.** + `DirectAttackDamage`, except for `IsDoT` and `IsHoT` (`0x9e4ef0`).
+5. **AutoCrit.** × (`CriticalDamageIncrease` + `CriticalDamageBonus`, MagicNumbers `+0x30`). The
+   tooltip only shows the AutoCrit case; the random critical roll is step 4 above.
+6. Never below 0.
+
+`0x9c0530` scales the tooltip down for a hero below the level (game modes 2 and 3 only, with ×0.25
+in mode 3). It is left out, because the modes are not identified.
+
+Bit 2 of the descriptors is `IsBasic`. Darkspin reads it as Resonance, and replaces step 3's
+defense start value, so its numbers differ there and in the ignored amount (it uses −1).
+
 ## Approximate
 
-These are judgement calls. The client cannot settle them: it never reads `CriticalDamageBonus`,
-the rating `Decrease` values or the leech values from MagicNumbers, so the damage roll was server
-code that did not ship. The client only reads the two caps (for `nTuning`) and the per-point
-values (to build stats, see below).
+These are judgement calls. The client cannot settle them: it never reads the rating `Decrease`
+values or the leech values from MagicNumbers, so the damage roll was server code that did not ship.
+The attacker's side follows the tooltip, as above, which may differ from what the server rolled.
 
 - The reductions multiply. They might add up instead, or have a cap.
 - Damage over time is never dodged or resisted.
 - `CriticalDamageIncrease` is added to the bonus, not multiplied.
-- The damage coefficient is not used yet. It probably adds coefficient × the attacker's stat, as
-  the mana coefficient does, but that is not confirmed.
+- The attacker's side is applied to the range before the roll, so the minimum and maximum are each
+  scaled as the tooltip scales its two tokens.
 - A critical hit from a creature uses whole percents.
 - `Deflect` is never sent.
-- The `Dodged` ability event is not raised yet.
 
 ## Hero stats
 

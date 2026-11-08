@@ -35,6 +35,13 @@ namespace Game {
 	CombatEventFlags CombatFlagsFor(const DamageResult& result);
 
 	class Object;
+
+	// A hit's damage range with the attacker's side applied (see AttackerDamage and docs/damage.md).
+	// The bonuses come from the snapshot, else from the attacker now. The primary stat needs the
+	// attacker's class, so without the attacker it is left out.
+	std::tuple<float, float> ScaleForAttacker(
+		const Object* attacker, const AttributesPtr& snapshot, const std::tuple<float, float>& range,
+		DamageType type, DamageSource source, float coefficient, Descriptors descriptors);
 	class ObjectManager;
 
 	using ObjectPtr = std::shared_ptr<Object>;

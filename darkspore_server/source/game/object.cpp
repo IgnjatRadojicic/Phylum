@@ -4,6 +4,7 @@
 
 #include "aicontrol.h"
 #include "aitargeting.h"
+#include "attackerdamage.h"
 #include "attributemirror.h"
 #include "facing.h"
 #include "gambitrunner.h"
@@ -22,6 +23,7 @@
 #include "utils/log.h"
 
 #include <algorithm>
+#include <optional>
 
 // difficulty tuning
 
@@ -1542,7 +1544,7 @@ namespace Game {
 			return result;
 		}
 
-		// How hard. The coefficient is not applied yet (see docs/damage.md).
+		// How hard. The range already has the attacker's side (ScaleForAttacker).
 		float damage = utils::random::get<float>(std::get<0>(damageRange), std::get<1>(damageRange));
 		damage *= std::max(0.f, damageMultiplier);
 
@@ -1573,6 +1575,62 @@ namespace Game {
 			}
 		}
 		return result;
+	}
+
+	std::tuple<float, float> ScaleForAttacker(
+		const Object* attacker, const AttributesPtr& snapshot, const std::tuple<float, float>& range,
+		DamageType type, DamageSource source, float coefficient, Descriptors descriptors
+	) {
+		if (!snapshot && !attacker) {
+			return range;
+		}
+
+		const auto value = [&](AttributeType attribute) {
+			return snapshot ? snapshot->GetValue(attribute) : attacker->GetAttributeValue(attribute);
+		};
+
+		AttackerBonuses bonuses;
+		bonuses.damageBuff = value(AttributeType::DamageBuff);
+		bonuses.typeDamage = {
+			value(AttributeType::TechnologyTypeDamage), value(AttributeType::SpacetimeTypeDamage),
+			value(AttributeType::LifeTypeDamage), value(AttributeType::ElementsTypeDamage),
+			value(AttributeType::SupernaturalTypeDamage)
+		};
+		bonuses.projectileDamage = value(AttributeType::ProjectileDamageIncrease);
+		bonuses.energyDamageBuff = value(AttributeType::EnergyDamageBuff);
+		bonuses.areaDamage = value(AttributeType::AoEDamage);
+		bonuses.damageOverTimeIncrease = value(AttributeType::DoTDamageDoneIncrease);
+		bonuses.directAttackPercent = value(AttributeType::DirectAttackDamagePercent);
+		bonuses.physicalDamageDone = value(AttributeType::PhysicalDamageDoneIncrease);
+		bonuses.physicalDamageByAbility = value(AttributeType::PhysicalDamageDoneByAbilityIncrease);
+		bonuses.energyDamageDone = value(AttributeType::EnergyDamageDoneIncrease);
+		bonuses.energyDamageByAbility = value(AttributeType::EnergyDamageDoneByAbilityIncrease);
+		bonuses.physicalDefense = value(AttributeType::PhysicalDefense);
+		bonuses.energyDefense = value(AttributeType::EnergyDefense);
+		bonuses.defenseBoostBasicDamage = value(AttributeType::DefenseBoostBasicDamage);
+		bonuses.directAttackDamage = value(AttributeType::DirectAttackDamage);
+
+		float scale = 1.f;
+		if (attacker && coefficient != 0.f) {
+			std::optional<AttributeType> primary;
+			switch (attacker->GetPrimaryAttribute()) {
+				case PrimaryAttribute::Strength: primary = AttributeType::Strength; break;
+				case PrimaryAttribute::Dexterity: primary = AttributeType::Dexterity; break;
+				case PrimaryAttribute::Mind: primary = AttributeType::Mind; break;
+				default: break;
+			}
+			if (primary) {
+				scale = AttackerDamage::PrimaryScale(value(*primary), MagicNumbers::Game().primaryAttributeIgnoreAmount, coefficient);
+			}
+		}
+
+		const auto flags = static_cast<uint32_t>(descriptors);
+		scale *= AttackerDamage::Multiplier(bonuses, flags, type, source);
+		const float direct = AttackerDamage::DirectAttack(bonuses, flags);
+		const auto scaled = [&](float amount) {
+			return std::max(0.f, amount * scale + direct);
+		};
+		return { scaled(std::get<0>(range)), scaled(std::get<1>(range)) };
 	}
 
 	CombatEventFlags CombatFlagsFor(const DamageResult& result) {

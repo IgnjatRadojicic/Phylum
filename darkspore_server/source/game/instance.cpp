@@ -774,8 +774,9 @@ namespace Game {
 			combatEvent.mDirection = glm::normalize(offset);
 		}
 
+		const auto range = ScaleForAttacker(attacker.get(), nullptr, damageRange, DamageType::Life, DamageSource::Physical, 0.f, Descriptors::IsBasic);
 		const auto result = target->TakeDamage(
-			nullptr, damageRange, DamageType::Life, DamageSource::Physical, 0.f, Descriptors::IsBasic, 1.f, combatEvent.mDirection
+			nullptr, range, DamageType::Life, DamageSource::Physical, 0.f, Descriptors::IsBasic, 1.f, combatEvent.mDirection
 		);
 		const float damage = result.damage;
 

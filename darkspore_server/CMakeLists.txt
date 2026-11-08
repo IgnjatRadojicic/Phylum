@@ -138,6 +138,7 @@ add_executable(recap_tests
     tests/difficultytuning_test.cpp
     tests/abilitycost_test.cpp
     tests/hitroll_test.cpp
+    tests/attackerdamage_test.cpp
     tests/statshares_test.cpp
     tests/cooldowntable_test.cpp
     tests/triggervolume_test.cpp
@@ -161,6 +162,7 @@ add_executable(recap_tests
     source/game/difficultytuning.cpp
     source/game/abilitycost.cpp
     source/game/hitroll.cpp
+    source/game/attackerdamage.cpp
     source/game/magicnumbers.cpp
     source/game/statshares.cpp
     source/game/cooldowntable.cpp

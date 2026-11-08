@@ -1003,9 +1003,12 @@ namespace LuaFunction {
 				combatEvent.mTargetId = object->GetId();
 				combatEvent.mDirection = direction.value_or(glm::zero<glm::vec3>());
 
+				const auto range = Game::ScaleForAttacker(
+					attacker.get(), attributes, std::make_tuple(damageRange.raw_get_or(1, 0.f), damageRange.raw_get_or(2, 0.f)),
+					damageType, damageSource, damageCoefficient, descriptors);
 				const auto& result = object->TakeDamage(
 					attributes,
-					std::make_tuple(damageRange.raw_get_or(1, 0.f), damageRange.raw_get_or(2, 0.f)),
+					range,
 					damageType,
 					damageSource,
 					damageCoefficient,
