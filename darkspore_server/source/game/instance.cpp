@@ -832,8 +832,13 @@ namespace Game {
 			return;
 		}
 
-		// A hero that leaves the field stops what it was casting, so a channel's changes come off.
+		// A hero that leaves the field hears PlayerSwap (the Field Medic buff ends on it; no client or
+		// script code raises it, so it was the server's), then stops what it was casting, so a
+		// channel's changes come off.
 		if (outgoing && outgoing != player->GetDeployedCharacterObject()) {
+			if (mActionEvents) {
+				mActionEvents->PlayerSwap(outgoing->GetId());
+			}
 			CancelAction(player, outgoing);
 		}
 

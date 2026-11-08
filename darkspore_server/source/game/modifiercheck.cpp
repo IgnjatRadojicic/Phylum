@@ -2,6 +2,7 @@
 // Include
 #include "modifiercheck.h"
 
+#include "actionevents.h"
 #include "damageevents.h"
 #include "instance.h"
 #include "lua.h"
@@ -480,6 +481,7 @@ namespace {
 				CheckTeleportBreaksRoot();
 				CheckChannelEndsOnNewAction();
 				CheckLostModifierEndsWatcher(slow);
+				CheckSwapEndsFieldMedicBuff();
 				CheckThornsHitsMeleeAttackerBack();
 				CheckMobPassiveStartsOnce();
 				CheckKillObjectEndsPassive();
@@ -976,6 +978,25 @@ namespace {
 				Report("lost-modifier-ends-watcher", running && ended && watcher.get_or("heard", 0) >= 1,
 					"id=" + std::to_string(id) + " running=" + std::to_string(running) + " ended=" + std::to_string(ended) +
 					" heard=" + std::to_string(watcher.get_or("heard", 0)));
+			}
+
+			// The game's FieldMedicHealthBuff ends when its hero leaves the field (PlayerSwap).
+			void CheckSwapEndsFieldMedicBuff() {
+				auto agent = Spawn();
+				sol::protected_function spid = mState["nUtil"]["SPID"];
+				const auto id = Request(agent, agent, spid("FieldMedicHealthBuff"));
+				Wait(100);
+				const auto& modifiers = mGame.GetModifiers().GetManager();
+				const bool started = id != 0 && modifiers.Get(id) != nullptr;
+
+				if (auto events = mGame.GetActionEvents()) {
+					events->PlayerSwap(agent->GetId());
+				}
+				Wait(100);
+				const bool ended = modifiers.Get(id) == nullptr;
+
+				Report("swap-ends-field-medic-buff", started && ended,
+					"id=" + std::to_string(id) + " started=" + std::to_string(started) + " ended=" + std::to_string(ended));
 			}
 
 			// ZelemBasicMelee's AI definition names its passive, which no script requests.

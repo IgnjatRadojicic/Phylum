@@ -66,7 +66,8 @@ ends at its next wait, and a modifier whose own thread is running ends at the ne
   with the same GUID (0x9e1261, in 0x9e11f0). GUID 1 is the modifier's GUID, not its id.
   `GainedModifierOfType` (2048) is the mirror (0x9e0fe8). Stealth Attack (the ability, L89490) ends
   when its stealth modifier goes.
-- **PlayerSwap (32768).** Not in the client or any script, so it was the server's. The Field Medic
+- **PlayerSwap (32768).** Sent, from `Instance::SwapCharacter` before the outgoing hero's cast is
+  cancelled. Not in the client or any script, so it was the server's. The Field Medic
   health buff ends on it (L158238). No slots. Sent to the hero leaving (judgement call; Darkspin
   keeps the buff instead).
 - **Incorporeal (262144).** In a projectile's hit test (0xa2f7f0), a target with `Incorporeal`
