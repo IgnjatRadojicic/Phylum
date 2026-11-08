@@ -1034,7 +1034,9 @@ namespace {
 			if not hasFlag(script.handledEvents, data.eventType) then
 				return
 			end
-			local handler = scriptFunction(script, nAbilityFns.HandleEvent, "handleEvent", "hasHandleEvent")
+			-- Only the numbered function: the client has no "handleEvent" string and never calls the
+			-- named one (a script that has only that one hears nothing, as in the client).
+			local handler = script.hasHandleEvent ~= false and script[nAbilityFns.HandleEvent] or nil
 			if handler then
 				local who = context.modifierId and (" modifier=" .. context.modifierId) or (" cast=" .. tostring(context.instanceId))
 				ScriptTrace("EVENT type=" .. data.eventType .. who .. " from=" .. tostring(data.guids[1]))

@@ -214,7 +214,7 @@ namespace {
 		nModifier.RegisterModifier("ModifierCheckListener", {
 			activationType = nActivationType.Unique,
 			handledEvents = nBit.Or(nAbilityEventFlags.TookDamage, nAbilityEventFlags.DealtDamage),
-			handleEvent = function(event)
+			[nAbilityFns.HandleEvent] = function(event)
 				local heard = ModifierCheckListener.heard
 				heard[#heard + 1] = {
 					type = nAbility.GetAbilityEventType(event),
@@ -254,7 +254,7 @@ namespace {
 		nModifier.RegisterModifier("ModifierCheckListensModifier", {
 			activationType = nActivationType.Unique,
 			handledEvents = interrupt,
-			handleEvent = function(event)
+			[nAbilityFns.HandleEvent] = function(event)
 				ModifierCheckEvents.order = ModifierCheckEvents.order .. "m"
 				return ModifierCheckEvents.answer
 			end,
