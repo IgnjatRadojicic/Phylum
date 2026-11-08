@@ -402,22 +402,30 @@ namespace Game {
 		return mIsPet;
 	}
 
-	// AssetProperty
-	void AssetProperty::Read(pugi::xml_node node) {
-		mName = utils::xml_get_text_node(node, "name");
-		mValue = utils::xml_get_text_node(node, "value");
-
-		mKey = utils::xml_get_text_node<uint32_t>(node, "key");
-		mType = utils::xml_get_text_node<uint32_t>(node, "type");
+	// GambitDefinition
+	namespace {
+		// <entry><name/><type>0x4edcd7a9</type><value/></entry>, as tools/data/phase_gambits.py writes them.
+		AIProperties ReadAIProperties(const pugi::xml_node& node) {
+			AIProperties properties;
+			for (const auto& child : node) {
+				if (utils::string_iequals(child.name(), "entry")) {
+					properties.push_back(AIProperty::Make(
+						utils::xml_get_text_node(child, "name"),
+						utils::to_number<uint32_t>(utils::xml_get_text_node(child, "type"), 0),
+						utils::xml_get_text_node(child, "value")));
+				}
+			}
+			return properties;
+		}
 	}
 
-	// GambitDefinition
 	void GambitDefinition::Read(pugi::xml_node node) {
-		ReadListNode(node, "conditionProps", mConditionProperties);
-		ReadListNode(node, "abilityProps", mAbilityProperties);
-		
-		if (const auto& value = utils::xml_get_text_node(node, "condition"); !value.empty()) {
-			mCondition = utils::hash_id(value);
+		mConditionProperties = ReadAIProperties(node.child("conditionProps"));
+		mAbilityProperties = ReadAIProperties(node.child("abilityProps"));
+
+		mConditionName = utils::xml_get_text_node(node, "condition");
+		if (!mConditionName.empty()) {
+			mCondition = utils::hash_id(mConditionName);
 		}
 
 		if (const auto& value = utils::xml_get_text_node(node, "ability"); !value.empty()) {
@@ -427,12 +435,16 @@ namespace Game {
 		mRandomizeCooldown = utils::xml_get_text_node<bool>(node, "randomizeCooldown");
 	}
 
-	const std::vector<AssetProperty>& GambitDefinition::GetConditionProperties() const {
+	const AIProperties& GambitDefinition::GetConditionProperties() const {
 		return mConditionProperties;
 	}
 
-	const std::vector<AssetProperty>& GambitDefinition::GetAbilityProperties() const {
+	const AIProperties& GambitDefinition::GetAbilityProperties() const {
 		return mAbilityProperties;
+	}
+
+	const std::string& GambitDefinition::GetConditionName() const {
+		return mConditionName;
 	}
 
 	uint32_t GambitDefinition::GetCondition() const {
@@ -443,11 +455,20 @@ namespace Game {
 		return mAbility;
 	}
 
+	bool GambitDefinition::RandomizesCooldown() const {
+		return mRandomizeCooldown;
+	}
+
 	// Phase
 	void Phase::Read(pugi::xml_node node) {
 		ReadListNode(node, "gambit", mGambit);
 
-		mType = utils::xml_get_text_node<PhaseType>(node, "phaseType");
+		// The installer's export leaves the gambits out and writes their count as the phase type.
+		// Only phases rebuilt from the binary assets (tools/data/phase_gambits.py) have the real type,
+		// which is 0, a prioritized list, in all 171 of the game's phases.
+		if (utils::xml_get_text_node(node, "gambitSource") == "binary") {
+			mType = utils::xml_get_text_node<PhaseType>(node, "phaseType");
+		}
 
 		mIsStartNode = utils::xml_get_text_node<bool>(node, "startNode");
 	}
@@ -496,7 +517,8 @@ namespace Game {
 
 	// AIDefinition
 	void AIDefinition::Read(pugi::xml_node node) {
-		ReadListNode(node, "ainode", mNodes);
+		// The tag is case-sensitive, and every AI definition has it as cAINode.
+		ReadListNode(node, "cAINode", mNodes);
 
 		// Ability
 		if (const auto& value = utils::xml_get_text_node(node, "deathAbility"); !value.empty()) { mDeathAbility = utils::hash_id(value); }
@@ -1358,9 +1380,17 @@ namespace Game {
 		if (mPhases.empty()) {
 			std::cout << " failed." << std::endl;
 			return false;
-		} else {
-			std::cout << " done. (loaded: " << mPhases.size() << ", failed: " << failed << ")" << std::endl;
-			return true;
 		}
+
+		size_t gambits = 0;
+		for (const auto& [_, phase] : mPhases) {
+			gambits += phase->GetGambit().size();
+		}
+		std::cout << " done. (loaded: " << mPhases.size() << ", gambits: " << gambits << ", failed: " << failed << ")" << std::endl;
+		if (gambits == 0) {
+			std::cout << "NounDatabase: the phases have no gambits (the installer's export drops them), so pets and turrets will not act. "
+				"Run tools/data/phase_gambits.py to write them from AssetData_Binary.package." << std::endl;
+		}
+		return true;
 	}
 }

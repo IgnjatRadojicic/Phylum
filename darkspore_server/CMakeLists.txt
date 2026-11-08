@@ -147,6 +147,7 @@ add_executable(recap_tests
     tests/castpursuit_test.cpp
     tests/attributemirror_test.cpp
     tests/facing_test.cpp
+    tests/aiproperty_test.cpp
     source/game/scriptsource.cpp
     source/game/scriptgaps.cpp
     source/game/projectilesweep.cpp
@@ -169,7 +170,8 @@ add_executable(recap_tests
     source/game/testenemyring.cpp
     source/game/castpursuit.cpp
     source/game/attributemirror.cpp
-    source/game/facing.cpp)
+    source/game/facing.cpp
+    source/game/aiproperty.cpp)
 target_include_directories(recap_tests PRIVATE source ${doctest_SOURCE_DIR})
 target_link_libraries(recap_tests PRIVATE lua pugixml)
 

@@ -3,6 +3,7 @@
 #define _GAME_NOUN_HEADER
 
 // Include
+#include "aiproperty.h"
 #include "collision.h"
 #include "utils/functions.h"
 
@@ -337,33 +338,26 @@ namespace Game {
 			friend class NounDatabase;
 	};
 
-	// AssetProperty
-	class AssetProperty {
-		public:
-			void Read(pugi::xml_node node);
-
-		private:
-			std::string mName;
-			std::string mValue;
-
-			uint32_t mKey = 0;
-			uint32_t mType = 0;
-	};
-
 	// GambitDefinition
+	// One line of a phase: the condition that must hold (none always holds) and the ability to use.
 	class GambitDefinition {
 		public:
 			void Read(pugi::xml_node node);
 
-			const std::vector<AssetProperty>& GetConditionProperties() const;
-			const std::vector<AssetProperty>& GetAbilityProperties() const;
+			const AIProperties& GetConditionProperties() const;
+			const AIProperties& GetAbilityProperties() const;
 
+			const std::string& GetConditionName() const;
 			uint32_t GetCondition() const;
 			uint32_t GetAbility() const;
 
+			bool RandomizesCooldown() const;
+
 		private:
-			std::vector<AssetProperty> mConditionProperties;
-			std::vector<AssetProperty> mAbilityProperties;
+			AIProperties mConditionProperties;
+			AIProperties mAbilityProperties;
+
+			std::string mConditionName;
 
 			uint32_t mCondition = 0;
 			uint32_t mAbility = 0;
