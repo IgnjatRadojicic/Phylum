@@ -239,6 +239,13 @@ namespace {
 			if deactivate then
 				deactivate(ability)
 			end
+
+			-- Then the attribute changes the cast made come off, as a modifier's do (0x9e11f0 -> 0x9ddd40):
+			-- the pet spawns add Immobilized in Activate and leave Deactivate empty.
+			for _, change in ipairs(context.attributeChanges or {}) do
+				ModifierEngine.RemoveAttributeChange(change.id, change.handle, 0)
+			end
+			context.attributeChanges = nil
 		end
 
 		-- Some scripts set tick by its nAbilityFns number, after they register
@@ -1251,13 +1258,36 @@ namespace {
 		-- Without an operation a change adds. Inside a modifier it ends with the modifier. The client
 		-- reads the value with lua_tonumber (0xa04000), so one that is no number adds 0
 		-- (FireRavagerEnergyVulnerability passes its ranked table).
+		-- In an ability it ends with the cast: the client keeps up to 32 changes on the running ability
+		-- or modifier, and one past that stays (0xa04000, 0x9ddd20).
+		local castChangeSlots = 32
+		local function castChanges()
+			local cast = CastContext.Get()
+			return cast and not cast.modifierId and cast.ability and cast or nil
+		end
+
 		function nAttribute.AddAttributeModifier(id, attribute, value, operation)
-			return ModifierEngine.AddAttributeChange(id, attribute, tonumber(value) or 0, operation or nAttributeOp.kAdd, instanceOf(nil))
+			local handle = ModifierEngine.AddAttributeChange(id, attribute, tonumber(value) or 0, operation or nAttributeOp.kAdd, instanceOf(nil))
+			local cast = castChanges()
+			if cast and handle ~= 0 then
+				cast.attributeChanges = cast.attributeChanges or {}
+				if #cast.attributeChanges < castChangeSlots then
+					table.insert(cast.attributeChanges, { id = id, handle = handle })
+				end
+			end
+			return handle
 		end
 
 		function nAttribute.RemoveAttributeModifier(id, handle)
 			if handle then
 				ModifierEngine.RemoveAttributeChange(id, handle, instanceOf(nil))
+				local cast = castChanges()
+				for index, change in ipairs(cast and cast.attributeChanges or {}) do
+					if change.id == id and change.handle == handle then
+						table.remove(cast.attributeChanges, index)
+						break
+					end
+				end
 			end
 		end
 	)lua";
