@@ -154,6 +154,7 @@ namespace Game {
 		// Abilities have instance numbers too, and they can equal this id.
 		context["instanceId"] = id;
 		context["modifierId"] = id;
+		context["endsWithTick"] = instance->spec.durationMs == 0 && instance->spec.deactivation == DeactivationType::Default;
 		mRuns[id].context = sol::main_table(context);
 
 		if (const auto object = mGame.GetObjectManager().Get(instance->agent)) {

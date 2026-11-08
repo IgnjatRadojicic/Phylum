@@ -983,6 +983,11 @@ namespace {
 				-- has its team and owner by then (modifier_pipeBomb_Passive reads its team in Tick).
 				nThread.Sleep(0)
 				tick(modifier)
+				-- A tick that returns ends a modifier with no duration (why ticks end in WaitForever);
+				-- the pet burrow's Deactivate deletes the pet.
+				if context.endsWithTick then
+					ModifierEngine.MarkForDelete(context.modifierId)
+				end
 			end
 		end
 
