@@ -578,6 +578,14 @@ namespace Game {
 		return mSubsequentAggroAbility;
 	}
 
+	const std::string& AIDefinition::GetCombatIdle() const {
+		return mCombatIdle;
+	}
+
+	const std::string& AIDefinition::GetPassiveIdle() const {
+		return mPassiveIdle;
+	}
+
 	uint32_t AIDefinition::GetPassiveAbility() const {
 		return mPassiveAbility;
 	}

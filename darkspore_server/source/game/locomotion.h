@@ -197,6 +197,14 @@ namespace Game {
 			void SetFacing(const glm::vec3& facingPosition);
 			void Stop();
 
+			// FollowAsPet (client 0xa00550 -> 0xa14b40): follow an object and stop that far from it.
+			// The client only marks its locomotion dirty; this answers whether the follow changed
+			// enough to be sent again (another target or distance, or the target moved on).
+			bool Follow(const ObjectPtr& object, float distance);
+
+			// Stopped where it stands (Stop), with no walk, jump or push left.
+			bool IsStopped() const;
+
 			// Darkspore.exe 0xa099c0: moves at once to a position and faces a direction from there.
 			// A direction with no length keeps the facing.
 			void TeleportAndFace(const glm::vec3& position, const glm::vec3& direction);

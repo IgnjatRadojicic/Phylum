@@ -351,6 +351,8 @@ namespace Game {
 					triggerVolumes->OnObjectRemoved(object->GetId());
 				}
 				mGame.GetModifiers().OnAgentDestroyed(object->GetId());
+				// A pet's follow behavior would otherwise wait for it forever.
+				object->OnRemoved();
 			}
 
 			mGame.SendObjectDelete(mMarkedObjects);

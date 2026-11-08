@@ -6,6 +6,7 @@
 #include "noun.h"
 #include "attributes.h"
 #include "attributestack.h"
+#include "behaviorrunner.h"
 #include "cooldowntable.h"
 #include "hitroll.h"
 #include "locomotion.h"
@@ -238,6 +239,9 @@ namespace Game {
 
 			void OnTick();
 
+			// Before the object goes: its behavior's exit step still finds it.
+			void OnRemoved();
+
 			// nAgent's aggro list: the live hostile creatures within the NPC's aggro range, nearest
 			// first (OrderHostiles). The best target is the first of them.
 			std::vector<uint32_t> GetAggroList() const;
@@ -258,6 +262,10 @@ namespace Game {
 			// A turret has no locomotion to turn it, so it turns itself to its target.
 			void TurnToward(const ObjectPtr& target);
 
+			// The idle behavior (follow the owner) while no ability of the agent runs: combatIdle in
+			// combat, passiveIdle out of it (0xa21c10, 0xa214d0).
+			void RunIdle(const AIDefinition& definition);
+
 			// What every NPC did before gambits ran: the first-aggro cast at the first player in
 			// aggro range, and turning to face them.
 			void TickWithoutGambits();
@@ -269,6 +277,7 @@ namespace Game {
 		private:
 			Object& mObject;
 			std::weak_ptr<Object> mTarget;
+			BehaviorRunner mBehavior;
 
 			uint64_t mNextThink = 0;
 
@@ -381,6 +390,9 @@ namespace Game {
 
 			// The NPC's AI, or null for a player's creature.
 			const AI* GetAI() const;
+
+			// Called just before the object is removed, while scripts can still reach it.
+			void OnRemoved();
 
 			uint64_t GetAssetId() const;
 			void SetAssetId(uint64_t assetId);

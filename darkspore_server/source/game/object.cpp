@@ -397,7 +397,7 @@ namespace Game {
 	}
 
 	// AI
-	AI::AI(Object& object) : mObject(object) {}
+	AI::AI(Object& object) : mObject(object), mBehavior(object) {}
 
 	namespace {
 		// How often an AI with gambits picks one: its conditions are scripts. A judgement call;
@@ -412,6 +412,8 @@ namespace Game {
 		if (RunsGambits(mObject)) {
 			Think();
 		} else {
+			// A summon whose hero is gone leaves its behavior with its gambits.
+			mBehavior.Exit();
 			TickWithoutGambits();
 		}
 	}
@@ -431,25 +433,39 @@ namespace Game {
 
 		const auto* phase = CurrentPhase(*definition);
 		if (!phase) {
+			RunIdle(*definition);
 			return;
 		}
 
 		const GambitRunner runner(mObject, game.GetLua(), [this] { return GetBestTarget(); });
 		const auto cast = runner.Choose(*phase, mGambit);
-		if (!cast) {
-			return;
-		}
-
-		if (definition->FaceTarget() && cast->target && cast->target.get() != &mObject) {
-			TurnToward(cast->target);
-		}
 
 		// Paid as a player's cast is (cooldown and mana; a manual ability pays in its script), or the
 		// same gambit would go again on the next think.
-		if (!game.PayForCast(mObject.shared_from_this(), cast->ability->GetId(), 1, 0).allowed) {
+		if (!cast || !game.PayForCast(mObject.shared_from_this(), cast->ability->GetId(), 1, 0).allowed) {
+			RunIdle(*definition);
 			return;
 		}
+
+		// The ability takes over the agent's movement, so the idle is left first: its exit step
+		// stops the agent, which would undo the turn and the ability's own moves.
+		mBehavior.Exit();
+		if (definition->FaceTarget() && cast->target && cast->target.get() != &mObject) {
+			TurnToward(cast->target);
+		}
 		Cast(cast->ability, cast->target, cast->position);
+	}
+
+	void AI::RunIdle(const AIDefinition& definition) {
+		// An ability of the agent's that still runs owns its movement.
+		if (mObject.GetLuaThread()) {
+			return;
+		}
+		mBehavior.Run(mObject.IsInCombat() ? definition.GetCombatIdle() : definition.GetPassiveIdle());
+	}
+
+	void AI::OnRemoved() {
+		mBehavior.Exit();
 	}
 
 	const Phase* AI::CurrentPhase(const AIDefinition& definition) const {
@@ -929,6 +945,12 @@ namespace Game {
 
 	const AI* Object::GetAI() const {
 		return mAI.get();
+	}
+
+	void Object::OnRemoved() {
+		if (mAI) {
+			mAI->OnRemoved();
+		}
 	}
 
 	uint64_t Object::GetAssetId() const {

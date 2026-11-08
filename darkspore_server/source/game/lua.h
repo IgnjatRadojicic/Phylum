@@ -252,11 +252,14 @@ namespace Game {
 			// A pooled thread can be reused or deleted, so anything holding on to one keeps a ticket.
 			uint64_t TrackThread(LuaThread* thread);
 			void StopThread(uint64_t ticket);
+			// Whether the tracked thread still waits to go on; a finished one is back in the pool.
+			bool IsThreadRunning(uint64_t ticket) const;
 
 		private:
 			// luafunctions.cpp
 			void PreloadLibraries();
 			void PreloadConditions();
+			void PreloadBehaviors();
 			void PreloadModifiers();
 
 			void RegisterEnums();

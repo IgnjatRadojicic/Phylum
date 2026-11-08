@@ -453,9 +453,37 @@ namespace Game {
 		return *mConditions;
 	}
 
+	void Lua::PreloadBehaviors() {
+		// The AI's behaviors (nBehavior_FollowOwner), one global table per file (BehaviorRunner).
+		const std::filesystem::path folder = "data/serverdata/behaviors";
+		if (!std::filesystem::exists(folder)) {
+			return;
+		}
+
+		sol::protected_function require = mState["require"];
+
+		size_t loaded = 0, failed = 0;
+		for (const auto& entry : std::filesystem::directory_iterator(folder)) {
+			if (entry.path().extension() != ".lua") {
+				continue;
+			}
+
+			sol::protected_function_result result = require("behaviors!" + entry.path().filename().string());
+			if (result.valid()) {
+				++loaded;
+			} else {
+				sol::error err = result;
+				std::cout << err.what() << std::endl;
+				++failed;
+			}
+		}
+		std::cout << "Game behavior scripts: " << loaded << " loaded, " << failed << " failed." << std::endl;
+	}
+
 	void Lua::PreloadAbilities() {
 		PreloadLibraries();
 		PreloadConditions();
+		PreloadBehaviors();
 
 		// Each script registers itself under its own name when it runs.
 		const auto run = [this](const sol::bytecode& code, bool report) {
@@ -620,6 +648,10 @@ namespace Game {
 			mTrackedThreads.erase(it);
 			CancelThread(thread);
 		}
+	}
+
+	bool Lua::IsThreadRunning(uint64_t ticket) const {
+		return ticket != 0 && mTrackedThreads.contains(ticket);
 	}
 
 	void Lua::CancelThread(LuaThread* thread) {

@@ -17,8 +17,10 @@ namespace Game {
 	}
 
 	bool IsHeroSummon(const Object& object) {
+		// A removed owner can outlive its removal while a script still holds it, and the scripts
+		// then find no owner: the summon is left to itself, as a mob is.
 		auto owner = object.GetOwnerObject();
-		for (int depth = 0; owner && owner.get() != &object && depth < maxOwnerDepth; ++depth) {
+		for (int depth = 0; owner && owner.get() != &object && !owner->IsMarkedForDeletion() && depth < maxOwnerDepth; ++depth) {
 			if (IsHero(*owner)) {
 				return true;
 			}

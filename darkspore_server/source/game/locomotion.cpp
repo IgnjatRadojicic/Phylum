@@ -555,9 +555,13 @@ LAB_009ef634:
 		// mGoalFlags = 1 & 0x040;
 		mTargetId = object->GetId();
 		mGoalPosition = object->GetPosition();
-		mPartialGoalPosition = mGoalPosition;
 		mAllowedStopDistance = distance;
 		mDesiredStopDistance = distance;
+
+		// It walks up to the stop distance from the object, not onto it.
+		const auto offset = mGoalPosition - mObject->GetPosition();
+		const float gap = glm::length(offset);
+		mPartialGoalPosition = gap > distance ? mGoalPosition - offset / gap * distance : mObject->GetPosition();
 
 		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
 	}
@@ -605,6 +609,28 @@ LAB_009ef634:
 		HoldPosition();
 
 		mObject->SetFlags(mObject->GetFlags() | Object::Flags::UpdateLocomotion);
+	}
+
+	bool Locomotion::Follow(const ObjectPtr& object, float distance) {
+		// How far the followed object may move before the follow is sent again. A judgement call:
+		// the client only marks the locomotion dirty, and a behavior asks again every update.
+		constexpr float resendDistance = 1.f;
+
+		if (!object) {
+			return false;
+		}
+
+		const bool same = mGoalFlags == 0x400 && mTargetId == object->GetId() && mDesiredStopDistance == distance;
+		if (same && glm::distance(mGoalPosition, object->GetPosition()) < resendDistance) {
+			return false;
+		}
+
+		SetGoalObjectEx(object, distance, false);
+		return true;
+	}
+
+	bool Locomotion::IsStopped() const {
+		return mGoalFlags == 0x020 && !mJumpArc && mWalkDistanceLeft <= 0 && mExternalLinearVelocity == glm::zero<glm::vec3>();
 	}
 
 	void Locomotion::TeleportAndFace(const glm::vec3& position, const glm::vec3& direction) {

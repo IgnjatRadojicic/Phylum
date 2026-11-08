@@ -438,6 +438,10 @@ namespace Game {
 			uint32_t GetSubsequentAggroAbility() const;
 			uint32_t GetPassiveAbility() const;
 
+			// The behaviors the agent idles with, in combat and out of it (nBehavior_FollowOwner).
+			const std::string& GetCombatIdle() const;
+			const std::string& GetPassiveIdle() const;
+
 			bool FaceTarget() const;
 			bool AlwaysRun() const;
 			bool RandomizeCooldowns() const;

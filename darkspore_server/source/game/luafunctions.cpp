@@ -12,6 +12,7 @@
 #include "utils/functions.h"
 #include "utils/log.h"
 
+#include <glm/gtc/constants.hpp>
 #include <glm/gtx/norm.hpp>
 #include <glm/gtx/compatibility.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -520,14 +521,19 @@ namespace LuaFunction {
 			if (object && object->HasLocomotionData()) {
 				auto target = LuaGetObject(objectManager, targetValue);
 				if (!target) {
-					return;
+					return false;
 				}
 
+				// The client's distance defaults to almost nothing, plus the target's radius (0xa00550).
 				const auto& locomotion = object->GetLocomotionData();
-				locomotion->SetGoalObjectEx(target, distance.value_or(0.f) + target->GetFootprintRadius(), false);
-
-				game.MoveObject(object, *locomotion);
+				const float stopDistance = distance.value_or(0.000015f) + target->GetFootprintRadius();
+				if (locomotion->Follow(target, stopDistance)) {
+					game.GetLua().Trace(std::format("FOLLOW object={} target={} distance={:.1f}", object->GetId(), target->GetId(), stopDistance));
+					game.MoveObject(object, *locomotion);
+				}
+				return true;
 			}
+			return false;
 		}
 
 		auto ApplyExternalVelocity(sol::this_state L, sol::object objectValue, glm::vec3 velocity) {
@@ -640,7 +646,12 @@ namespace LuaFunction {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
 			if (object && object->HasLocomotionData()) {
+				// A pet's behavior stops it on every update while it waits; one that stands still
+				// already has nothing to send. A hero's goal comes from its client, so it always is.
 				const auto& locomotion = object->GetLocomotionData();
+				if (!object->IsPlayerControlled() && locomotion->IsStopped()) {
+					return;
+				}
 				locomotion->Stop();
 
 				game.MoveObject(object, *locomotion);
@@ -724,6 +735,33 @@ namespace LuaFunction {
 				right = length > 0.000001f ? right / length : axis;
 			}
 			return std::make_tuple(right.x, right.y, right.z);
+		}
+
+		// The turn from the object's facing to the direction of another object, in degrees from 0 to
+		// 360, counterclockwise (client 0xa0db10). Nothing when either is missing.
+		auto GetObjectAngleDeg(sol::this_state L, sol::object objectValue, sol::object otherValue) -> sol::object {
+			auto& game = LuaGetGame(L);
+			auto& objectManager = game.GetObjectManager();
+			auto object = LuaGetObject(objectManager, objectValue);
+			auto other = LuaGetObject(objectManager, otherValue);
+			if (!object || !other) {
+				return sol::lua_nil;
+			}
+
+			const auto delta = other->GetPosition() - object->GetPosition();
+			const float length = glm::length(delta);
+			const glm::vec3 facing = object->GetOrientation() * glm::vec3(0.f, 1.f, 0.f);
+			if (length <= 0.000001f || glm::length(facing) <= 0.000001f) {
+				return sol::make_object(L, 0.0);
+			}
+
+			const auto direction = delta / length;
+			const auto forward = glm::normalize(facing);
+			float angle = std::acos(std::clamp(glm::dot(forward, direction), -1.f, 1.f));
+			if (glm::cross(forward, direction).z < 0) {
+				angle = glm::two_pi<float>() - angle;
+			}
+			return sol::make_object(L, static_cast<double>(glm::degrees(angle)));
 		}
 
 		auto GetFootprintRadius(sol::this_state L, sol::object objectValue) {
@@ -2306,6 +2344,7 @@ namespace Game {
 		object["GetNpcType"] = &Object::GetNpcType;
 
 		object["GetFacing"] = &LuaFunction::Object::GetFacing;
+		object["GetObjectAngleDeg"] = &LuaFunction::Object::GetObjectAngleDeg;
 		object["GetFootprintRadius"] = &Object::GetFootprintRadius;
 		object["GetRightDirection"] = &LuaFunction::Object::GetRightDirection;
 		object["GetCenterPoint"] = &Object::GetCenterPoint;

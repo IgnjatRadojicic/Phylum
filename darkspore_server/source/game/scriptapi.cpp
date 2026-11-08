@@ -1789,6 +1789,17 @@ namespace Game {
 			return ai && ai->InPerceptionCircle(glm::vec3(x, y, z), radius.value_or(0.f));
 		};
 
+		// The agent whose behavior runs on this thread, else 0 (0xa00390).
+		sol::table behaviorTree = mState.create_named_table("nBehaviorTree");
+		behaviorTree["GetMyObjectID"] = [this](sol::this_state L) -> uint32_t {
+			const auto* thread = GetThread(L);
+			if (!thread) {
+				return 0;
+			}
+			const sol::object agent = thread->get_value(BehaviorRunner::agentKey);
+			return agent.get_type() == sol::type::number ? agent.as<uint32_t>() : 0;
+		};
+
 		sol::table simulator = mState.create_named_table("nGameSimulator");
 		simulator["GetGameTime"] = [this]() {
 			return GetGame().GetTime() / 1000.0;
