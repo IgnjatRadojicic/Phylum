@@ -265,6 +265,23 @@ namespace {
 			end)
 		end
 
+		-- Only a running modifier's id runs the function, inside that modifier.
+		function ModifierCheckCallInContext(agent, running, ended, result)
+			nThread.Create(agent, function()
+				local calls = 0
+				local function count()
+					calls = calls + 1
+				end
+				local before = CastContext.Get()
+				nModifier.CallFunctionInContext(kObjIDNone, count)
+				nModifier.CallFunctionInContext(nil, count)
+				nModifier.CallFunctionInContext(ended, count)
+				result.skipped = calls == 0
+				result.agent = nModifier.CallFunctionInContext(running, nModifier.GetMyAgentID)
+				result.restored = CastContext.Get() == before
+			end)
+		end
+
 		function ModifierCheckChangeInside(running, object)
 			nThread.Create(object, function()
 				CastContext.Set(ModifierEngine.GetContext(running))
@@ -324,6 +341,7 @@ namespace {
 				CheckDestroyedAgentLeavesNothing(slow);
 				CheckAbilityChangeOutlivesModifier(slow);
 				CheckMissingIdMarksNothing(slow);
+				CheckCallInContextNeedsARunningModifier(slow);
 				CheckFullyResistedIsRefused(slow);
 				CheckReusedIdKeepsItsChanges(slow);
 				CheckResetAnimationReachesTheClient();
@@ -573,6 +591,28 @@ namespace {
 
 				Report("missing-id-marks-nothing", id != 0 && Manager().Get(id), "");
 				EndNow(id);
+			}
+
+			void CheckCallInContextNeedsARunningModifier(uint32_t slow) {
+				auto agent = Spawn();
+				auto other = Spawn();
+				auto caster = Spawn();
+
+				const auto running = Request(agent, caster, slow);
+				const auto ended = Request(other, caster, slow);
+				EndNow(ended);
+
+				sol::table result = mState.create_table();
+				sol::protected_function call = mState["ModifierCheckCallInContext"];
+				call(agent->GetId(), running, ended, result);
+
+				const bool skipped = result.get_or("skipped", false);
+				const bool restored = result.get_or("restored", false);
+				const double seen = result.get_or("agent", 0.0);
+				Report("call-in-context-needs-a-running-modifier",
+					running != 0 && ended != 0 && skipped && restored && seen == agent->GetId(),
+					"skipped=" + std::to_string(skipped) + " restored=" + std::to_string(restored) + " agent=" + std::to_string(seen));
+				EndNow(running);
 			}
 
 			void CheckFullyResistedIsRefused(uint32_t slow) {

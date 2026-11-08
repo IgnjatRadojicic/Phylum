@@ -1242,15 +1242,22 @@ namespace {
 			return #matching(agent, "debuffDescriptors", flag) > 0
 		end
 
-		-- Runs a function as if it were inside that modifier, then goes back
+		-- Runs a function as if it were inside that modifier, then goes back. An id that is no running
+		-- modifier (nil, kObjIDNone, one that ended) calls nothing, as in the client (0xa06d90 and
+		-- 0xa66950 return before the call when the lookup fails). Sprout's ClearThingsInCloud relies
+		-- on that: it passes a poison modifier that may have ended.
 		local function finishInContext(previous, ...)
 			CastContext.Set(previous)
 			return ...
 		end
 
 		function nModifier.CallFunctionInContext(id, callback, ...)
+			local context = id ~= nil and ModifierEngine.GetContext(id)
+			if not context or type(callback) ~= "function" then
+				return
+			end
 			local previous = CastContext.Get()
-			CastContext.Set(contextOf(id) or previous)
+			CastContext.Set(context)
 			return finishInContext(previous, callback(...))
 		end
 		nAbility.CallFunctionInContext = nModifier.CallFunctionInContext
