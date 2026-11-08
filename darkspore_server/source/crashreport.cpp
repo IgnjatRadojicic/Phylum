@@ -97,11 +97,12 @@ namespace {
 
 void CrashReport::Install() {
 	SetUnhandledExceptionFilter(OnCrash);
-	std::set_terminate(OnTerminate);
 	GuardThread();
 }
 
+// The CRT keeps the terminate handler per thread, so each guarded thread sets its own.
 void CrashReport::GuardThread() {
+	std::set_terminate(OnTerminate);
 	ULONG size = 64 * 1024;
 	SetThreadStackGuarantee(&size);
 }

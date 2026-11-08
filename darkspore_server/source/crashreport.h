@@ -9,7 +9,8 @@ class CrashReport {
 	public:
 		static void Install();
 
-		// Keeps stack room on the calling thread, so a stack overflow there still gets a report.
+		// For the calling thread: a report on an uncaught C++ exception, and stack room so a stack
+		// overflow there still gets one.
 		static void GuardThread();
 };
 
