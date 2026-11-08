@@ -276,6 +276,21 @@ namespace {
 			end
 		})
 
+		-- A channel set up as Sleeping Cloud's (nAbility_SleepingCloud): it needs its agent and ends
+		-- on the agent's next action.
+		ModifierCheckChannel = { ended = 0 }
+		local channel = { requiresAgent = true, handledEvents = nAbilityEventFlags.StartedNewAction }
+		nAbility.RegisterAbility("ModifierCheckChannel", channel)
+		channel[nAbilityFns.Tick] = function()
+			nThread.WaitForXSeconds(100)
+		end
+		channel[nAbilityFns.HandleEvent] = function(event)
+			return nAbility.GetAbilityEventType(event) ~= nAbilityEventFlags.StartedNewAction
+		end
+		channel[nAbilityFns.Deactivate] = function()
+			ModifierCheckChannel.ended = ModifierCheckChannel.ended + 1
+		end
+
 		function ModifierCheckBreaksOnTeleportGuid()
 			return nUtil.SPID("ModifierCheckBreaksOnTeleport")
 		end
@@ -316,6 +331,7 @@ namespace {
 			nModifier.registered[nUtil.SPID("ModifierCheckBreaksOnTeleport")] = nil
 			nAbility.scripts.ModifierCheckListensCast = nil
 			nAbility.scripts.ModifierCheckSendsToItself = nil
+			nAbility.scripts.ModifierCheckChannel = nil
 			nAbility.scripts.ModifierCheckWaits = nil
 			nAbility.scripts.ModifierCheckFails = nil
 			nAbility.scripts.ModifierCheckCancelled = nil
@@ -326,7 +342,7 @@ namespace {
 			-- RegisterAbility also lists an ability as a modifier (one registry, as in the client)
 			for _, name in ipairs({ "ModifierCheckWaits", "ModifierCheckFails", "ModifierCheckCancelled", "ModifierCheckDeactivateFails",
 				"ModifierCheckStealthCast", "ModifierCheckCancelledWithChild", "ModifierCheckFinishes",
-				"ModifierCheckListensCast", "ModifierCheckSendsToItself" }) do
+				"ModifierCheckListensCast", "ModifierCheckSendsToItself", "ModifierCheckChannel" }) do
 				nModifier.registered[nUtil.SPID(name)] = nil
 			end
 		end
@@ -445,6 +461,7 @@ namespace {
 				CheckEventAnswersEndOrKeep();
 				CheckCastEndedFromItselfEndsAtItsWait();
 				CheckTeleportBreaksRoot();
+				CheckChannelEndsOnNewAction();
 				CheckThornsHitsMeleeAttackerBack();
 				CheckMobPassiveStartsOnce();
 				CheckKillObjectEndsPassive();
@@ -884,6 +901,37 @@ namespace {
 				Report("teleport-breaks-root", started && keptByFace && broken && entangleStays,
 					"started=" + std::to_string(started) + " keptByFace=" + std::to_string(keptByFace) +
 					" broken=" + std::to_string(broken) + " entangleStays=" + std::to_string(entangleStays));
+			}
+
+			// A channel that ends on StartedNewAction, as Sleeping Cloud's does, survives its own start,
+			// ends when its agent casts again (an ability that needs its agent) and when it is given
+			// somewhere to go (MoveToObject, 0xa149c0).
+			void CheckChannelEndsOnNewAction() {
+				auto agent = Spawn();
+				auto target = Spawn();
+				const auto channelId = utils::hash_id("ModifierCheckChannel");
+				mLua.GetAbility(channelId)->FindNumberedTick();
+				sol::table channel = mState["ModifierCheckChannel"];
+
+				RakNet::CombatData cast {};
+				cast.abilityId = channelId;
+				cast.abilityRank = 1;
+				mGame.UseAbility(agent, cast);
+				Wait(100);
+				const bool survivesStart = channel.get_or("ended", 0) == 0 && agent->GetLuaThread() != nullptr;
+
+				mGame.UseAbility(agent, cast);
+				Wait(100);
+				const bool endsOnCast = channel.get_or("ended", 0) == 1 && agent->GetLuaThread() != nullptr;
+
+				sol::protected_function moveTo = mState["Locomotion"]["MoveToObject"];
+				moveTo(agent->GetId(), target->GetId());
+				Wait(100);
+				const bool endsOnMove = channel.get_or("ended", 0) == 2 && agent->GetLuaThread() == nullptr;
+
+				Report("channel-ends-on-new-action", survivesStart && endsOnCast && endsOnMove,
+					"survivesStart=" + std::to_string(survivesStart) + " endsOnCast=" + std::to_string(endsOnCast) +
+					" endsOnMove=" + std::to_string(endsOnMove) + " ended=" + std::to_string(channel.get_or("ended", 0)));
 			}
 
 			// ZelemBasicMelee's AI definition names its passive, which no script requests.

@@ -345,6 +345,14 @@ namespace LuaFunction {
 			}
 		}
 
+		// The client's move-goal setters raise StartedNewAction on the mover (0xa148c0, 0xa149c0):
+		// MoveToObject, MoveToCircleEdge and MoveToPointWithinRange. Sleeping Cloud's channel ends on it.
+		void RaiseStartedNewAction(Game::Instance& game, const Game::ObjectPtr& object) {
+			if (auto events = game.GetActionEvents()) {
+				events->StartedNewAction(object->GetId());
+			}
+		}
+
 		// Darkspore.exe 0xa099c0: a position, then the direction to face from there.
 		auto TeleportAndFace(sol::this_state L, sol::object objectValue, glm::vec3 position, glm::vec3 direction) {
 			auto& game = LuaGetGame(L);
@@ -456,6 +464,7 @@ namespace LuaFunction {
 				}
 
 				game.MoveObject(object, *locomotion);
+				RaiseStartedNewAction(game, object);
 			}
 		}
 
@@ -479,6 +488,7 @@ namespace LuaFunction {
 				}
 
 				game.MoveObject(object, *locomotion);
+				RaiseStartedNewAction(game, object);
 
 				thread->set_resume_condition([&objectManager, objectId = object->GetId(), position, distance](lua_State* L, sol::variadic_results& results) {
 					auto object = objectManager.Get(objectId);
@@ -517,6 +527,7 @@ namespace LuaFunction {
 				}
 
 				game.MoveObject(object, *locomotion);
+				RaiseStartedNewAction(game, object);
 			}
 		}
 

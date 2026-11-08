@@ -11,6 +11,7 @@
 #include "utils/functions.h"
 
 #include "game/instance.h"
+#include "game/actionevents.h"
 #include "game/objectmanager.h"
 #include "game/serverevent.h"
 #include "game/catalyst.h"
@@ -737,6 +738,11 @@ namespace RakNet {
 				locomotionData->SetGoalFlags(locomotionData->GetGoalFlags() | command.movement.goalFlags);
 
 				mGame.MoveObject(object, *locomotionData);
+
+				// A move order is a new action (the client's move-goal setter 0xa148c0 raises it).
+				if (auto events = mGame.GetActionEvents()) {
+					events->StartedNewAction(object->GetId());
+				}
 				break;
 			}
 
@@ -797,6 +803,11 @@ namespace RakNet {
 
 					if (combatData.abilityId != 0 && mGame.PursueBeforeCast(object, combatData)) {
 						SendActionPursuit(client, command.data.unk[0], object->GetId());
+
+						// The hero walks to its target first, which is a new action too (0xa149c0).
+						if (auto events = mGame.GetActionEvents()) {
+							events->StartedNewAction(object->GetId());
+						}
 					} else if (combatData.abilityId != 0) {
 						// The reply carries the cooldown, so the cast is paid for before it goes.
 						const auto answer = mGame.PayForCast(object, combatData.abilityId, combatData.abilityRank, 500);

@@ -112,6 +112,7 @@ namespace Game {
 	class DamageEvents;
 	class ActionEvents;
 	class AbilityEvent;
+	class Ability;
 	class AbilityEventDelivery;
 	struct DamageReport;
 
@@ -160,6 +161,8 @@ namespace Game {
 			float GetRecentDamage(uint32_t victim, float cap, float seconds) const;
 			void ReportDodge(uint32_t victim, uint32_t attacker);
 			void ReportUsedAbility(uint32_t agent, uint32_t descriptors);
+			// A cast is about to run: UsedAbility, then StartedNewAction for an ability that needs its agent.
+			void ReportCastStarted(uint32_t agent, const Ability& ability);
 			// An event a script sends (nAbility.SendAbilityEvent), to the agent's casts and modifiers.
 			void SendAbilityEvent(uint32_t agent, const AbilityEvent& event);
 			// What raises the action events (StartedNewAction, BreakRoot and the rest). Null outside a world.

@@ -46,7 +46,15 @@ ends at its next wait, and a modifier whose own thread is running ends at the ne
 - **InterruptModifier (16).** Only scripts send it. Gravity Storm's Deactivate sends it to each
   lifted target while the storm is still interruptible (L47908). `nModifier_GravityStorm` then skips
   its slam. No slots.
-- **StartedNewAction (256).** No slots.
+- **StartedNewAction (256).** Sent: at a cast's start, by MoveToObject, MoveToCircleEdge and
+  MoveToPointWithinRange, and by the player's move order and the walk of an attack order
+  (MoveTowardObject is not on the server yet). No slots.
+  - The server raises it with UsedAbility before the script runs, so a new cast never hears its
+    own. Sleeping Cloud's channel answers false to every one, so if its own reached it, the channel
+    could never run; in the client the new cast must miss it too (not traced in 0x9e0660).
+  - The client also raises UsedAbility only for an ability that needs its agent (the same `+0x5a`
+    test). The server still raises UsedAbility for every cast: what an ability that does not set
+    `requiresAgent` reads there is not confirmed.
   - Raised after a cast starts, right after UsedAbility, when the ability definition's byte `+0x5a`
     is set (0xa67920 → 0x9e1540, raise at 0x9e15e6).
   - Raised by the move-goal setters 0xa148c0 and 0xa149c0 (MoveToObject, MoveTowardObject,

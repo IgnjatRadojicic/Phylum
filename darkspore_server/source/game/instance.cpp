@@ -292,6 +292,18 @@ namespace Game {
 		}
 	}
 
+	void Instance::ReportCastStarted(uint32_t agent, const Ability& ability) {
+		ReportUsedAbility(agent, static_cast<uint32_t>(ability.GetDescriptors()));
+
+		// The client raises StartedNewAction right after UsedAbility, for an ability that needs its
+		// agent (0x9e1540: byte +0x5a, raise at 0x9e15e6). It goes out before the script runs, so the
+		// new cast never hears its own: Sleeping Cloud's channel answers false to every one, and
+		// would end at once (the game's channel works, so the client's new cast does not hear it).
+		if (ability.RequiresAgent() && mActionEvents) {
+			mActionEvents->StartedNewAction(agent);
+		}
+	}
+
 	ActionEvents* Instance::GetActionEvents() {
 		return mActionEvents.get();
 	}
@@ -764,7 +776,7 @@ namespace Game {
 
 		// Raised before the script runs, so a cast that stealths its caster is not broken by its own
 		// event (modifier_stealth leaves stealth on the first UsedAbility it hears).
-		ReportUsedAbility(object->GetId(), static_cast<uint32_t>(ability->GetDescriptors()));
+		ReportCastStarted(object->GetId(), *ability);
 
 		// ability:tick(object, target, cursorPosition, rank)
 		return ability->Tick(object, mObjectManager->Get(combatData.targetId), combatData.cursorPosition, combatData.abilityRank);

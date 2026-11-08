@@ -591,7 +591,7 @@ namespace Game {
 
 	bool AI::Cast(const AbilityPtr& ability, const ObjectPtr& target, const glm::vec3& position) {
 		// Before the script runs, as for players (Instance::UseAbility).
-		mObject.GetGame().ReportUsedAbility(mObject.GetId(), static_cast<uint32_t>(ability->GetDescriptors()));
+		mObject.GetGame().ReportCastStarted(mObject.GetId(), *ability);
 		return ability->Tick(mObject.shared_from_this(), target, position, 1);
 	}
 
