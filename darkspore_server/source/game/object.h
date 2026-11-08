@@ -228,6 +228,8 @@ namespace Game {
 	};
 
 	// AI
+	// Runs an NPC's AI definition. Hero summons run their gambits (GambitRunner); other NPCs only do
+	// with AI_MOBS on (RunsGambits), and otherwise keep what they did before.
 	// Belongs to its object, so it holds it by reference (a shared pointer to its owner kept every
 	// NPC alive), and its target weakly, so a target that is gone is dropped.
 	class AI {
@@ -236,17 +238,41 @@ namespace Game {
 
 			void OnTick();
 
+			// nAgent's aggro list: the live hostile creatures within the NPC's aggro range, nearest
+			// first (OrderHostiles). The best target is the first of them.
+			std::vector<uint32_t> GetAggroList() const;
+			ObjectPtr GetBestTarget() const;
+
+			// nAgent.InPerceptionCircle: whether a point, widened by a radius, touches the circle the
+			// agent perceives (0xa0aea0). The client builds that circle from the camera around the
+			// owner (0x9e4040); the server has no camera, so it is the aggro range around the owner,
+			// or around the agent when it has none. Pets leave a fight that strays outside it.
+			bool InPerceptionCircle(const glm::vec3& point, float radius) const;
+
 		private:
+			// Picks and casts a gambit, a few times a second rather than on every update: a
+			// condition is a script, and a cast that fails before it pays its cooldown would
+			// otherwise go again on the next update.
+			void Think();
+			const Phase* CurrentPhase(const AIDefinition& definition) const;
+			// A turret has no locomotion to turn it, so it turns itself to its target.
+			void TurnToward(const ObjectPtr& target);
+
 			// What every NPC did before gambits ran: the first-aggro cast at the first player in
 			// aggro range, and turning to face them.
 			void TickWithoutGambits();
 			ObjectPtr FindPlayerInAggroRange() const;
 
 			bool Cast(uint32_t abilityId, const ObjectPtr& target, const glm::vec3& position);
+			bool Cast(const AbilityPtr& ability, const ObjectPtr& target, const glm::vec3& position);
 
 		private:
 			Object& mObject;
 			std::weak_ptr<Object> mTarget;
+
+			uint64_t mNextThink = 0;
+
+			uint8_t mGambit = 0;
 
 			bool mFirstAggro = false;
 	};
@@ -352,6 +378,9 @@ namespace Game {
 			bool HasAgentBlackboardData() const;
 			const std::unique_ptr<AgentBlackboard>& CreateAgentBlackboardData();
 			const std::unique_ptr<AgentBlackboard>& GetAgentBlackboardData() const;
+
+			// The NPC's AI, or null for a player's creature.
+			const AI* GetAI() const;
 
 			uint64_t GetAssetId() const;
 			void SetAssetId(uint64_t assetId);

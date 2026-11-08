@@ -34,6 +34,9 @@ namespace Game {
 		CONFIG_TEST_FREE_MANA,
 		// How many of the level's enemies to put around the hero's spawn point, for testing. 0 puts none.
 		CONFIG_TEST_ENEMIES_AT_SPAWN,
+		// true lets mobs run their AI gambits too. Off, only hero summons (pets, turrets) do, and mobs
+		// keep the first-aggro cast they had before.
+		CONFIG_AI_MOBS,
 		CONFIG_END
 	};
 

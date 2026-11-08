@@ -2,7 +2,11 @@
 // Include
 #include "object.h"
 
+#include "aicontrol.h"
+#include "aitargeting.h"
 #include "attributemirror.h"
+#include "facing.h"
+#include "gambitrunner.h"
 #include "objectmanager.h"
 #include "instance.h"
 #include "catalyst.h"
@@ -395,8 +399,116 @@ namespace Game {
 	// AI
 	AI::AI(Object& object) : mObject(object) {}
 
+	namespace {
+		// How often an AI with gambits picks one: its conditions are scripts. A judgement call;
+		// the client's AI does not run there, and Darkspin re-picks on each attack.
+		constexpr uint64_t thinkMilliseconds = 250;
+
+		// Turns smaller than this are not worth an orientation update.
+		constexpr float turnRadians = 0.01f;
+	}
+
 	void AI::OnTick() {
-		TickWithoutGambits();
+		if (RunsGambits(mObject)) {
+			Think();
+		} else {
+			TickWithoutGambits();
+		}
+	}
+
+	void AI::Think() {
+		auto& game = mObject.GetGame();
+		const auto now = game.GetTime();
+		if (now < mNextThink) {
+			return;
+		}
+		mNextThink = now + thinkMilliseconds;
+
+		const auto& definition = mObject.GetNoun()->GetAIDefinition();
+		if (!definition) {
+			return;
+		}
+
+		const auto* phase = CurrentPhase(*definition);
+		if (!phase) {
+			return;
+		}
+
+		const GambitRunner runner(mObject, game.GetLua(), [this] { return GetBestTarget(); });
+		const auto cast = runner.Choose(*phase, mGambit);
+		if (!cast) {
+			return;
+		}
+
+		if (definition->FaceTarget() && cast->target && cast->target.get() != &mObject) {
+			TurnToward(cast->target);
+		}
+		Cast(cast->ability, cast->target, cast->position);
+	}
+
+	const Phase* AI::CurrentPhase(const AIDefinition& definition) const {
+		// Every hero summon has one node. Mobs with several (behind AI_MOBS) start from the first;
+		// the nodes' own conditions are not run yet.
+		for (const auto& node : definition.GetNodes()) {
+			if (const auto& phase = node.GetPhaseData()) {
+				return phase.get();
+			}
+		}
+		return nullptr;
+	}
+
+	std::vector<uint32_t> AI::GetAggroList() const {
+		const auto& data = mObject.GetNoun()->GetNonPlayerClassData();
+		const float radius = data ? data->GetAggroRange() : 0.f;
+		if (radius <= 0) {
+			return {};
+		}
+
+		const auto objects = mObject.GetObjectManager().GetObjectsInRadius(BoundingSphere(mObject.GetPosition(), radius), { NounType::Creature });
+
+		std::vector<TargetCandidate> candidates;
+		candidates.reserve(objects.size());
+		for (const auto& object : objects) {
+			candidates.push_back({
+				.id = object->GetId(),
+				.position = object->GetPosition(),
+				.team = object->GetTeam(),
+				.alive = !object->IsMarkedForDeletion() && object->GetHealth() > 0,
+				.targetable = object->IsTargetable(),
+				.stealthed = object->GetStealthType() != StealthType::None
+			});
+		}
+
+		// Attribute 0x22 lets the agent see stealthed targets (0x9e3e50).
+		const bool detectsStealth = mObject.GetAttributeValue(AttributeType::StealthDetection) > 0;
+		return OrderHostiles(mObject.GetPosition(), mObject.GetTeam(), radius, detectsStealth, candidates, mObject.GetId());
+	}
+
+	bool AI::InPerceptionCircle(const glm::vec3& point, float radius) const {
+		const auto& data = mObject.GetNoun()->GetNonPlayerClassData();
+		const float circle = data ? data->GetAggroRange() : 0.f;
+
+		const auto owner = mObject.GetOwnerObject();
+		const auto& center = owner ? owner->GetPosition() : mObject.GetPosition();
+		return circle > glm::distance(point, center) - radius;
+	}
+
+	ObjectPtr AI::GetBestTarget() const {
+		const auto ids = GetAggroList();
+		return ids.empty() ? nullptr : mObject.GetObjectManager().Get(ids.front());
+	}
+
+	void AI::TurnToward(const ObjectPtr& target) {
+		if (mObject.HasLocomotionData()) {
+			mObject.GetLocomotionData()->SetFacing(target->GetPosition());
+			return;
+		}
+
+		// A turret has no locomotion, so its own orientation turns it.
+		const auto orientation = OrientationFromDirection(target->GetPosition() - mObject.GetPosition());
+		if (orientation && AngleBetween(mObject.GetOrientation(), *orientation) > turnRadians) {
+			mObject.SetOrientation(*orientation);
+		}
 	}
 
 	void AI::TickWithoutGambits() {
@@ -450,7 +562,10 @@ namespace Game {
 		if (!ability) {
 			return false;
 		}
+		return Cast(ability, target, position);
+	}
 
+	bool AI::Cast(const AbilityPtr& ability, const ObjectPtr& target, const glm::vec3& position) {
 		// Before the script runs, as for players (Instance::UseAbility).
 		mObject.GetGame().ReportUsedAbility(mObject.GetId(), static_cast<uint32_t>(ability->GetDescriptors()));
 		return ability->Tick(mObject.shared_from_this(), target, position, 1);
@@ -804,6 +919,10 @@ namespace Game {
 
 	const std::unique_ptr<AgentBlackboard>& Object::GetAgentBlackboardData() const {
 		return mAgentBlackboardData;
+	}
+
+	const AI* Object::GetAI() const {
+		return mAI.get();
 	}
 
 	uint64_t Object::GetAssetId() const {

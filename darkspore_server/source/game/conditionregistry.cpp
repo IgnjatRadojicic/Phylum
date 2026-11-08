@@ -56,6 +56,10 @@ namespace Game {
 		entry.defaultsRead = false;
 	}
 
+	bool ConditionRegistry::Contains(uint32_t conditionId) const {
+		return mConditions.contains(conditionId);
+	}
+
 	size_t ConditionRegistry::Size() const {
 		return mConditions.size();
 	}

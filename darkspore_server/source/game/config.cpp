@@ -78,6 +78,8 @@ namespace Game {
 				mConfig[CONFIG_TEST_FREE_MANA] = value;
 			} else if (name == "TEST_ENEMIES_AT_SPAWN") {
 				mConfig[CONFIG_TEST_ENEMIES_AT_SPAWN] = value;
+			} else if (name == "AI_MOBS") {
+				mConfig[CONFIG_AI_MOBS] = value;
 			} else if (name == "TEMPLATE_CREATURE_PARTS_PATH") {
 				mConfig[CONFIG_TEMPLATE_CREATURE_PARTS_PATH] = value;
 			} else {
@@ -106,6 +108,7 @@ namespace Game {
 		mConfig[CONFIG_TEST_MOB_HEALTH] = "0";
 		mConfig[CONFIG_TEST_FREE_MANA] = "0";
 		mConfig[CONFIG_TEST_ENEMIES_AT_SPAWN] = "0";
+		mConfig[CONFIG_AI_MOBS] = "false";
 
 		pugi::xml_document document;
 		if (auto parse_result = document.load_file(path.c_str())) {
@@ -184,6 +187,7 @@ namespace Game {
 				case CONFIG_TEST_MOB_HEALTH: return "TEST_MOB_HEALTH";
 				case CONFIG_TEST_FREE_MANA: return "TEST_FREE_MANA";
 				case CONFIG_TEST_ENEMIES_AT_SPAWN: return "TEST_ENEMIES_AT_SPAWN";
+				case CONFIG_AI_MOBS: return "AI_MOBS";
 				default: return "UNKNOWN";
 			}
 		};

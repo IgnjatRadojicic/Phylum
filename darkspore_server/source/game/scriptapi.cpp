@@ -1661,6 +1661,10 @@ namespace {
 		function nLocomotion.GetClosestPosition(agentId, x, y, z)
 			return nLocomotion.GetClosestPositionFromPoint(x, y, z)
 		end
+
+		-- The closest point the agent can walk to (the Beast's OwnerUnreachable condition): three
+		-- numbers, the point itself while there is no navigation mesh.
+		nLocomotion.GetClosestReachablePosition = nLocomotion.GetClosestPosition
 	)lua";
 }
 
@@ -1729,6 +1733,30 @@ namespace Game {
 					return sol::make_object(L, value);
 				}
 			}, property->value);
+		};
+
+		// The AI's aggro list (AI::GetAggroList). The client reads the agent's list (0x2b0 + 0x228);
+		// an object with no AI has none, so its best target is 0 (0xa00d80).
+		const auto aggroList = [this](uint32_t agentId) -> std::vector<uint32_t> {
+			const auto object = GetGame().GetObjectManager().Get(agentId);
+			const auto* ai = object ? object->GetAI() : nullptr;
+			return ai ? ai->GetAggroList() : std::vector<uint32_t> {};
+		};
+		sol::table agent = mState.create_named_table("nAgent");
+		agent["GetBestTarget"] = [aggroList](uint32_t agentId) {
+			const auto ids = aggroList(agentId);
+			return ids.empty() ? 0u : ids.front();
+		};
+		agent["HasTargetsOnAggroList"] = [aggroList](uint32_t agentId) {
+			return !aggroList(agentId).empty();
+		};
+		agent["GetTargetsOnAggroList"] = [aggroList](uint32_t agentId) {
+			return sol::as_table(aggroList(agentId));
+		};
+		agent["InPerceptionCircle"] = [this](uint32_t agentId, float x, float y, float z, sol::optional<float> radius) {
+			const auto object = GetGame().GetObjectManager().Get(agentId);
+			const auto* ai = object ? object->GetAI() : nullptr;
+			return ai && ai->InPerceptionCircle(glm::vec3(x, y, z), radius.value_or(0.f));
 		};
 
 		sol::table simulator = mState.create_named_table("nGameSimulator");

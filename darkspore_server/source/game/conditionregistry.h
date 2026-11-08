@@ -39,6 +39,7 @@ namespace Game {
 			explicit ConditionRegistry(TraceFn trace);
 
 			void Register(const std::string& name, sol::table condition);
+			bool Contains(uint32_t conditionId) const;
 			size_t Size() const;
 
 			ConditionResult Evaluate(uint32_t conditionId, const AIProperties& properties, uint32_t agentId);
