@@ -61,7 +61,8 @@ ends at its next wait, and a modifier whose own thread is running ends at the ne
     MoveToCircleEdge, MoveToPointWithinRange, and the player's move and attack orders).
   - Sleeping Cloud's channel (the ability, L13388) returns false on it, so walking or casting ends
     the channel.
-- **LostModifierOfType (4096).** Raised when a modifier leaves an agent that has no other modifier
+- **LostModifierOfType (4096).** Sent, from `ModifierSystem::Finish` once the modifier is gone (not
+  to an agent marked for deletion). Raised when a modifier leaves an agent that has no other modifier
   with the same GUID (0x9e1261, in 0x9e11f0). GUID 1 is the modifier's GUID, not its id.
   `GainedModifierOfType` (2048) is the mirror (0x9e0fe8). Stealth Attack (the ability, L89490) ends
   when its stealth modifier goes.

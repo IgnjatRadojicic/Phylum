@@ -2,6 +2,7 @@
 // Include
 #include "modifiersystem.h"
 
+#include "actionevents.h"
 #include "instance.h"
 #include "lua.h"
 #include "object.h"
@@ -224,7 +225,8 @@ namespace Game {
 
 		const auto instance = mManager.Get(id);
 		const auto agent = instance ? instance->agent : 0;
-		Trace("ended", instance ? instance->spec.guid : 0, id, agent, instance ? instance->initiator : 0);
+		const auto guid = instance ? instance->spec.guid : 0;
+		Trace("ended", guid, id, agent, instance ? instance->initiator : 0);
 
 		// Kept while deactivating, so the script finds its context and can take off its own changes.
 		// Anything it adds then ends with it too, though no game script does that.
@@ -240,10 +242,20 @@ namespace Game {
 		}
 		mRuns.erase(id);
 
-		if (const auto object = mGame.GetObjectManager().Get(agent)) {
+		const auto object = mGame.GetObjectManager().Get(agent);
+		if (object) {
 			mGame.SendModifierDeleted(object, id);
 		}
 		mManager.Remove(id);
+
+		// Last, as in the client (0x9e11f0 raises it at 0x9e1261 after the modifier has left the
+		// agent), and only when no other modifier of that GUID is left. An agent on its way out
+		// hears nothing: its other modifiers are ending with it.
+		if (object && !object->IsMarkedForDeletion() && !mManager.FindFirst(agent, guid)) {
+			if (auto events = mGame.GetActionEvents()) {
+				events->LostModifierOfType(agent, guid);
+			}
+		}
 	}
 
 	void ModifierSystem::DeliverEvent(uint32_t agent, const sol::table& data) {

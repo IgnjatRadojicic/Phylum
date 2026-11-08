@@ -291,6 +291,22 @@ namespace {
 			ModifierCheckChannel.ended = ModifierCheckChannel.ended + 1
 		end
 
+		-- Ends when its agent loses the modifier it watches, as Stealth Attack (nAbility_StealthAttack)
+		-- ends when its stealth goes. watched is set by the check; heard counts the other GUIDs.
+		ModifierCheckWatcher = { ended = 0, heard = 0 }
+		local watcher = { handledEvents = nAbilityEventFlags.LostModifierOfType }
+		nAbility.RegisterAbility("ModifierCheckWatcher", watcher)
+		watcher[nAbilityFns.Tick] = function()
+			nThread.WaitForXSeconds(100)
+		end
+		watcher[nAbilityFns.HandleEvent] = function(event)
+			ModifierCheckWatcher.heard = ModifierCheckWatcher.heard + 1
+			return nAbility.GetAbilityEventGUIDData(event, 1) ~= ModifierCheckWatcher.watched
+		end
+		watcher[nAbilityFns.Deactivate] = function()
+			ModifierCheckWatcher.ended = ModifierCheckWatcher.ended + 1
+		end
+
 		function ModifierCheckBreaksOnTeleportGuid()
 			return nUtil.SPID("ModifierCheckBreaksOnTeleport")
 		end
@@ -332,6 +348,7 @@ namespace {
 			nAbility.scripts.ModifierCheckListensCast = nil
 			nAbility.scripts.ModifierCheckSendsToItself = nil
 			nAbility.scripts.ModifierCheckChannel = nil
+			nAbility.scripts.ModifierCheckWatcher = nil
 			nAbility.scripts.ModifierCheckWaits = nil
 			nAbility.scripts.ModifierCheckFails = nil
 			nAbility.scripts.ModifierCheckCancelled = nil
@@ -342,7 +359,7 @@ namespace {
 			-- RegisterAbility also lists an ability as a modifier (one registry, as in the client)
 			for _, name in ipairs({ "ModifierCheckWaits", "ModifierCheckFails", "ModifierCheckCancelled", "ModifierCheckDeactivateFails",
 				"ModifierCheckStealthCast", "ModifierCheckCancelledWithChild", "ModifierCheckFinishes",
-				"ModifierCheckListensCast", "ModifierCheckSendsToItself", "ModifierCheckChannel" }) do
+				"ModifierCheckListensCast", "ModifierCheckSendsToItself", "ModifierCheckChannel", "ModifierCheckWatcher" }) do
 				nModifier.registered[nUtil.SPID(name)] = nil
 			end
 		end
@@ -462,6 +479,7 @@ namespace {
 				CheckCastEndedFromItselfEndsAtItsWait();
 				CheckTeleportBreaksRoot();
 				CheckChannelEndsOnNewAction();
+				CheckLostModifierEndsWatcher(slow);
 				CheckThornsHitsMeleeAttackerBack();
 				CheckMobPassiveStartsOnce();
 				CheckKillObjectEndsPassive();
@@ -932,6 +950,32 @@ namespace {
 				Report("channel-ends-on-new-action", survivesStart && endsOnCast && endsOnMove,
 					"survivesStart=" + std::to_string(survivesStart) + " endsOnCast=" + std::to_string(endsOnCast) +
 					" endsOnMove=" + std::to_string(endsOnMove) + " ended=" + std::to_string(channel.get_or("ended", 0)));
+			}
+
+			// When the agent's last modifier of a GUID ends, its casts and modifiers hear
+			// LostModifierOfType with that GUID (0x9e1261). A watcher that answers false on its GUID ends.
+			void CheckLostModifierEndsWatcher(uint32_t slow) {
+				auto agent = Spawn();
+				const auto watcherId = utils::hash_id("ModifierCheckWatcher");
+				mLua.GetAbility(watcherId)->FindNumberedTick();
+				sol::table watcher = mState["ModifierCheckWatcher"];
+				watcher["watched"] = slow;
+
+				const auto id = Request(agent, agent, slow);
+				RakNet::CombatData cast {};
+				cast.abilityId = watcherId;
+				cast.abilityRank = 1;
+				mGame.UseAbility(agent, cast);
+				Wait(100);
+				const bool running = id != 0 && agent->GetLuaThread() != nullptr && watcher.get_or("ended", 0) == 0;
+
+				mGame.GetModifiers().MarkForDelete(id);
+				Wait(100);
+				const bool ended = agent->GetLuaThread() == nullptr && watcher.get_or("ended", 0) == 1;
+
+				Report("lost-modifier-ends-watcher", running && ended && watcher.get_or("heard", 0) >= 1,
+					"id=" + std::to_string(id) + " running=" + std::to_string(running) + " ended=" + std::to_string(ended) +
+					" heard=" + std::to_string(watcher.get_or("heard", 0)));
 			}
 
 			// ZelemBasicMelee's AI definition names its passive, which no script requests.
