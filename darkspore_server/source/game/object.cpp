@@ -443,6 +443,12 @@ namespace Game {
 		if (definition->FaceTarget() && cast->target && cast->target.get() != &mObject) {
 			TurnToward(cast->target);
 		}
+
+		// Paid as a player's cast is (cooldown and mana; a manual ability pays in its script), or the
+		// same gambit would go again on the next think.
+		if (!game.PayForCast(mObject.shared_from_this(), cast->ability->GetId(), 1, 0).allowed) {
+			return;
+		}
 		Cast(cast->ability, cast->target, cast->position);
 	}
 
