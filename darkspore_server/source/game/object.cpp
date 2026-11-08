@@ -442,8 +442,29 @@ namespace Game {
 		const GambitRunner runner(mObject, game.GetLua(), [this] { return GetBestTarget(); });
 		const auto cast = runner.Choose(*phase, mGambit);
 
+		// Out of reach: walk up to the target, and cast once there. Left to idle, Sage's saplings
+		// (a 0.75 bite) only followed Sage while it fought.
+		if (cast && !cast->inReach) {
+			Pursue(*cast, runner.ReachDistance(*cast));
+			return;
+		}
+		mPursuedId = 0;
+		// Still on its way there: the server already holds it at the goal, the client not yet.
+		if (const auto& locomotion = mObject.GetLocomotionData(); locomotion && locomotion->GetWalkDistanceLeft() > 0) {
+			return;
+		}
+
 		// Paid as a player's cast is (cooldown and mana; a manual ability pays in its script), or the
 		// same gambit would go again on the next think.
+		// Between attacks it stays in the fight while an enemy is still inside its perception circle
+		// (around its owner, as PetTargeting checks); its idle (FollowOwner) ran it back to Sage
+		// between every bite. Once the owner walks off, the enemy leaves the circle and it follows.
+		if (!cast) {
+			const auto target = GetBestTarget();
+			if (target && InPerceptionCircle(target->GetPosition(), target->GetFootprintRadius())) {
+				return;
+			}
+		}
 		if (!cast || !game.PayForCast(mObject.shared_from_this(), cast->ability->GetId(), 1, 0).allowed) {
 			RunIdle(*definition);
 			return;
@@ -456,6 +477,39 @@ namespace Game {
 			TurnToward(cast->target);
 		}
 		Cast(cast->ability, cast->target, cast->position);
+	}
+
+	void AI::Pursue(const GambitCast& cast, float distance) {
+		const auto& locomotion = mObject.GetLocomotionData();
+		if (!locomotion || !cast.target) {
+			return;
+		}
+		// Sent again once the target has moved a step, as a follow is.
+		constexpr float resendDistance = 1.f;
+		const auto target = cast.target->GetPosition();
+		if (mPursuedId == cast.target->GetId() && glm::distance(mPursuedAt, target) < resendDistance) {
+			return;
+		}
+		glm::vec3 away = mObject.GetPosition() - target;
+		away.z = 0;
+		if (glm::length(away) <= 0.0001f) {
+			return;
+		}
+
+		// Each agent takes its own side of the target, turned by its id, or two pets coming from
+		// the same side stood inside each other. A walk to that point, not a follow: the client walks
+		// a follow straight at the target, and the turn before the bite (sent at the server's spot)
+		// then walked the pet back to the side spot and broke the bite.
+		constexpr float spreadRadians = 1.f;
+		const float angle = (static_cast<float>(mObject.GetId() % 4) - 1.5f) * spreadRadians;
+		const glm::vec3 side = glm::angleAxis(angle, glm::vec3(0.f, 0.f, 1.f)) * glm::normalize(away);
+
+		// The idle's exit stops the agent, so it goes before the walk, not after.
+		mBehavior.Exit();
+		locomotion->SetGoalPosition(target + side * distance);
+		mPursuedId = cast.target->GetId();
+		mPursuedAt = target;
+		mObject.GetGame().MoveObject(mObject.shared_from_this(), *locomotion);
 	}
 
 	void AI::RunIdle(const AIDefinition& definition) {

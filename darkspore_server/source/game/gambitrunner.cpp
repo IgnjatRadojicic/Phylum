@@ -88,10 +88,26 @@ namespace Game {
 			cast.position = cast.target ? cast.target->GetPosition() : mObject.GetPosition();
 		}
 
-		if (!CastPayment(mObject, *ability, ability->GetId(), aiRank).CanPay() || !CanReach(*ability, cast.target)) {
+		if (!CastPayment(mObject, *ability, ability->GetId(), aiRank).CanPay()) {
+			return std::nullopt;
+		}
+		// Out of range it still goes if the agent can walk up to the target first (AI::Pursue); a
+		// turret cannot.
+		cast.inReach = CanReach(*ability, cast.target);
+		// Locomotion, not speed: a pet's speed reads 0 here (its MovementSpeedBuff is 0, as Darkspin
+		// sends it too) though the client walks it.
+		if (!cast.inReach && !mObject.HasLocomotionData()) {
 			return std::nullopt;
 		}
 		return cast;
+	}
+
+	float GambitRunner::ReachDistance(const GambitCast& cast) const {
+		// Centre to centre, a little inside the range, so the agent is in reach where it stops.
+		constexpr float margin = 0.1f;
+		const float range = cast.ability ? cast.ability->GetRange(aiRank) : 0.f;
+		const float radii = mObject.GetFootprintRadius() + (cast.target ? cast.target->GetFootprintRadius() : 0.f);
+		return std::max(range - margin, 0.f) + radii;
 	}
 
 	bool GambitRunner::CanReach(const Ability& ability, const ObjectPtr& target) const {

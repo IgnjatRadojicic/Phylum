@@ -581,11 +581,13 @@ namespace Game {
 		if (auto delta = (newGameTime - mGameTimeLua); delta >= 1) {
 			mGameTimeLua = newGameTime;
 			mLua->Update();
+			SendPendingCreates();
 		}
 
 		if (auto delta = (newGameTime - mGameTime); delta >= 50) {
 			mGameTime = newGameTime;
 			mModifiers->Update();
+			SendPendingCreates();
 			mObjectManager->Update(delta / 1000.f); // Maybe send update time so we can compensate for lag?
 			for (const auto& [_, player] : mPlayers) {
 				SendLabsPlayerUpdate(player);
@@ -677,11 +679,26 @@ namespace Game {
 		} else {
 			const auto& goal = locomotionData.GetPartialGoalPosition();
 			const glm::vec2 walk(goal.x - object->GetPosition().x, goal.y - object->GetPosition().y);
-			object->GetLocomotionData()->StartWalk(glm::length(walk), object->GetModifiedMovementSpeed());
+			// A pet's speed reads 0 (its MovementSpeedBuff is 0) though the client walks it at its speed
+			// attribute; timed at 0 it counted as there at once and bit from afar while still running.
+			float speed = object->GetModifiedMovementSpeed();
+			if (speed <= 0 && object->HasAttributeData()) {
+				speed = object->GetAttributeValue(object->IsInCombat() ? AttributeType::CombatSpeed : AttributeType::NonCombatSpeed);
+			}
+			object->GetLocomotionData()->StartWalk(glm::length(walk), speed);
 			object->SetPosition(goal);
+			// Anything a player doesn't steer also gets its goal in a locomotion update, as Darkspin
+			// sends every pet follow and mob pursuit. Without it the client walked a pet to the
+			// goal it had never been given (0,0,0), up the level and away from Sage.
+			const bool steered = object->IsPlayerControlled();
 			for (const auto& [_, client] : mServer->GetClients()) {
 				mServer->SendObjectPlayerMove(client, object, locomotionData);
+				if (!steered) {
+					mServer->SendLocomotionDataUnreliableUpdate(client, object, locomotionData.GetGoalPosition());
+				}
 			}
+			// Sent; the update must not send the whole locomotion block on top of it.
+			object->SetFlags(object->GetFlags() & ~Object::UpdateLocomotion);
 		}
 	}
 
@@ -768,10 +785,31 @@ namespace Game {
 
 		object->SetPosition(position);
 		object->SetOrientation(orientation);
-		SendObjectCreate(object);
+		// The client is told once the script that made it has set its owner and team (SendPendingCreates):
+		// sent at once, Sage's saplings came to the client on team 0 and the hero could hit them.
+		mPendingCreates.push_back(object);
 		mLua->Trace(std::format("SPAWN object={} noun={} at={:.1f},{:.1f},{:.1f} by script", object->GetId(),
 			object->GetNoun() ? object->GetNoun()->GetName() : "-", position.x, position.y, position.z));
 		return object;
+	}
+
+	void Instance::SendPendingCreates() {
+		auto pending = std::move(mPendingCreates);
+		mPendingCreates.clear();
+		for (const auto& object : pending) {
+			if (!object || object->IsMarkedForDeletion() || !SendObjectCreate(object)) {
+				continue;
+			}
+			// The create sets no movement goal on the client. Darkspin follows a pet's create with a
+			// stop at its spot (zone/companion/raknet103/create.go).
+			if (object->HasLocomotionData()) {
+				const auto& locomotion = object->GetLocomotionData();
+				locomotion->Stop();
+				for (const auto& [_, client] : mServer->GetClients()) {
+					mServer->SendObjectPlayerMove(client, object, *locomotion);
+				}
+			}
+		}
 	}
 
 	bool Instance::UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData) {

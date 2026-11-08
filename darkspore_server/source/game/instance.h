@@ -253,6 +253,7 @@ namespace Game {
 
 			// A creature a script asks for (nObjectManager.CreateCreature), shown to every client.
 			ObjectPtr SpawnCreature(uint32_t nounId, const glm::vec3& position, const glm::quat& orientation);
+			void SendPendingCreates();
 			void SendObjectDelete(const ObjectPtr& object);
 			void SendObjectDelete(const std::vector<ObjectPtr>& objects);
 			void SendObjectUpdate(const ObjectPtr& object);
@@ -288,6 +289,8 @@ namespace Game {
 			std::map<int64_t, PlayerPtr> mPlayers;
 
 			std::set<uint32_t> mEvents;
+			// Creatures a script made this step; sent once it has set their owner and team.
+			std::vector<ObjectPtr> mPendingCreates;
 
 			std::vector<RakNet::Objective> mObjectives;
 			std::vector<ObjectPtr> mObjects;

@@ -21,6 +21,9 @@ namespace {
 
 	// The way from one point to another, or the current facing when they are the same point
 	// (a direction of length 0 would make the facing NaN).
+	// A follow: use the target position and id (0x040), plus 0x001 as Darkspin sends it.
+	constexpr uint32_t FollowGoalFlags = 0x041;
+
 	glm::vec3 FacingToward(const glm::vec3& from, const glm::vec3& to, const glm::vec3& current) {
 		const auto direction = to - from;
 		return glm::length(direction) > 0.0001f ? glm::normalize(direction) : current;
@@ -555,16 +558,17 @@ LAB_009ef634:
 			return;
 		}
 
-		// reset data
-		mFacing = glm::zero<glm::vec3>();
-		mTargetPosition = glm::zero<glm::vec3>();
 		mExternalLinearVelocity = glm::zero<glm::vec3>();
 
-		// set data
-		mGoalFlags = 0x400;
-		// mGoalFlags = 1 & 0x040;
+		// Sent the way Darkspin sends a pet follow (zone/companion/raknet103/follow.go): 0x041, with the
+		// facing and the target position toward the followed object. The client's own FollowAsPet
+		// (0xa14b40) writes 0x400 with both zeroed, but sent like that the client walked new pets off
+		// in one direction, away from their owner.
+		mGoalFlags = FollowGoalFlags;
 		mTargetId = object->GetId();
 		mGoalPosition = object->GetPosition();
+		mTargetPosition = mGoalPosition;
+		mFacing = FacingToward(mObject->GetPosition(), mGoalPosition, mFacing);
 		mAllowedStopDistance = distance;
 		mDesiredStopDistance = distance;
 
@@ -630,8 +634,13 @@ LAB_009ef634:
 			return false;
 		}
 
-		const bool same = mGoalFlags == 0x400 && mTargetId == object->GetId() && mDesiredStopDistance == distance;
+		const bool same = mGoalFlags == FollowGoalFlags && mTargetId == object->GetId() && mDesiredStopDistance == distance;
 		if (same && glm::distance(mGoalPosition, object->GetPosition()) < resendDistance) {
+			return false;
+		}
+
+		// Already close enough: nothing to walk (Darkspin sends no follow then either).
+		if (glm::distance(mObject->GetPosition(), object->GetPosition()) <= distance) {
 			return false;
 		}
 

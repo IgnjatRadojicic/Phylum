@@ -235,6 +235,8 @@ namespace Game {
 			bool mDirty = true;
 	};
 
+	struct GambitCast;
+
 	// AI
 	// Runs an NPC's AI definition. Hero summons run their gambits (GambitRunner); other NPCs only do
 	// with AI_MOBS on (RunsGambits), and otherwise keep what they did before.
@@ -272,6 +274,8 @@ namespace Game {
 			// The idle behavior (follow the owner) while no ability of the agent runs: combatIdle in
 			// combat, passiveIdle out of it (0xa21c10, 0xa214d0).
 			void RunIdle(const AIDefinition& definition);
+			// Walks to within distance of the cast's target.
+			void Pursue(const GambitCast& cast, float distance);
 
 			// What every NPC did before gambits ran: the first-aggro cast at the first player in
 			// aggro range, and turning to face them.
@@ -287,6 +291,10 @@ namespace Game {
 			BehaviorRunner mBehavior;
 
 			uint64_t mNextThink = 0;
+
+			// The target the last pursuit walked to, and where it stood then.
+			glm::vec3 mPursuedAt {};
+			uint32_t mPursuedId = 0;
 
 			uint8_t mGambit = 0;
 

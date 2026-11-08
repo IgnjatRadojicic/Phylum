@@ -763,10 +763,20 @@ namespace LuaFunction {
 		auto GetFacing(sol::this_state L, sol::object objectValue) {
 			auto& game = LuaGetGame(L);
 			auto object = LuaGetObject(game.GetObjectManager(), objectValue);
-			if (object && object->HasLocomotionData()) {
-				return object->GetLocomotionData()->GetFacing();
+			if (!object) {
+				return glm::zero<glm::vec3>();
 			}
-			return glm::zero<glm::vec3>();
+			if (object->HasLocomotionData()) {
+				const auto& facing = object->GetLocomotionData()->GetFacing();
+				if (glm::length(facing) > 0.000001f) {
+					return facing;
+				}
+			}
+			// No facing move sent yet: the way it is turned, forward being +Y (as GetRightDirection).
+			// Zero here put Sage's saplings right on top of Sage instead of 5 away in a random direction.
+			const auto forward = object->GetOrientation() * glm::vec3(0.f, 1.f, 0.f);
+			const float length = glm::length(forward);
+			return length > 0.000001f ? forward / length : glm::vec3(0.f, 1.f, 0.f);
 		}
 
 		// The object's right, its orientation turning the right axis (client 0xa01090 -> 0xa177e0);
