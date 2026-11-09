@@ -266,6 +266,10 @@ namespace Game {
 			const RunningCasts& GetRunningCasts() const;
 			sol::table GetCastContext(LuaThread* thread) const;
 
+			// Whether the agent is still in a cast of this ability that its script has not paid for
+			// yet (nAbility.PayCooldownAndMana, which a manual ability calls at its hit).
+			bool HasUnpaidCast(uint32_t agent, uint32_t abilityId) const;
+
 			// A pooled thread can be reused or deleted, so anything holding on to one keeps a ticket.
 			uint64_t TrackThread(LuaThread* thread);
 			void StopThread(uint64_t ticket);

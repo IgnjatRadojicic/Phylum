@@ -459,7 +459,8 @@ namespace LuaFunction {
 				return false;
 			}
 
-			game.SendObjectJump(object, *arc, speed, minHeight.value_or(0.f), maxHeight.value_or(0.f), rangeToHitMaxHeight.value_or(0.f));
+			// A knockback faces its target back at the attacker while it flies (the script's -dir).
+			game.SendObjectJump(object, *arc, facing, speed, minHeight.value_or(0.f), maxHeight.value_or(0.f), rangeToHitMaxHeight.value_or(0.f));
 			return true;
 		}
 
@@ -476,7 +477,7 @@ namespace LuaFunction {
 				return false;
 			}
 
-			game.SendObjectJump(object, *arc, speed, 0.f, 0.f, 0.f);
+			game.SendObjectJump(object, *arc, arc->GetDirection(), speed, 0.f, 0.f, 0.f);
 			return true;
 		}
 
@@ -563,8 +564,11 @@ namespace LuaFunction {
 				}
 
 				const auto& locomotion = object->GetLocomotionData();
-				// The client's binding (0xa00430) adds the mover's own radius, its setter the target's.
-				const float stop = distance.value_or(0.f) + object->GetFootprintRadius() + target->GetFootprintRadius();
+				// The client's binding (0xa00430) adds the target's radius, and its setter (0xa149c0) adds
+				// both radii again, so the target's counts twice. The charge template passes minus its own
+				// radius, which leaves two target radii: Roar stopped 1.4 short of that, inside a body it
+				// could never reach, and ran in place; Wild Charge's last Stop put the hero inside the mob.
+				const float stop = distance.value_or(0.f) + object->GetFootprintRadius() + 2.f * target->GetFootprintRadius();
 				locomotion->SetGoalObject(target, stop, false, false);
 
 				if (setSomeFlag.value_or(false)) {

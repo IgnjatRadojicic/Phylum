@@ -753,7 +753,7 @@ namespace Game {
 		}
 	}
 
-	void Instance::SendObjectJump(const ObjectPtr& object, const JumpArc& arc, float speed, float minHeight, float maxHeight, float rangeToHitMaxHeight) {
+	void Instance::SendObjectJump(const ObjectPtr& object, const JumpArc& arc, const glm::vec3& facing, float speed, float minHeight, float maxHeight, float rangeToHitMaxHeight) {
 		if (!object || !mServer) {
 			return;
 		}
@@ -766,7 +766,7 @@ namespace Game {
 		}
 
 		for (const auto& [_, client] : mServer->GetClients()) {
-			mServer->SendObjectJump(client, object, arc.GetDestination(), arc.GetDirection(), speed, minHeight, maxHeight, rangeToHitMaxHeight);
+			mServer->SendObjectJump(client, object, arc.GetDestination(), facing, speed, minHeight, maxHeight, rangeToHitMaxHeight);
 		}
 	}
 
@@ -784,9 +784,18 @@ namespace Game {
 			return { false, 0 };
 		}
 
-		// A manual ability pays when its script calls PayCooldownAndMana.
+		// A manual ability pays when its script calls PayCooldownAndMana, at its hit. The reply still
+		// carries its cooldown: the client takes the reply's end as the end of the action and asks
+		// again from then on while the button is held. Sent as now, a held basic attack (BeastSmash,
+		// paid at 0.33 s) was asked for again 0.19 s in, and the second swing cut the first short.
 		if (cost.manual) {
-			return { true, 0 };
+			// Its cooldown starts only at that hit, so until then a held button's next request found
+			// none running and started a second swing over the first. One swing at a time.
+			if (mLua->HasUnpaidCast(object->GetId(), abilityId)) {
+				mLua->Trace(std::format("REFUSED ability={} object={} busy=unpaid cast", abilityId, object->GetId()));
+				return { false, 0 };
+			}
+			return { true, cost.cooldownMs };
 		}
 
 		const auto duration = payment.Pay().Duration();
@@ -977,6 +986,14 @@ namespace Game {
 				mActionEvents->PlayerSwap(outgoing->GetId());
 			}
 			CancelAction(player, outgoing);
+
+			// Its summons leave with it. No script keeps or hands them on (the beast's BeastPetTracker
+			// does not listen for PlayerSwap), and Darkspin's hero switch stops the beast pet, the hero
+			// summons, Fire Tempest and the Field Medic drone. Left, Savage's ally stood there with
+			// its owner gone from the field and stopped doing anything.
+			for (const auto& summon : mObjectManager->GetObjectsOfOwner(outgoing->GetId())) {
+				summon->MarkForDeletion();
+			}
 
 			// The incoming hero takes the outgoing one's place, and the outgoing one leaves the world,
 			// before the deploy (Darkspin's hero switch: hide, teleport, show, deploy). Left out, every

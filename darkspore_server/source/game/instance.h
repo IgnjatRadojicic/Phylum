@@ -221,7 +221,9 @@ namespace Game {
 			void HoldMoves(uint32_t objectId);
 			void ReleaseMoves(uint32_t objectId);
 			// Every client plays the jump from these values (ObjectJump).
-			void SendObjectJump(const ObjectPtr& object, const JumpArc& arc, float speed, float minHeight, float maxHeight, float rangeToHitMaxHeight);
+			// The packet's second vector is where the object faces during the jump (client 0xa15240
+			// stores it at loco+0x1c4), not where it goes; the destination says that.
+			void SendObjectJump(const ObjectPtr& object, const JumpArc& arc, const glm::vec3& facing, float speed, float minHeight, float maxHeight, float rangeToHitMaxHeight);
 
 			// Abilities / Combat / Etc
 			// The answer to a hero's cast: whether it runs, and the cooldown the reply shows.

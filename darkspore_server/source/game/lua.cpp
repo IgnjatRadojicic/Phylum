@@ -692,6 +692,20 @@ namespace Game {
 		return mRunningCasts;
 	}
 
+	bool Lua::HasUnpaidCast(uint32_t agent, uint32_t abilityId) const {
+		for (const auto& entry : mRunningCasts.Of(agent)) {
+			if (!mRunningCasts.IsRunning(entry) || !entry.thread->mCastContext.valid()) {
+				continue;
+			}
+			const sol::table context = entry.thread->mCastContext;
+			const sol::optional<sol::table> ability = context["ability"];
+			if (ability && ability->get_or<uint32_t>("id", 0) == abilityId && !context.get_or("paid", false)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	sol::table Lua::GetCastContext(LuaThread* thread) const {
 		return thread ? sol::table(thread->mCastContext) : sol::table();
 	}
