@@ -172,3 +172,22 @@ TEST_CASE("resistance cannot make a timed modifier last forever") {
 	CHECK_FALSE(ResolveModifierDuration(4, stun).has_value());
 	CHECK(ResolveModifierDuration(0, stun) == 0u);
 }
+
+TEST_CASE("an agent holds a GUID until its last modifier of it is removed, marked or not") {
+	ModifierManager manager;
+	const auto first = manager.Request(Spec(ActivationType::Default), agent, casterA, start).id;
+	const auto second = manager.Request(Spec(ActivationType::Default), agent, casterB, start).id;
+	CHECK(manager.HasAny(agent));
+	CHECK(manager.HasAny(agent, 0xABCD));
+	CHECK_FALSE(manager.HasAny(agent, 0x1234));
+
+	// Two ending in one frame: the first one's end must still see the marked second.
+	manager.MarkForDelete(second);
+	manager.Remove(first);
+	CHECK(manager.HasAny(agent, 0xABCD));
+	CHECK(manager.FindFirst(agent, 0xABCD) == nullptr);
+
+	manager.Remove(second);
+	CHECK_FALSE(manager.HasAny(agent, 0xABCD));
+	CHECK_FALSE(manager.HasAny(agent));
+}
