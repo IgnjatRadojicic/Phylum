@@ -126,4 +126,12 @@ namespace RakNet {
 		mUser = user;
 		mPlayer = game.AddPlayer(mUser, mId);
 	}
+
+	const std::optional<PendingBasicAttack>& Client::GetPendingBasicAttack() const {
+		return mPendingBasicAttack;
+	}
+
+	void Client::SetPendingBasicAttack(std::optional<PendingBasicAttack> pending) {
+		mPendingBasicAttack = std::move(pending);
+	}
 }

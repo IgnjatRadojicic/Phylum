@@ -164,6 +164,9 @@ namespace RakNet {
 			void OnHelloPlayerRequest(const ClientPtr& client);
 			void OnPlayerStatusUpdate(const ClientPtr& client);
 			void OnActionCommandMsgs(const ClientPtr& client);
+			void UseCharacterAbility(const ClientPtr& client, const Game::ObjectPtr& object, const ActionCommandData& command, uint64_t expiresAt = 0);
+			void RejectPendingBasicAttack(const ClientPtr& client);
+			void UpdatePendingBasicAttacks();
 			void OnChainPlayerMsgs(const ClientPtr& client);
 			void OnCrystalDragMessage(const ClientPtr& client);
 			void OnLootDropMessage(const ClientPtr& client);
@@ -192,6 +195,7 @@ namespace RakNet {
 
 			void SendActionCommandResponse(const ClientPtr& client, uint8_t type);
 			// Answers a cast with "pursue": the client walks the hero to its target, then sends the cast again.
+			void SendActionReject(const ClientPtr& client, uint8_t sequence, uint32_t objectId);
 			void SendActionPursuit(const ClientPtr& client, uint8_t sequence, uint32_t objectId);
 			void SendActionCommandResponse(const ClientPtr& client, const AbilityCommandResponse& data, uint8_t sequence);
 			void SendObjectJump(

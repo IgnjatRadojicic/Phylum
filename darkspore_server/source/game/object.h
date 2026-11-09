@@ -3,6 +3,7 @@
 #define _GAME_OBJECT_HEADER
 
 // Include
+#include "effectlist.h"
 #include "noun.h"
 #include "attributes.h"
 #include "attributestack.h"
@@ -52,23 +53,6 @@ namespace Game {
 		Technology,
 		Supernatural,
 		FullyInvisible
-	};
-
-	// EffectList
-	class EffectList {
-		public:
-			uint8_t Add(uint32_t effect);
-			uint8_t Remove(uint32_t effect);
-			bool RemoveByIndex(uint8_t index);
-
-		private:
-			uint8_t GetOpenIndex();
-
-		private:
-			std::map<uint32_t, uint8_t> mIndexByEffect;
-
-			std::vector<uint8_t> mOpenIndexes;
-			std::vector<uint8_t> mUsedIndexes;
 	};
 
 	// CorpseState
@@ -457,7 +441,7 @@ namespace Game {
 
 			// Effects
 			uint8_t AddEffect(uint32_t effect);
-			bool RemoveEffect(uint32_t effect);
+			uint8_t RemoveEffect(uint32_t effect); // the removed copy's index, 0 when there was none
 			bool RemoveEffectByIndex(uint8_t index);
 
 			// Cooldown
@@ -501,6 +485,15 @@ namespace Game {
 
 			ObjectPtr GetOwnerObject() const;
 			void SetOwnerObject(const ObjectPtr& object);
+
+			// The modifier whose script made this creature (Char's fire elemental), 0 for any other.
+			uint32_t GetSpawnModifier() const;
+			void SetSpawnModifier(uint32_t modifierId);
+
+			// When the script that set the current animation started (ms), so an older one's reset
+			// leaves it alone.
+			uint64_t GetAnimationScriptStart() const;
+			void SetAnimationScriptStart(uint64_t startedMs);
 
 			uint32_t GetInputSyncStamp() const;
 			void SetInputSyncStamp(uint32_t inputSyncStamp);
@@ -643,6 +636,8 @@ namespace Game {
 			NounPtr mNoun;
 
 			ObjectPtr::weak_type mOwnerObject;
+			uint32_t mSpawnModifier = 0;
+			uint64_t mAnimationScriptStart = 0;
 
 			uint64_t mAssetId;
 

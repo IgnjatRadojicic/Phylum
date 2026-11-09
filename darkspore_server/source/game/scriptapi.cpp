@@ -664,6 +664,7 @@ namespace {
 			if object and effect ~= nil then
 				return object:RemoveEffect(effect, hardStop)
 			end
+			return 0
 		end
 
 		-- The client reads the team as a number (0xa02dd0, lua_tonumber), so a missing one is team 0:
@@ -912,6 +913,13 @@ namespace {
 				return 0
 			end
 			return snapshot:GetValue(ModifierEngine.AttributeFromScript(attribute)) or 0
+		end
+
+		-- A copy of an object's attributes now; an object made by a script gives the snapshot it was made with.
+		-- Beast pet enrage and the firewall passive take one each time they deal damage.
+		function nAttribute.CreateAttributeSnapshot_FromObject(id)
+			local object = get(id)
+			return object and object:GetAttributeSnapshot() or nil
 		end
 
 		function nAttribute.GetPrimaryAttributeValue(id)
@@ -1367,7 +1375,8 @@ namespace {
 				if type(types) == "number" then
 					types = { types }
 				end
-				return toIds(query(vector(x, y, z), tonumber(radius) or 0, type(types) == "table" and types or {}))
+				local found = toIds(query(vector(x, y, z), tonumber(radius) or 0, type(types) == "table" and types or {}))
+				return found
 			end
 		end
 
@@ -1399,7 +1408,18 @@ namespace {
 			end
 			local direction = dx and vector(dx, dy, dz) or nil
 			local id = createCreature(nounId, vector(x, y, z), direction)
-			return id ~= 0 and id or kObjIDNone
+			if id == 0 then
+				return kObjIDNone
+			end
+			-- A modifier's pet remembers it, so a hero swap ends the modifier and its Deactivate beams the pet out.
+			local context = CastContext.Get()
+			if context and context.modifierId then
+				local creature = nObjectManager.GetObject(id)
+				if creature then
+					creature:SetSpawnModifier(context.modifierId)
+				end
+			end
+			return id
 		end
 
 		-- Without a navigation mesh there is no better spot to offer, so the asked one is given back.
@@ -1526,7 +1546,7 @@ namespace {
 			local agent = tonumber(agentId) and nObjectManager.GetObject(agentId) or nil
 			return agent ~= nil and agent:GetHealth() > 0
 		end
-
+	)lua" R"lua(
 		-- WaitForNotAlive(object): sleeps until the object is gone or at 0 health, checked each update
 		-- (client 0xa001d0, wake test 0xa00190). With no such object it only yields once.
 		function nThread.WaitForNotAlive(objectId)

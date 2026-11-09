@@ -228,11 +228,16 @@ namespace Game {
 			// Abilities / Combat / Etc
 			// The answer to a hero's cast: whether it runs, and the cooldown the reply shows.
 			// An ability with no script costs nothing and shows unscriptedCooldownMs.
+			// waits: refused only until the cast before it ends (its cooldown or its unpaid swing).
 			struct CastAnswer {
 				bool allowed = false;
 				uint32_t cooldownMs = 0;
+				bool waits = false;
 			};
 			CastAnswer PayForCast(const ObjectPtr& object, uint32_t abilityId, int32_t rank, uint32_t unscriptedCooldownMs);
+
+			// What PayForCast would allow now, without paying or tracing.
+			bool IsCastReady(const ObjectPtr& object, uint32_t abilityId, int32_t rank) const;
 
 			// Whether a hero's cast waits for the client to walk the hero into range (CastPursuit).
 			// Asked before PayForCast: a waiting cast costs nothing. Gives the retry on arrival its target back.

@@ -153,6 +153,7 @@ add_executable(recap_tests
     tests/runningcasts_test.cpp
     tests/projectilepasslist_test.cpp
     tests/walktimer_test.cpp
+    tests/effectlist_test.cpp
     source/game/scriptsource.cpp
     source/game/scriptgaps.cpp
     source/game/projectilesweep.cpp
@@ -181,7 +182,8 @@ add_executable(recap_tests
     source/game/aitargeting.cpp
     source/game/runningcasts.cpp
     source/game/projectilepasslist.cpp
-    source/game/walktimer.cpp)
+    source/game/walktimer.cpp
+    source/game/effectlist.cpp)
 target_include_directories(recap_tests PRIVATE source ${doctest_SOURCE_DIR})
 target_link_libraries(recap_tests PRIVATE lua pugixml)
 

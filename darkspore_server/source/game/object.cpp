@@ -29,70 +29,6 @@
 
 // Game
 namespace Game {
-	// EffectList
-	uint8_t EffectList::Add(uint32_t effect) {
-		uint8_t index = GetOpenIndex();
-		if (index != 0) {
-			mIndexByEffect[effect] = index;
-		}
-		return index;
-	}
-
-	uint8_t EffectList::Remove(uint32_t effect) {
-		auto mapEnd = mIndexByEffect.end();
-		auto mapIt = mIndexByEffect.find(effect);
-		if (mapIt != mapEnd) {
-			uint8_t index = mapIt->second;
-
-			auto end = mUsedIndexes.end();
-			auto it = std::find(mUsedIndexes.begin(), end, index);
-			if (it != end) {
-				std::swap(*it, mUsedIndexes.back());
-				mUsedIndexes.pop_back();
-				mOpenIndexes.push_back(index);
-			}
-
-			mIndexByEffect.erase(mapIt);
-			return index;
-		}
-		return 0;
-	}
-
-	bool EffectList::RemoveByIndex(uint8_t index) {
-		auto end = mUsedIndexes.end();
-		auto it = std::find(mUsedIndexes.begin(), end, index);
-		if (it != end) {
-			std::swap(*it, mUsedIndexes.back());
-			mUsedIndexes.pop_back();
-			mOpenIndexes.push_back(index);
-
-			auto mapEnd = mIndexByEffect.end();
-			auto mapIt = std::find_if(mIndexByEffect.begin(), mapEnd, [index](const auto& entry) { return entry.second == index; });
-			if (mapIt != mapEnd) {
-				mIndexByEffect.erase(mapIt);
-			}
-			return true;
-		}
-		return false;
-	}
-
-	uint8_t EffectList::GetOpenIndex() {
-		uint8_t index;
-		if (mOpenIndexes.empty()) {
-			if (mUsedIndexes.size() < 0xFF) {
-				mUsedIndexes.push_back(static_cast<uint8_t>(mUsedIndexes.size()) + 1);
-				index = mUsedIndexes.back();
-			} else {
-				index = 0;
-			}
-		} else {
-			index = mOpenIndexes.back();
-			mOpenIndexes.pop_back();
-			mUsedIndexes.push_back(index);
-		}
-		return index;
-	}
-
 	// CombatantData
 	void CombatantData::WriteTo(RakNet::BitStream& stream) const {
 		using RakNet::bytes_to_bits;
@@ -1260,11 +1196,8 @@ namespace Game {
 		return mEffects->Add(effect);
 	}
 
-	bool Object::RemoveEffect(uint32_t effect) {
-		if (mEffects) {
-			return mEffects->Remove(effect);
-		}
-		return false;
+	uint8_t Object::RemoveEffect(uint32_t effect) {
+		return mEffects ? mEffects->Remove(effect) : 0;
 	}
 
 	bool Object::RemoveEffectByIndex(uint8_t index) {
@@ -1471,6 +1404,22 @@ namespace Game {
 	void Object::SetOwnerObject(const ObjectPtr& object) {
 		mOwnerObject = object;
 		mDataBits.set(ObjectDataBits::OwnerId);
+	}
+
+	uint32_t Object::GetSpawnModifier() const {
+		return mSpawnModifier;
+	}
+
+	void Object::SetSpawnModifier(uint32_t modifierId) {
+		mSpawnModifier = modifierId;
+	}
+
+	uint64_t Object::GetAnimationScriptStart() const {
+		return mAnimationScriptStart;
+	}
+
+	void Object::SetAnimationScriptStart(uint64_t startedMs) {
+		mAnimationScriptStart = startedMs;
 	}
 
 	uint32_t Object::GetInputSyncStamp() const {

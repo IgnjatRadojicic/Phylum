@@ -869,13 +869,27 @@ namespace LuaFunction {
 			}
 
 			auto& game = LuaGetGame(L);
-			game.SendAnimationState(LuaGetObject(game.GetObjectManager(), objectValue), animationState, overlay.value_or(false), scale.value_or(1.f));
+			const auto object = LuaGetObject(game.GetObjectManager(), objectValue);
+			game.SendAnimationState(object, animationState, overlay.value_or(false), scale.value_or(1.f));
+			if (const auto thread = game.GetLua().GetThread(L); object && thread) {
+				object->SetAnimationScriptStart(thread->started_ms());
+			}
 		}
 
 		auto ResetAnimationState(sol::this_state L, sol::object objectValue) {
 			// State zero sends the object back to what it was doing.
 			auto& game = LuaGetGame(L);
-			game.SendAnimationState(LuaGetObject(game.GetObjectManager(), objectValue), 0);
+			const auto object = LuaGetObject(game.GetObjectManager(), objectValue);
+
+			// A script started before the one that set the current animation leaves it alone.
+			// Lightning Tempest's active lets go of its hero at 2 s and resets it on every shot for
+			// 10 s more, which cut a Meteor Strike cast in between at 0.19 s. Darkspin resets that
+			// ability's hero once, at its release (gameplay/ability_burst.go).
+			if (const auto thread = game.GetLua().GetThread(L);
+				object && thread && object->GetAnimationScriptStart() > thread->started_ms()) {
+				return;
+			}
+			game.SendAnimationState(object, 0);
 		}
 
 		auto SetAnimationStateToDeath(sol::this_state L, sol::object objectValue) {
@@ -1213,6 +1227,8 @@ namespace LuaFunction {
 			return static_cast<uint8_t>(0);
 		}
 
+		// 1 when an effect was removed, else 0: scripts loop on it to clear stacked copies of an effect
+		// and spend one per call (LightningRogueSupport's orbs: "while RemoveEffect(...) == 1").
 		auto RemoveEffect(sol::this_state L, sol::object objectValue, sol::object effectValue, sol::optional<bool> hardStop) {
 			uint32_t effect;
 			if (effectValue.is<uint32_t>()) {
@@ -1220,7 +1236,7 @@ namespace LuaFunction {
 			} else if (effectValue.is<std::string>()) {
 				effect = utils::hash_id(effectValue.as<std::string>());
 			} else {
-				return;
+				return 0;
 			}
 
 			auto& game = LuaGetGame(L);
@@ -1236,8 +1252,10 @@ namespace LuaFunction {
 					// serverEvent.SetIgnoredPlayerBits(ignoredPlayerBits);
 
 					game.SendServerEvent(serverEvent);
+					return 1;
 				}
 			}
+			return 0;
 		}
 
 		auto RemoveEffectIndex(sol::this_state L, sol::object objectValue, uint8_t index, sol::optional<bool> hardStop) {
@@ -2449,6 +2467,7 @@ namespace Game {
 		object["GetOwnerObject"] = &Object::GetOwnerObject;
 		object["IsCreature"] = &Object::IsCreature;
 		object["SetOwnerObject"] = &Object::SetOwnerObject;
+		object["SetSpawnModifier"] = &Object::SetSpawnModifier;
 
 		object["PlayAnimationSequence"] = [this](sol::this_state L, sol::object objectValue, sol::table sequenceTable) {
 			auto ability = LuaGetAbility(L);

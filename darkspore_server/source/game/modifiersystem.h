@@ -42,7 +42,11 @@ namespace Game {
 			void OnAgentDeath(uint32_t agent);
 			void OnAgentDestroyed(uint32_t agent);
 
+			// Ends every modifier on the agent now, running each Deactivate before this returns.
+			void EndAll(uint32_t agent);
+
 			void MarkForDelete(uint32_t id);
+			bool IsRunning(uint32_t id) const;
 
 			// A thread the modifier's script started, which is stopped when the modifier ends.
 			// Returns false when the modifier is not running.

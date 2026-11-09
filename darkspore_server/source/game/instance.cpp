@@ -781,7 +781,7 @@ namespace Game {
 		if (!payment.CanPay()) {
 			mLua->Trace(std::format("REFUSED ability={} object={} mana={:.0f}/{:.0f} cooling={}",
 				abilityId, object->GetId(), object->GetMana(), cost.mana, object->HasCooldown(abilityId)));
-			return { false, 0 };
+			return { false, 0, object->HasCooldown(abilityId) && object->GetMana() >= cost.mana };
 		}
 
 		// A manual ability pays when its script calls PayCooldownAndMana, at its hit. The reply still
@@ -793,7 +793,7 @@ namespace Game {
 			// none running and started a second swing over the first. One swing at a time.
 			if (mLua->HasUnpaidCast(object->GetId(), abilityId)) {
 				mLua->Trace(std::format("REFUSED ability={} object={} busy=unpaid cast", abilityId, object->GetId()));
-				return { false, 0 };
+				return { false, 0, true };
 			}
 			return { true, cost.cooldownMs };
 		}
@@ -801,6 +801,19 @@ namespace Game {
 		const auto duration = payment.Pay().Duration();
 		mLua->Trace(std::format("PAID ability={} object={} mana={:.0f} cooldown={}", abilityId, object->GetId(), cost.mana, duration));
 		return { true, duration };
+	}
+
+	bool Instance::IsCastReady(const ObjectPtr& object, uint32_t abilityId, int32_t rank) const {
+		const auto& ability = mLua->GetAbility(abilityId);
+		if (!object || !ability) {
+			return object != nullptr;
+		}
+
+		CastPayment payment(*object, *ability, abilityId, rank);
+		if (!payment.CanPay()) {
+			return false;
+		}
+		return !(payment.GetCost().manual && mLua->HasUnpaidCast(object->GetId(), abilityId));
 	}
 
 	bool Instance::PursueBeforeCast(const ObjectPtr& object, RakNet::CombatData& combatData) {
@@ -991,9 +1004,24 @@ namespace Game {
 			// does not listen for PlayerSwap), and Darkspin's hero switch stops the beast pet, the hero
 			// summons, Fire Tempest and the Field Medic drone. Left, Savage's ally stood there with
 			// its owner gone from the field and stopped doing anything.
+			// A pet made by a modifier (Char's Elemental Guardian) ends with that modifier instead, as
+			// Darkspin's stopFireTempestActive does: its Deactivate plays PlasmaTempestPetBeamOut, which
+			// deletes the pet. Deleting only the pet left the 300 s modifier on the hero, so the next
+			// cast stacked onto it and summoned nothing.
 			for (const auto& summon : mObjectManager->GetObjectsOfOwner(outgoing->GetId())) {
-				summon->MarkForDeletion();
+				const auto modifier = summon->GetSpawnModifier();
+				if (modifier && GetModifiers().IsRunning(modifier)) {
+					GetModifiers().MarkForDelete(modifier);
+				} else {
+					summon->MarkForDeletion();
+				}
 			}
+
+			// Everything on it ends now, its passive too, while the client still shows it: ended on the
+			// next update, the Deactivates' effect removals reached a hidden hero, and on its return
+			// its passive's fire rocks and the Plasma Wreath's bubble stayed for good. Darkspin's
+			// hero switch also ends the hero's buffs, Plasma Wreath and the enemies' statuses on it.
+			GetModifiers().EndAll(outgoing->GetId());
 
 			// The incoming hero takes the outgoing one's place, and the outgoing one leaves the world,
 			// before the deploy (Darkspin's hero switch: hide, teleport, show, deploy). Left out, every
@@ -1005,7 +1033,6 @@ namespace Game {
 				outgoing->SetInSquadReserve(true);
 				incoming->SetVisible(true);
 				incoming->SetInSquadReserve(false);
-				StopPassive(outgoing);
 				StartPassive(incoming);
 
 				SendServerEvent(HeroDeploy::BeamOut(*outgoing));

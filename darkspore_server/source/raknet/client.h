@@ -8,6 +8,7 @@
 
 #include <RakPeerInterface.h>
 #include <memory>
+#include <optional>
 
 enum class GameState : uint32_t {
 	Invalid = 0xFFFFFFFF,
@@ -40,6 +41,13 @@ enum class GameState : uint32_t {
 
 // RakNet
 namespace RakNet {
+	// A basic attack the client asked for while the swing before it was still going. A held button
+	// asks again before the swing ends; the request waits and is answered when the swing is over.
+	struct PendingBasicAttack {
+		ActionCommandData command {};
+		uint64_t expiresAt = 0;
+	};
+
 	class Client {
 		public:
 			Client(Server& server, const SystemAddress& systemAddress);
@@ -56,6 +64,9 @@ namespace RakNet {
 
 			SporeNet::UserPtr GetUser() const;
 			void SetUser(const SporeNet::UserPtr& user);
+
+			const std::optional<PendingBasicAttack>& GetPendingBasicAttack() const;
+			void SetPendingBasicAttack(std::optional<PendingBasicAttack> pending);
 
 		private:
 			// Client To Server
@@ -76,6 +87,8 @@ namespace RakNet {
 			GameStateData mGameStateData;
 
 			GameState mGameState = GameState::Invalid;
+
+			std::optional<PendingBasicAttack> mPendingBasicAttack;
 
 			friend class Server;
 	};

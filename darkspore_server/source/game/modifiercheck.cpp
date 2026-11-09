@@ -498,6 +498,7 @@ namespace {
 				CheckKillObjectEndsPassive();
 				CheckDronePassiveSpawnsDrone();
 				CheckAuraSlowsEnemyInside();
+				CheckWreathOrbsStrikeAndEnd();
 				CheckStealthEndsOnUsedAbility();
 				CheckStealthCastKeepsItsStealth();
 				CheckTimeBubbleEnds();
@@ -1230,6 +1231,36 @@ namespace {
 				Wait(1000);
 				const auto during = count();
 				Report("electron-sphere-flies", during > before, "before=" + std::to_string(before) + " during=" + std::to_string(during));
+			}
+
+			// Blitz's Plasma Wreath (bytecode of modifier_lightningrogue_support.lua): every checkInterval
+			// (2 s) one orb strikes the first enemy within 5, and the wreath ends with its last orb.
+			// Rank 2 has 4 orbs: strikes at about 0, 2, 4 and 6 s.
+			void CheckWreathOrbsStrikeAndEnd() {
+				const glm::vec3 spot(-500.f, 500.f, 0.f);
+				auto agent = Spawn();
+				auto enemy = Spawn();
+				agent->SetTeam(1);
+				enemy->SetTeam(2);
+				agent->SetPosition(spot);
+				enemy->SetPosition(spot + glm::vec3(2.f, 0.f, 0.f));
+				const float before = enemy->GetHealth();
+
+				sol::protected_function spid = mState["nUtil"]["SPID"];
+				const auto id = Request(agent, agent, spid("LightningRogueSupportModifier"), 2);
+				std::string timeline;
+				for (int step = 0; step < 15; ++step) {
+					Wait(500);
+					timeline += " " + std::to_string(static_cast<int>(before - enemy->GetHealth()));
+				}
+				const bool runningAfterFirst = id != 0;
+				const float afterFirst = enemy->GetHealth();
+				const bool ended = id != 0 && !Manager().Get(id);
+				Report("wreath-orbs-strike-and-end", runningAfterFirst && afterFirst < before && ended,
+					"id=" + std::to_string(id) + " health=" + std::to_string(before) + "->" + std::to_string(afterFirst) +
+					"->" + std::to_string(enemy->GetHealth()) + " ended=" + std::to_string(ended) + " lost every 0.5 s:" + timeline);
+				agent->MarkForDeletion();
+				enemy->MarkForDeletion();
 			}
 
 			void CheckAuraSlowsEnemyInside() {

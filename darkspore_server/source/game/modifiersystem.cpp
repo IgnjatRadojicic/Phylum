@@ -20,11 +20,17 @@ namespace Game {
 		// bonus waits out the gear's invincibility time (DeployBonusInvincibilityTime, 0 without
 		// gear) and returns, and its Deactivate takes the Immune and the shield off. It is
 		// OnAgentDeath, but held on until death it would leave every swapped-in hero immune.
+		// Blitz's Plasma Wreath is the same: its tick returns once the last orb has struck, and its
+		// Deactivate takes the bubble off. Held on, the wreath stayed until the hero died. Ranks 1-6
+		// have no duration at all, so the returned tick is the only end it has.
 		// The client never ends a modifier on a returned tick (0x8f0fb0), so this is the server's.
+		// Not a general rule: most heroes' passives also have no duration, are OnAgentDeath and
+		// let their tick return, and must stay on.
 		constexpr uint32_t kDeployBonus = utils::hash_id("Deploy_BonusModifier");
+		constexpr uint32_t kPlasmaWreath = utils::hash_id("LightningRogueSupportModifier");
 
 		bool EndsWithTick(const ModifierSpec& spec) {
-			if (spec.guid == kDeployBonus) {
+			if (spec.guid == kDeployBonus || (spec.guid == kPlasmaWreath && spec.durationMs == 0)) {
 				return true;
 			}
 			return spec.durationMs == 0 && spec.deactivation == DeactivationType::Default;
@@ -94,6 +100,10 @@ namespace Game {
 	}
 
 	void ModifierSystem::OnAgentDestroyed(uint32_t agent) {
+		EndAll(agent);
+	}
+
+	void ModifierSystem::EndAll(uint32_t agent) {
 		for (uint32_t id : mManager.GetAll(agent)) {
 			Finish(id);
 		}
@@ -101,6 +111,10 @@ namespace Game {
 
 	void ModifierSystem::MarkForDelete(uint32_t id) {
 		mManager.MarkForDelete(id);
+	}
+
+	bool ModifierSystem::IsRunning(uint32_t id) const {
+		return mManager.Get(id) != nullptr;
 	}
 
 	bool ModifierSystem::AdoptThread(uint32_t id, uint64_t ticket) {

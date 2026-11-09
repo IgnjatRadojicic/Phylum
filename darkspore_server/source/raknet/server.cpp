@@ -183,6 +183,7 @@ namespace RakNet {
 				if (mGame.ServerUpdate()) {
 					run_one();
 				}
+				UpdatePendingBasicAttacks();
 
 				if (mGame.Update()) {
 					// Loop clients instead of using broadcasting to get separate client data
@@ -739,6 +740,9 @@ namespace RakNet {
 
 				mGame.MoveObject(object, *locomotionData, Game::Instance::MoveOrigin::Player);
 
+				// A move ends a held attack, and a basic request still waiting is answered.
+				RejectPendingBasicAttack(client);
+
 				// A move order is a new action (the client's move-goal setter 0xa148c0 raises it).
 				if (auto events = mGame.GetActionEvents()) {
 					events->StartedNewAction(object->GetId());
@@ -765,80 +769,16 @@ namespace RakNet {
 			case ActionCommand::SwitchCharacter: {
 				Read<uint32_t>(mInStream, command.value);
 
+				RejectPendingBasicAttack(client);
 				mGame.SwapCharacter(player, command.value);
 				break;
 			}
 
 			// Ability
 			case ActionCommand::UseCharacterAbility: {
-					std::cout << "=== Start UseCharacterAbility ===" << std::endl;
-					
-					Read<ActionCommandAbilityData>(mInStream, command.ability);
-					
-					// Scripts place shots with this, so it has to be where the hero faces now.
-					object->SetOrientation(command.data.orientation);
-
-					std::cout << "Target ID: " << command.ability.targetId << std::endl;
-					std::cout << "Ability Index: " << command.ability.index << std::endl;
-
-					CombatData combatData{};
-					combatData.targetId = command.ability.targetId;
-					combatData.cursorPosition = command.ability.cursorPosition;
-					combatData.targetPosition = command.ability.targetPosition;
-					// TODO: find creature index, can be in range of [0..2] i.e. one of three characters in squad
-					const uint8_t creatureIndex = static_cast<uint8_t>(player->GetCurrentDeckIndex());
-					combatData.abilityId = player->GetAbilityId(creatureIndex, command.ability.index);
-					combatData.abilityRank = command.ability.rank;
-					combatData.unk[0] = command.ability.rank;
-					combatData.unk[1] = command.ability.unk;
-					combatData.valueFromActionResponse = command.ability.userData;
-
-					// The client dereferences its ability lookup without a null check, so an
-					// unknown id in the response crashes it. Ids from the player class are valid.
-					std::cout << "Ability ID: 0x" << std::hex << combatData.abilityId << std::dec
-						<< " hero: " << static_cast<uint32_t>(creatureIndex)
-						<< " seq: " << static_cast<uint32_t>(command.data.unk[0])
-						<< "," << static_cast<uint32_t>(command.data.unk[1])
-						<< "," << static_cast<uint32_t>(command.data.unk[2]) << std::endl;
-
-					if (combatData.abilityId != 0 && mGame.PursueBeforeCast(object, combatData)) {
-						SendActionPursuit(client, command.data.unk[0], object->GetId());
-
-						// The hero walks to its target first, which is a new action too (0xa149c0).
-						if (auto events = mGame.GetActionEvents()) {
-							events->StartedNewAction(object->GetId());
-						}
-					} else if (combatData.abilityId != 0) {
-						// The reply carries the cooldown, so the cast is paid for before it goes.
-						const auto answer = mGame.PayForCast(object, combatData.abilityId, combatData.abilityRank, 500);
-
-						AbilityCommandResponse actionResponse {};
-						actionResponse.abilityId = combatData.abilityId;
-						actionResponse.cooldown = answer.cooldownMs;
-						actionResponse.timeImmobilized = 0;
-						actionResponse.userData = command.ability.userData;
-						SendActionCommandResponse(client, actionResponse, command.data.unk[0]);
-						if (!answer.allowed) {
-							break;
-						}
-
-						const auto weaponDamage = player->GetWeaponDamage(creatureIndex);
-						if (const auto& attributes = object->GetAttributeData()) {
-							attributes->SetWeaponDamage(std::get<0>(weaponDamage), std::get<1>(weaponDamage));
-						}
-
-						const bool scripted = mGame.UseAbility(object, combatData);
-						std::cout << "Ability ran as script: " << scripted << std::endl;
-						if (!scripted) {
-							mGame.GetLua().Trace("NOT-RUN ability=" + std::to_string(combatData.abilityId) + " index=" + std::to_string(command.ability.index));
-						}
-						if (!scripted && command.ability.index == 0 && !mGame.GetLua().GetAbility(combatData.abilityId)) {
-							mGame.WeaponAttack(object, command.ability.targetId, combatData.abilityId, weaponDamage);
-						}
-					}
-
-					std::cout << "=== End UseCharacterAbility ===" << std::endl;
-					break;
+				Read<ActionCommandAbilityData>(mInStream, command.ability);
+				UseCharacterAbility(client, object, command);
+				break;
 			}
 
 			// Squad ability
@@ -869,9 +809,12 @@ namespace RakNet {
 
 				if (combatData.abilityId != 0) {
 					const auto answer = mGame.PayForCast(object, combatData.abilityId, combatData.abilityRank, 2000);
-					if (answer.allowed) {
-						mGame.UseAbility(object, combatData);
+					if (!answer.allowed) {
+						SendActionReject(client, command.data.unk[0], command.data.objectId);
+						break;
 					}
+					RejectPendingBasicAttack(client);
+					mGame.UseAbility(object, combatData);
 
 					AbilityCommandResponse actionResponse {};
 					actionResponse.abilityId = combatData.abilityId;
@@ -895,6 +838,7 @@ namespace RakNet {
 			case ActionCommand::Cancel: {
 				Read<ActionCommandMovementData>(mInStream, command.movement);
 
+				RejectPendingBasicAttack(client);
 				mGame.CancelAction(player, object);
 				break;
 			}
@@ -928,6 +872,127 @@ namespace RakNet {
 		PrintDebugStream(mInStream);
 		std::cout << "------------------------" << std::endl;
 #endif
+	}
+
+	// A held basic attack waits this long at most for the swing before it (Darkspin's
+	// ability_basic.go gives a pending repeat its delay plus 2 s; a basic swing is under 1 s).
+	constexpr uint64_t PendingBasicAttackLifetimeMs = 3000;
+
+	void Server::UseCharacterAbility(const ClientPtr& client, const Game::ObjectPtr& object, const ActionCommandData& command, uint64_t expiresAt) {
+		const auto& player = client->GetPlayer();
+
+		// Scripts place shots with this, so it has to be where the hero faces now.
+		object->SetOrientation(command.data.orientation);
+
+		CombatData combatData {};
+		combatData.targetId = command.ability.targetId;
+		combatData.cursorPosition = command.ability.cursorPosition;
+		combatData.targetPosition = command.ability.targetPosition;
+		const uint8_t creatureIndex = static_cast<uint8_t>(player->GetCurrentDeckIndex());
+		combatData.abilityId = player->GetAbilityId(creatureIndex, command.ability.index);
+		combatData.abilityRank = command.ability.rank;
+		combatData.unk[0] = command.ability.rank;
+		combatData.unk[1] = command.ability.unk;
+		combatData.valueFromActionResponse = command.ability.userData;
+
+		// The client dereferences its ability lookup without a null check, so an
+		// unknown id in the response crashes it. Ids from the player class are valid.
+		std::cout << "UseCharacterAbility id: 0x" << std::hex << combatData.abilityId << std::dec
+			<< " index: " << command.ability.index
+			<< " hero: " << static_cast<uint32_t>(creatureIndex)
+			<< " target: " << command.ability.targetId
+			<< " seq: " << static_cast<uint32_t>(command.data.unk[0]) << std::endl;
+		if (combatData.abilityId == 0) {
+			SendActionReject(client, command.data.unk[0], command.data.objectId);
+			return;
+		}
+
+		if (mGame.PursueBeforeCast(object, combatData)) {
+			RejectPendingBasicAttack(client);
+			SendActionPursuit(client, command.data.unk[0], object->GetId());
+
+			// The hero walks to its target first, which is a new action too (0xa149c0).
+			if (auto events = mGame.GetActionEvents()) {
+				events->StartedNewAction(object->GetId());
+			}
+			return;
+		}
+
+		// The reply carries the cooldown, so the cast is paid for before it goes.
+		const auto answer = mGame.PayForCast(object, combatData.abilityId, combatData.abilityRank, 500);
+		if (!answer.allowed) {
+			// The client predicts each request and holds it until it is answered. A held basic attack
+			// asks again before its swing ends; answered "accepted, ends now", the client pulled the
+			// arm back and swung twice. It waits for the swing instead and replaces any older one, as
+			// Darkspin's pending basic does. Any other refusal is rejected and leaves a waiting one.
+			if (answer.waits && command.ability.index == 0) {
+				RejectPendingBasicAttack(client);
+				client->SetPendingBasicAttack(PendingBasicAttack { command, expiresAt ? expiresAt : mGame.GetTime() + PendingBasicAttackLifetimeMs });
+			} else {
+				SendActionReject(client, command.data.unk[0], command.data.objectId);
+			}
+			return;
+		}
+
+		// An accepted action replaces a waiting basic attack.
+		RejectPendingBasicAttack(client);
+
+		AbilityCommandResponse actionResponse {};
+		actionResponse.abilityId = combatData.abilityId;
+		actionResponse.cooldown = answer.cooldownMs;
+		actionResponse.timeImmobilized = 0;
+		actionResponse.userData = command.ability.userData;
+		SendActionCommandResponse(client, actionResponse, command.data.unk[0]);
+
+		const auto weaponDamage = player->GetWeaponDamage(creatureIndex);
+		if (const auto& attributes = object->GetAttributeData()) {
+			attributes->SetWeaponDamage(std::get<0>(weaponDamage), std::get<1>(weaponDamage));
+		}
+
+		const bool scripted = mGame.UseAbility(object, combatData);
+		if (!scripted) {
+			mGame.GetLua().Trace("NOT-RUN ability=" + std::to_string(combatData.abilityId) + " index=" + std::to_string(command.ability.index));
+		}
+		if (!scripted && command.ability.index == 0 && !mGame.GetLua().GetAbility(combatData.abilityId)) {
+			mGame.WeaponAttack(object, command.ability.targetId, combatData.abilityId, weaponDamage);
+		}
+	}
+
+	void Server::RejectPendingBasicAttack(const ClientPtr& client) {
+		const auto& pending = client->GetPendingBasicAttack();
+		if (!pending) {
+			return;
+		}
+		// The client still holds that request's prediction, so it is answered, not dropped.
+		SendActionReject(client, pending->command.data.unk[0], pending->command.data.objectId);
+		client->SetPendingBasicAttack(std::nullopt);
+	}
+
+	void Server::UpdatePendingBasicAttacks() {
+		for (const auto& [_, client] : mClients) {
+			const auto& pending = client->GetPendingBasicAttack();
+			if (!pending) {
+				continue;
+			}
+
+			const auto& player = client->GetPlayer();
+			const auto object = player ? player->GetDeployedCharacterObject() : nullptr;
+			if (!object || object->GetId() != pending->command.data.objectId || object->GetHealth() <= 0 ||
+				mGame.GetTime() >= pending->expiresAt) {
+				RejectPendingBasicAttack(client);
+				continue;
+			}
+
+			const auto abilityId = player->GetAbilityId(static_cast<uint8_t>(player->GetCurrentDeckIndex()), 0);
+			if (!mGame.IsCastReady(object, abilityId, pending->command.ability.rank)) {
+				continue;
+			}
+
+			// A retry that is refused again keeps the first request's expiry.
+			const auto [command, expiresAt] = *pending;
+			client->SetPendingBasicAttack(std::nullopt);
+			UseCharacterAbility(client, object, command, expiresAt);
+		}
 	}
 
 	void Server::OnChainPlayerMsgs(const ClientPtr& client) {
@@ -1578,6 +1643,28 @@ namespace RakNet {
 				// reset value sent to 0x02
 				break;
 		}
+
+		Send(outStream, client);
+	}
+
+	void Server::SendActionReject(const ClientPtr& client, uint8_t sequence, uint32_t objectId) {
+		BitStream outStream(57);
+		outStream.Write(PacketID::ActionCommandResponse);
+
+		// Type 2 with the hero at offset 4 and user data 0xffffffff, as Darkspin's Reject sends it.
+		// The client drops its prediction for this sequence (the 0x02 case of the response handler).
+		Write<uint8_t>(outStream, sequence);
+		Write<uint8_t>(outStream, 0x02);
+		Write<uint8_t>(outStream, 0x00);
+		Write<uint8_t>(outStream, 0x00);
+		Write<uint32_t>(outStream, objectId);
+		Write<uint32_t>(outStream, 0);
+		Write<uint32_t>(outStream, 0);
+		for (int i = 0; i < 4; ++i) {
+			Write<uint64_t>(outStream, 0);
+		}
+		Write<uint32_t>(outStream, 0);
+		Write<uint32_t>(outStream, 0xFFFFFFFF);
 
 		Send(outStream, client);
 	}
