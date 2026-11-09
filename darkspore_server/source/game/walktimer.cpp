@@ -38,4 +38,13 @@ namespace Game {
 		}
 		return glm::mix(mFrom, mTo, 1.f - mDistanceLeft / mLength);
 	}
+
+	glm::vec3 StopShort(const glm::vec3& from, const glm::vec3& goal, float stop) {
+		const auto delta = goal - from;
+		const float length = glm::length(delta);
+		if (stop <= 0 || length <= 0) {
+			return goal;
+		}
+		return length <= stop ? from : goal - delta * (stop / length);
+	}
 }

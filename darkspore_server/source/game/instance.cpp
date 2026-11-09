@@ -653,10 +653,14 @@ namespace Game {
 		}
 	}
 
-	void Instance::MoveObject(const ObjectPtr& object, const Locomotion& locomotionData) {
+	void Instance::MoveObject(const ObjectPtr& object, const Locomotion& locomotionData, MoveOrigin origin) {
 		if (!object) {
 			return;
 		}
+
+		// The client drops ObjectPlayerMove for the player's own hero (0x5393d0), so a move the server
+		// gives a hero, such as a charge, goes as a locomotion update, which every object takes (0x539900).
+		const bool serverMovesHero = object->IsPlayerControlled() && origin == MoveOrigin::Server;
 
 		const bool held = std::find(mHeldMoves.begin(), mHeldMoves.end(), object->GetId()) != mHeldMoves.end();
 		if (mLua && !held) {
@@ -685,17 +689,30 @@ namespace Game {
 			}
 			for (const auto& [_, client] : mServer->GetClients()) {
 				mServer->SendObjectTeleport(client, object, object->GetPosition(), object->GetOrientation());
+				if (serverMovesHero) {
+					// Also ends a walk the hero was given: the update clears its target.
+					mServer->SendLocomotionMove(client, object, locomotionData);
+				}
 			}
 		} else {
-			const auto& goal = locomotionData.GetPartialGoalPosition();
+			// A hero the server walks stops short by its stop distance, where the client stops it.
+			const auto goal = serverMovesHero
+				? StopShort(object->GetPosition(), locomotionData.GetPartialGoalPosition(), locomotionData.GetDesiredStopDistance())
+				: locomotionData.GetPartialGoalPosition();
 			// A pet's speed reads 0 (its MovementSpeedBuff is 0) though the client walks it at its speed
 			// attribute; timed at 0 it counted as there at once and bit from afar while still running.
 			float speed = object->GetModifiedMovementSpeed();
 			if (speed <= 0 && object->HasAttributeData()) {
 				speed = object->GetAttributeValue(object->IsInCombat() ? AttributeType::CombatSpeed : AttributeType::NonCombatSpeed);
 			}
-			object->GetLocomotionData()->StartWalk(object->GetPosition(), goal, speed);
-			object->SetPosition(goal);
+			if (serverMovesHero) {
+				// Followed on the way: a charge's pass-through trigger and its closing move read where the
+				// hero is. Placed on the goal at once, it hit at the start and then snapped the client ahead.
+				object->GetLocomotionData()->StartTrackedWalk(object->GetPosition(), goal, speed);
+			} else {
+				object->GetLocomotionData()->StartWalk(object->GetPosition(), goal, speed);
+				object->SetPosition(goal);
+			}
 			// Anything a player doesn't steer also gets its goal in a locomotion update, as Darkspin
 			// sends every pet follow and mob pursuit. Without it the client walked a pet to the
 			// goal it had never been given (0,0,0), up the level and away from Sage.
@@ -703,6 +720,10 @@ namespace Game {
 			for (const auto& [_, client] : mServer->GetClients()) {
 				if (held) {
 					break;
+				}
+				if (serverMovesHero) {
+					mServer->SendLocomotionMove(client, object, locomotionData);
+					continue;
 				}
 				mServer->SendObjectPlayerMove(client, object, locomotionData);
 				if (!steered) {
@@ -869,8 +890,27 @@ namespace Game {
 		// event (modifier_stealth leaves stealth on the first UsedAbility it hears).
 		ReportCastStarted(object->GetId(), *ability);
 
+		const auto target = mObjectManager->Get(combatData.targetId);
+		FaceCast(object, target, combatData.cursorPosition);
+
 		// ability:tick(object, target, cursorPosition, rank)
-		return ability->Tick(object, mObjectManager->Get(combatData.targetId), combatData.cursorPosition, combatData.abilityRank);
+		return ability->Tick(object, target, combatData.cursorPosition, combatData.abilityRank);
+	}
+
+	void Instance::FaceCast(const ObjectPtr& caster, const ObjectPtr& target, const glm::vec3& cursor) {
+		// The game's basic attacks never turn their caster (no TurnToFace), so the engine did: a hero
+		// shooting while it faced away sent the shot off at an angle. Turned as Darkspin's attack pose
+		// does, toward the target, else the cursor; a cast that moves the hero replaces it at once.
+		if (!caster->IsPlayerControlled() || !caster->HasLocomotionData()) {
+			return;
+		}
+
+		const auto point = target ? target->GetPosition() : cursor;
+		const auto offset = point - caster->GetPosition();
+		if (glm::length(glm::vec2(offset)) < 0.5f) {
+			return;
+		}
+		caster->GetLocomotionData()->SetFacing(point);
 	}
 
 	void Instance::WeaponAttack(const ObjectPtr& attacker, uint32_t targetId, uint32_t abilityId, const std::tuple<float, float>& damageRange) {
@@ -1416,7 +1456,9 @@ namespace Game {
 			if (flags & Object::UpdateLocomotion) {
 				const auto& locomotion = object->GetLocomotionData();
 				if (object->IsPlayerControlled()) {
-					mServer->SendObjectPlayerMove(client, object, *locomotion);
+					// Only the server marks a hero's locomotion (a player's walk is sent in MoveObject): a
+					// script's stop or turn, which the hero's own client takes only this way (see MoveObject).
+					mServer->SendLocomotionMove(client, object, *locomotion);
 				} else {
 					// The client flies a projectile itself from its parameters.
 					if (!object->IsProjectile() && (locomotion->GetGoalFlags() & 0x20)) {

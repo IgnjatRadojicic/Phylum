@@ -60,3 +60,14 @@ TEST_CASE("height does not lengthen a walk") {
 	walk.Start({ 0, 0, 0 }, { 3, 4, 50 }, 5.f);
 	CHECK(walk.GetDistanceLeft() == doctest::Approx(5.f));
 }
+
+TEST_CASE("a walk that stops short ends its stop distance before the goal") {
+	using Game::StopShort;
+	const auto end = StopShort({ 0, 0, 0 }, { 10, 0, 0 }, 3.f);
+	CHECK(end.x == doctest::Approx(7.f));
+	CHECK(end.y == doctest::Approx(0.f));
+
+	// Already within the distance it stays put; no distance walks all the way.
+	CHECK(StopShort({ 1, 1, 0 }, { 2, 1, 0 }, 3.f) == glm::vec3(1, 1, 0));
+	CHECK(StopShort({ 0, 0, 0 }, { 4, 3, 0 }, 0.f) == glm::vec3(4, 3, 0));
+}

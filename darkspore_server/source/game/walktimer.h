@@ -32,6 +32,10 @@ namespace Game {
 			float mDistanceLeft = 0;
 			float mSpeed = 0;
 	};
+
+	// Where a walk from `from` to `goal` ends when it stops `stop` short of the goal (as the client
+	// stops a walk at its stop distance). Within the distance already, it stays where it is.
+	glm::vec3 StopShort(const glm::vec3& from, const glm::vec3& goal, float stop);
 }
 
 #endif

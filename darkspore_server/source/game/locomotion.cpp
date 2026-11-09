@@ -173,6 +173,10 @@ namespace Game {
 			}
 		}
 		mWalk.Advance(deltaTime);
+		if (mWalkTracked) {
+			mObject->SetPositionSimulated(mWalk.GetPosition());
+			mWalkTracked = mWalk.IsWalking();
+		}
 
 		switch (mObject->GetMovementType()) {
 			case MovementType::Pathfinding: {
@@ -541,12 +545,12 @@ LAB_009ef634:
 			return;
 		}
 
-		// distance = GetAllowedStoppingDistance(object) + distance;
+		// As the client's setter (0xa149c0): a clean walk (0x001) at the target's position with the
+		// target set, so the client keeps after it (0x9ea1a0) and stops at the distance. Its 0x040 and
+		// 0x080 come from two arguments MoveToObject passes as false.
 		SetGoalPosition(object->GetPosition());
-
-		// Internally these seem like no ops
-		// mGoalFlags |= (1 & 0x40);
-		// mGoalFlags |= (2 & 0x80);
+		mTargetId = object->GetId();
+		mGoalFlags |= (useTargetPosition ? 0x040 : 0) | (unk ? 0x080 : 0);
 
 		mAllowedStopDistance = distance;
 		mDesiredStopDistance = distance;
@@ -596,6 +600,8 @@ LAB_009ef634:
 		// set data
 		mGoalFlags = 0x002 | 0x040;
 		mGoalPosition = mObject->GetPosition();
+		// Darkspin's attack pose sends it there too: a turn must not walk the hero to an older goal.
+		mPartialGoalPosition = mGoalPosition;
 		mTargetPosition = facingPosition;
 		mFacing = FacingToward(mGoalPosition, mTargetPosition, mFacing);
 
@@ -614,6 +620,7 @@ LAB_009ef634:
 			mObject->SetPositionSimulated(mWalk.GetPosition());
 		}
 		mWalk.Clear();
+		mWalkTracked = false;
 
 		// reset data
 		mTargetId = 0;
@@ -789,6 +796,14 @@ LAB_009ef634:
 
 	void Locomotion::StartWalk(const glm::vec3& from, const glm::vec3& to, float speed) {
 		mWalk.Start(from, to, speed);
+		mWalkTracked = false;
+	}
+
+	void Locomotion::StartTrackedWalk(const glm::vec3& from, const glm::vec3& to, float speed) {
+		mWalk.Start(from, to, speed);
+		mWalkTracked = mWalk.IsWalking();
+		// An untimed walk (no speed) counts as there at once.
+		mObject->SetPositionSimulated(mWalkTracked ? mWalk.GetPosition() : to);
 	}
 
 	float Locomotion::GetWalkDistanceLeft() const {
@@ -863,6 +878,22 @@ LAB_009ef634:
 			if (mDataBits.test(16)) { reflector.write<16>(mOffset); }
 			if (mDataBits.test(17)) { reflector.write<17>(mReflectedLastUpdate); }
 		}
+		reflector.end();
+	}
+
+	void Locomotion::WriteMoveReflection(RakNet::BitStream& stream) const {
+		RakNet::reflection_serializer<18> reflector(stream);
+		reflector.begin();
+		reflector.write<4>(mGoalFlags);
+		reflector.write<5>(mGoalPosition);
+		reflector.write<6>(mPartialGoalPosition);
+		reflector.write<7>(mFacing);
+		reflector.write<8>(mExternalLinearVelocity);
+		reflector.write<9>(mExternalForce);
+		reflector.write<10>(mAllowedStopDistance);
+		reflector.write<11>(mDesiredStopDistance);
+		reflector.write<12>(mTargetId);
+		reflector.write<13>(mTargetPosition);
 		reflector.end();
 	}
 

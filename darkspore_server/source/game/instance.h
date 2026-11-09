@@ -211,7 +211,10 @@ namespace Game {
 			bool ServerUpdate() const;
 			bool Update();
 
-			void MoveObject(const ObjectPtr& object, const Locomotion& locomotionData);
+			// A player's own walk (the client already moves its hero), or a move the server gives,
+			// such as a script's charge, which the client must be told to make.
+			enum class MoveOrigin { Server, Player };
+			void MoveObject(const ObjectPtr& object, const Locomotion& locomotionData, MoveOrigin origin = MoveOrigin::Server);
 			// While an object's moves are held, MoveObject still updates the server's state for it
 			// but sends the clients nothing. For a move that another replaces in the same tick: a
 			// stop sent before a walk teleported the pet to the server's guess of where it was.
@@ -240,6 +243,8 @@ namespace Game {
 
 			// Runs the ability's script. PayForCast decides first whether it may.
 			bool UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData);
+			// Turns a player's hero toward what it casts at (see UseAbility).
+			void FaceCast(const ObjectPtr& caster, const ObjectPtr& target, const glm::vec3& cursor);
 			void WeaponAttack(const ObjectPtr& attacker, uint32_t targetId, uint32_t abilityId, const std::tuple<float, float>& damageRange);
 			void SwapCharacter(const PlayerPtr& player, uint32_t creatureIndex);
 			void InteractWithObject(const PlayerPtr& player, uint32_t objectId);

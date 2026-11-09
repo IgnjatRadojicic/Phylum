@@ -227,10 +227,16 @@ namespace Game {
 			// The server puts a walking object on its goal at once while the client walks it there.
 			// This times the client's walk from where the object stood, at its move speed.
 			void StartWalk(const glm::vec3& from, const glm::vec3& to, float speed);
+			// The same, but the server moves the object along the walk each update instead of placing
+			// it on the goal: for a hero's charge, whose hits and end depend on where it is on the way.
+			void StartTrackedWalk(const glm::vec3& from, const glm::vec3& to, float speed);
 			float GetWalkDistanceLeft() const;
 
 			void WriteTo(RakNet::BitStream& stream) const;
 			void WriteReflection(RakNet::BitStream& stream) const;
+			// Only the fields of a move (goal flags to target position), all of them. The client's
+			// reflected receiver (0x539900) takes it for every object, the player's own hero too.
+			void WriteMoveReflection(RakNet::BitStream& stream) const;
 
 		private:
 			bool CanHit(const ObjectPtr& collidingObject) const;
@@ -289,6 +295,7 @@ namespace Game {
 			std::optional<JumpArc> mJumpArc;
 			float mJumpSeconds = 0;
 			WalkTimer mWalk;
+			bool mWalkTracked = false;
 
 			std::deque<SweepHit> mPendingHits;
 			std::unordered_set<uint32_t> mHitIds;

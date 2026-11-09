@@ -563,7 +563,9 @@ namespace LuaFunction {
 				}
 
 				const auto& locomotion = object->GetLocomotionData();
-				locomotion->SetGoalObject(target, distance.value_or(0.f) + target->GetFootprintRadius(), false, false);
+				// The client's binding (0xa00430) adds the mover's own radius, its setter the target's.
+				const float stop = distance.value_or(0.f) + object->GetFootprintRadius() + target->GetFootprintRadius();
+				locomotion->SetGoalObject(target, stop, false, false);
 
 				if (setSomeFlag.value_or(false)) {
 					locomotion->SetGoalFlags(locomotion->GetGoalFlags() | 0x800);

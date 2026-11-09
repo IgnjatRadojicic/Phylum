@@ -203,6 +203,9 @@ namespace RakNet {
 			void SendForcePhysicsUpdate(const ClientPtr& client, const Game::ObjectPtr& object);
 			void SendPhysicsChanged(const ClientPtr& client, const Game::ObjectPtr& object, bool hasCollision);
 			void SendLocomotionDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::Locomotion& locomotionData);
+			// A move the server gives an object, sent so that the player's own hero takes it too
+			// (the client drops ObjectPlayerMove for the local hero, 0x5393d0).
+			void SendLocomotionMove(const ClientPtr& client, const Game::ObjectPtr& object, const Game::Locomotion& locomotionData);
 			void SendLocomotionDataUnreliableUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const glm::vec3& position);
 			void SendAttributeDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::Attributes& attributes);
 			void SendCombatantDataUpdate(const ClientPtr& client, const Game::ObjectPtr& object, const Game::CombatantData& combatantData);

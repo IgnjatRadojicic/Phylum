@@ -737,7 +737,7 @@ namespace RakNet {
 				locomotionData->SetPartialGoalPosition(command.data.position);
 				locomotionData->SetGoalFlags(locomotionData->GetGoalFlags() | command.movement.goalFlags);
 
-				mGame.MoveObject(object, *locomotionData);
+				mGame.MoveObject(object, *locomotionData, Game::Instance::MoveOrigin::Player);
 
 				// A move order is a new action (the client's move-goal setter 0xa148c0 raises it).
 				if (auto events = mGame.GetActionEvents()) {
@@ -1716,6 +1716,20 @@ namespace RakNet {
 
 		Write<uint32_t>(outStream, object->GetId());
 		locomotionData.WriteReflection(outStream);
+
+		Send(outStream, client);
+	}
+
+	void Server::SendLocomotionMove(const ClientPtr& client, const Game::ObjectPtr& object, const Game::Locomotion& locomotionData) {
+		if (!object) {
+			return;
+		}
+
+		BitStream outStream(8);
+		outStream.Write(PacketID::LocomotionDataUpdate);
+
+		Write<uint32_t>(outStream, object->GetId());
+		locomotionData.WriteMoveReflection(outStream);
 
 		Send(outStream, client);
 	}

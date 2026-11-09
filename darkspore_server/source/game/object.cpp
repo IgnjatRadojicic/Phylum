@@ -1178,7 +1178,9 @@ namespace Game {
 			attribute = AttributeType::CombatSpeed;
 		}
 
-		return (GetAttributeValue(attribute) + 1.f) * GetAttributeValue(AttributeType::MovementSpeedBuff);
+		// As the client walks it: the buff is a fraction on top (read in game: 8.2 plain, 24.8 with
+		// Wild Charge's buff). Multiplied by the bare buff, an object with none read 0.
+		return GetAttributeValue(attribute) * (1.f + GetAttributeValue(AttributeType::MovementSpeedBuff));
 	}
 
 	// Physics
