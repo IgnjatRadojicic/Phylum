@@ -799,6 +799,11 @@ LAB_009ef634:
 		mWalkTracked = false;
 	}
 
+	void Locomotion::EndWalk() {
+		mWalk.Clear();
+		mWalkTracked = false;
+	}
+
 	void Locomotion::StartTrackedWalk(const glm::vec3& from, const glm::vec3& to, float speed) {
 		mWalk.Start(from, to, speed);
 		mWalkTracked = mWalk.IsWalking();

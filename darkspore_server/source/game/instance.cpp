@@ -682,6 +682,10 @@ namespace Game {
 
 		bool teleport = goalFlags & 0x020;
 		if (teleport) {
+			// A walk under way would drag a tracked hero back onto its old line on the next update.
+			if (const auto& locomotion = object->GetLocomotionData()) {
+				locomotion->EndWalk();
+			}
 			object->SetPosition(locomotionData.GetGoalPosition());
 			if (held) {
 				// Nor may the update send it.

@@ -71,3 +71,11 @@ TEST_CASE("a walk that stops short ends its stop distance before the goal") {
 	CHECK(StopShort({ 1, 1, 0 }, { 2, 1, 0 }, 3.f) == glm::vec3(1, 1, 0));
 	CHECK(StopShort({ 0, 0, 0 }, { 4, 3, 0 }, 0.f) == glm::vec3(4, 3, 0));
 }
+
+TEST_CASE("a negative speed is an untimed walk, not one that runs backwards") {
+	Game::WalkTimer walk;
+	walk.Start({ 0, 0, 0 }, { 10, 0, 0 }, -2.f);
+	walk.Advance(1.f);
+	CHECK_FALSE(walk.IsWalking());
+	CHECK(walk.GetPosition() == glm::vec3(10, 0, 0));
+}

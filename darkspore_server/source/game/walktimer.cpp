@@ -11,9 +11,10 @@ namespace Game {
 		// already stands on the old goal, the client not yet.
 		mFrom = IsWalking() ? GetPosition() : from;
 		mTo = to;
-		mSpeed = speed;
+		// A slow below -100% gives a negative speed, which would walk the timer backwards.
+		mSpeed = std::max(speed, 0.f);
 		mLength = glm::length(glm::vec2(to.x - mFrom.x, to.y - mFrom.y));
-		mDistanceLeft = speed > 0 ? mLength : 0.f;
+		mDistanceLeft = mSpeed > 0 ? mLength : 0.f;
 	}
 
 	void WalkTimer::Advance(float seconds) {

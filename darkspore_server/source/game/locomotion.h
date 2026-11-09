@@ -230,6 +230,8 @@ namespace Game {
 			// The same, but the server moves the object along the walk each update instead of placing
 			// it on the goal: for a hero's charge, whose hits and end depend on where it is on the way.
 			void StartTrackedWalk(const glm::vec3& from, const glm::vec3& to, float speed);
+			// Forgets the walk without moving the object: it was put somewhere else (a teleport).
+			void EndWalk();
 			float GetWalkDistanceLeft() const;
 
 			void WriteTo(RakNet::BitStream& stream) const;
