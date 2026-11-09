@@ -228,6 +228,11 @@ namespace Game {
 			// Asked before PayForCast: a waiting cast costs nothing. Gives the retry on arrival its target back.
 			bool PursueBeforeCast(const ObjectPtr& object, RakNet::CombatData& combatData);
 
+			// Trace lines for tools/ingame/probe.py: an object's footprint after its SPAWN line, and the
+			// range and server gap (edge to edge) of a targeted cast as it is decided.
+			void TraceFootprint(const ObjectPtr& object) const;
+			void TraceReach(const ObjectPtr& caster, const ObjectPtr& target, uint32_t abilityId, float range) const;
+
 			// Runs the ability's script. PayForCast decides first whether it may.
 			bool UseAbility(const ObjectPtr& object, const RakNet::CombatData& combatData);
 			void WeaponAttack(const ObjectPtr& attacker, uint32_t targetId, uint32_t abilityId, const std::tuple<float, float>& damageRange);

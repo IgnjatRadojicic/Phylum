@@ -476,6 +476,9 @@ namespace Game {
 		if (definition->FaceTarget() && cast->target && cast->target.get() != &mObject) {
 			TurnToward(cast->target);
 		}
+		if (cast->target && cast->target.get() != &mObject) {
+			game.TraceReach(mObject.shared_from_this(), cast->target, cast->ability->GetId(), runner.Range(*cast));
+		}
 		Cast(cast->ability, cast->target, cast->position);
 	}
 

@@ -520,6 +520,7 @@ namespace Game {
 					const auto& at = object->GetPosition();
 					mLua->Trace(std::format("SPAWN object={} noun={} at={:.1f},{:.1f},{:.1f}", object->GetId(),
 						object->GetNoun() ? object->GetNoun()->GetName() : "-", at.x, at.y, at.z));
+					TraceFootprint(object);
 				}
 
 				// Apply effects
@@ -657,9 +658,11 @@ namespace Game {
 			return;
 		}
 
-		if (mLua && object->IsPlayerControlled()) {
+		if (mLua) {
+			// MOVE is a player's walk; GOAL is one the server gives a pet or a mob (for tools/ingame/probe.py).
 			const auto& goal = locomotionData.GetGoalPosition();
-			mLua->Trace(std::format("MOVE object={} goal={:.1f},{:.1f},{:.1f}", object->GetId(), goal.x, goal.y, goal.z));
+			mLua->Trace(std::format("{} object={} goal={:.1f},{:.1f},{:.1f}", object->IsPlayerControlled() ? "MOVE" : "GOAL",
+				object->GetId(), goal.x, goal.y, goal.z));
 		}
 
 		const auto goalFlags = locomotionData.GetGoalFlags();
@@ -759,6 +762,7 @@ namespace Game {
 				cast.range = ability->GetRange(combatData.abilityRank);
 				cast.gap = glm::distance(object->GetPosition(), target->GetPosition()) -
 					object->GetFootprintRadius() - target->GetFootprintRadius();
+				TraceReach(object, target, cast.abilityId, cast.range);
 			}
 		}
 
@@ -776,6 +780,21 @@ namespace Game {
 		return pursue;
 	}
 
+	void Instance::TraceReach(const ObjectPtr& caster, const ObjectPtr& target, uint32_t abilityId, float range) const {
+		if (mLua && caster && target) {
+			const float gap = glm::distance(caster->GetPosition(), target->GetPosition()) -
+				caster->GetFootprintRadius() - target->GetFootprintRadius();
+			mLua->Trace(std::format("REACH ability={} object={} target={} range={:.2f} gap={:.2f}",
+				abilityId, caster->GetId(), target->GetId(), range, gap));
+		}
+	}
+
+	void Instance::TraceFootprint(const ObjectPtr& object) const {
+		if (mLua && object) {
+			mLua->Trace(std::format("FOOTPRINT object={} radius={:.2f}", object->GetId(), object->GetFootprintRadius()));
+		}
+	}
+
 	ObjectPtr Instance::SpawnCreature(uint32_t nounId, const glm::vec3& position, const glm::quat& orientation) {
 		const auto& object = mObjectManager->Create(nounId);
 		if (!object) {
@@ -790,6 +809,7 @@ namespace Game {
 		mPendingCreates.push_back(object);
 		mLua->Trace(std::format("SPAWN object={} noun={} at={:.1f},{:.1f},{:.1f} by script", object->GetId(),
 			object->GetNoun() ? object->GetNoun()->GetName() : "-", position.x, position.y, position.z));
+		TraceFootprint(object);
 		return object;
 	}
 

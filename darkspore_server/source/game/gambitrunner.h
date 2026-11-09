@@ -35,6 +35,9 @@ namespace Game {
 			// cursor keeps a sequential phase's place from one call to the next.
 			std::optional<GambitCast> Choose(const Phase& phase, uint8_t& cursor) const;
 
+			// The cast's range at the AI's rank (edge to edge).
+			float Range(const GambitCast& cast) const;
+
 			// How near (centre to centre) the agent must come to be in the cast's reach.
 			float ReachDistance(const GambitCast& cast) const;
 

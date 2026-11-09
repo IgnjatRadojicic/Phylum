@@ -102,10 +102,14 @@ namespace Game {
 		return cast;
 	}
 
+	float GambitRunner::Range(const GambitCast& cast) const {
+		return cast.ability ? cast.ability->GetRange(aiRank) : 0.f;
+	}
+
 	float GambitRunner::ReachDistance(const GambitCast& cast) const {
 		// Centre to centre, a little inside the range, so the agent is in reach where it stops.
 		constexpr float margin = 0.1f;
-		const float range = cast.ability ? cast.ability->GetRange(aiRank) : 0.f;
+		const float range = Range(cast);
 		const float radii = mObject.GetFootprintRadius() + (cast.target ? cast.target->GetFootprintRadius() : 0.f);
 		return std::max(range - margin, 0.f) + radii;
 	}
