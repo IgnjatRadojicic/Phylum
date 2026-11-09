@@ -212,6 +212,11 @@ namespace Game {
 			bool Update();
 
 			void MoveObject(const ObjectPtr& object, const Locomotion& locomotionData);
+			// While an object's moves are held, MoveObject still updates the server's state for it
+			// but sends the clients nothing. For a move that another replaces in the same tick: a
+			// stop sent before a walk teleported the pet to the server's guess of where it was.
+			void HoldMoves(uint32_t objectId);
+			void ReleaseMoves(uint32_t objectId);
 			// Every client plays the jump from these values (ObjectJump).
 			void SendObjectJump(const ObjectPtr& object, const JumpArc& arc, float speed, float minHeight, float maxHeight, float rangeToHitMaxHeight);
 
@@ -296,6 +301,8 @@ namespace Game {
 			std::set<uint32_t> mEvents;
 			// Creatures a script made this step; sent once it has set their owner and team.
 			std::vector<ObjectPtr> mPendingCreates;
+			// Objects whose moves are held (MoveHold); one entry per hold, so holds may nest.
+			std::vector<uint32_t> mHeldMoves;
 
 			std::vector<RakNet::Objective> mObjectives;
 			std::vector<ObjectPtr> mObjects;
@@ -322,6 +329,20 @@ namespace Game {
 	};
 
 	using InstancePtr = std::shared_ptr<Instance>;
+
+	// Holds an object's moves for its lifetime (Instance::HoldMoves), and releases them even if a
+	// script call in between fails. Every move made meanwhile goes unsent, not only a stop.
+	class MoveHold {
+		public:
+			MoveHold(Instance& game, uint32_t objectId) : mGame(game), mObjectId(objectId) { mGame.HoldMoves(mObjectId); }
+			~MoveHold() { mGame.ReleaseMoves(mObjectId); }
+			MoveHold(const MoveHold&) = delete;
+			MoveHold& operator=(const MoveHold&) = delete;
+
+		private:
+			Instance& mGame;
+			uint32_t mObjectId;
+	};
 }
 
 #endif

@@ -658,9 +658,11 @@ namespace Game {
 			return;
 		}
 
-		if (mLua) {
-			// MOVE is a player's walk; GOAL is one the server gives a pet or a mob (for tools/ingame/probe.py).
-			const auto& goal = locomotionData.GetGoalPosition();
+		const bool held = std::find(mHeldMoves.begin(), mHeldMoves.end(), object->GetId()) != mHeldMoves.end();
+		if (mLua && !held) {
+			// MOVE is a player's walk; GOAL is one the server gives a pet or a mob (for tools/ingame/probe.py):
+			// the point it walks to, which for a follow stops short of the owner's centre.
+			const auto& goal = (locomotionData.GetGoalFlags() & 0x020) ? locomotionData.GetGoalPosition() : locomotionData.GetPartialGoalPosition();
 			mLua->Trace(std::format("{} object={} goal={:.1f},{:.1f},{:.1f}", object->IsPlayerControlled() ? "MOVE" : "GOAL",
 				object->GetId(), goal.x, goal.y, goal.z));
 		}
@@ -676,32 +678,52 @@ namespace Game {
 		bool teleport = goalFlags & 0x020;
 		if (teleport) {
 			object->SetPosition(locomotionData.GetGoalPosition());
+			if (held) {
+				// Nor may the update send it.
+				object->SetFlags(object->GetFlags() & ~Object::UpdateLocomotion);
+				return;
+			}
 			for (const auto& [_, client] : mServer->GetClients()) {
 				mServer->SendObjectTeleport(client, object, object->GetPosition(), object->GetOrientation());
 			}
 		} else {
 			const auto& goal = locomotionData.GetPartialGoalPosition();
-			const glm::vec2 walk(goal.x - object->GetPosition().x, goal.y - object->GetPosition().y);
 			// A pet's speed reads 0 (its MovementSpeedBuff is 0) though the client walks it at its speed
 			// attribute; timed at 0 it counted as there at once and bit from afar while still running.
 			float speed = object->GetModifiedMovementSpeed();
 			if (speed <= 0 && object->HasAttributeData()) {
 				speed = object->GetAttributeValue(object->IsInCombat() ? AttributeType::CombatSpeed : AttributeType::NonCombatSpeed);
 			}
-			object->GetLocomotionData()->StartWalk(glm::length(walk), speed);
+			object->GetLocomotionData()->StartWalk(object->GetPosition(), goal, speed);
 			object->SetPosition(goal);
 			// Anything a player doesn't steer also gets its goal in a locomotion update, as Darkspin
 			// sends every pet follow and mob pursuit. Without it the client walked a pet to the
 			// goal it had never been given (0,0,0), up the level and away from Sage.
 			const bool steered = object->IsPlayerControlled();
 			for (const auto& [_, client] : mServer->GetClients()) {
+				if (held) {
+					break;
+				}
 				mServer->SendObjectPlayerMove(client, object, locomotionData);
 				if (!steered) {
-					mServer->SendLocomotionDataUnreliableUpdate(client, object, locomotionData.GetGoalPosition());
+					// The point it walks to: the client (0x539810) writes it as the partial goal and
+					// walks every creature but the player's own there each tick (0x9ea4e5). The full
+					// goal of a follow is the owner's centre, so sent that the pet stood inside Sage.
+					mServer->SendLocomotionDataUnreliableUpdate(client, object, goal);
 				}
 			}
 			// Sent; the update must not send the whole locomotion block on top of it.
 			object->SetFlags(object->GetFlags() & ~Object::UpdateLocomotion);
+		}
+	}
+
+	void Instance::HoldMoves(uint32_t objectId) {
+		mHeldMoves.push_back(objectId);
+	}
+
+	void Instance::ReleaseMoves(uint32_t objectId) {
+		if (const auto it = std::find(mHeldMoves.begin(), mHeldMoves.end(), objectId); it != mHeldMoves.end()) {
+			mHeldMoves.erase(it);
 		}
 	}
 
@@ -784,8 +806,9 @@ namespace Game {
 		if (mLua && caster && target) {
 			const float gap = glm::distance(caster->GetPosition(), target->GetPosition()) -
 				caster->GetFootprintRadius() - target->GetFootprintRadius();
-			mLua->Trace(std::format("REACH ability={} object={} target={} range={:.2f} gap={:.2f}",
-				abilityId, caster->GetId(), target->GetId(), range, gap));
+			// The footprints too: not every creature gets a SPAWN and FOOTPRINT line (a level's mobs).
+			mLua->Trace(std::format("REACH ability={} object={} target={} range={:.2f} gap={:.2f} radius={:.2f} target_radius={:.2f}",
+				abilityId, caster->GetId(), target->GetId(), range, gap, caster->GetFootprintRadius(), target->GetFootprintRadius()));
 		}
 	}
 

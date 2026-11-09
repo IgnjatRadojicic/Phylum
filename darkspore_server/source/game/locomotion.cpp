@@ -21,8 +21,9 @@ namespace {
 
 	// The way from one point to another, or the current facing when they are the same point
 	// (a direction of length 0 would make the facing NaN).
-	// A follow: use the target position and id (0x040), plus 0x001 as Darkspin sends it.
-	constexpr uint32_t FollowGoalFlags = 0x041;
+	// A follow, as the client's FollowAsPet (0xa14b40) writes it. The client walks a pet to the
+	// partial goal from LocomotionDataUnreliableUpdate either way (see Instance::MoveObject).
+	constexpr uint32_t FollowGoalFlags = 0x400;
 
 	glm::vec3 FacingToward(const glm::vec3& from, const glm::vec3& to, const glm::vec3& current) {
 		const auto direction = to - from;
@@ -171,7 +172,7 @@ namespace Game {
 				mJumpArc.reset();
 			}
 		}
-		mWalkDistanceLeft = std::max(0.f, mWalkDistanceLeft - mWalkSpeed * deltaTime);
+		mWalk.Advance(deltaTime);
 
 		switch (mObject->GetMovementType()) {
 			case MovementType::Pathfinding: {
@@ -560,15 +561,15 @@ LAB_009ef634:
 
 		mExternalLinearVelocity = glm::zero<glm::vec3>();
 
-		// Sent the way Darkspin sends a pet follow (zone/companion/raknet103/follow.go): 0x041, with the
-		// facing and the target position toward the followed object. The client's own FollowAsPet
-		// (0xa14b40) writes 0x400 with both zeroed, but sent like that the client walked new pets off
-		// in one direction, away from their owner.
-		mGoalFlags = FollowGoalFlags;
+		// The fields the client's FollowAsPet writes: 0x400 (plus 0x040 when asked), the goal and the
+		// target at the followed object, facing and target position zeroed. Darkspin sends 0x041
+		// (zone/companion/raknet103/follow.go). An earlier try of 0x400 walked new pets off the map,
+		// but that was the missing goal update (MoveObject).
+		mGoalFlags = FollowGoalFlags | (useTargetPosition ? 0x040 : 0);
 		mTargetId = object->GetId();
 		mGoalPosition = object->GetPosition();
-		mTargetPosition = mGoalPosition;
-		mFacing = FacingToward(mObject->GetPosition(), mGoalPosition, mFacing);
+		mTargetPosition = glm::zero<glm::vec3>();
+		mFacing = glm::zero<glm::vec3>();
 		mAllowedStopDistance = distance;
 		mDesiredStopDistance = distance;
 
@@ -607,7 +608,12 @@ LAB_009ef634:
 			mObject->SetPositionSimulated(mJumpArc->GetGroundAt(mJumpSeconds));
 		}
 		mJumpArc.reset();
-		mWalkDistanceLeft = 0;
+		// A walk cut short stops where the client has it by now, not at the goal the server already
+		// stands on: stopped there, the client jumped ahead (2.5 units as a pet left its follow).
+		if (mWalk.IsWalking()) {
+			mObject->SetPositionSimulated(mWalk.GetPosition());
+		}
+		mWalk.Clear();
 
 		// reset data
 		mTargetId = 0;
@@ -649,7 +655,7 @@ LAB_009ef634:
 	}
 
 	bool Locomotion::IsStopped() const {
-		return mGoalFlags == 0x020 && !mJumpArc && mWalkDistanceLeft <= 0 && mExternalLinearVelocity == glm::zero<glm::vec3>();
+		return mGoalFlags == 0x020 && !mJumpArc && !mWalk.IsWalking() && mExternalLinearVelocity == glm::zero<glm::vec3>();
 	}
 
 	void Locomotion::TeleportAndFace(const glm::vec3& position, const glm::vec3& direction) {
@@ -781,14 +787,12 @@ LAB_009ef634:
 		return mJumpArc.has_value();
 	}
 
-	void Locomotion::StartWalk(float distance, float speed) {
-		// No speed means the walk cannot be timed, so it counts as there.
-		mWalkSpeed = speed;
-		mWalkDistanceLeft = speed > 0 ? std::max(distance, 0.f) : 0.f;
+	void Locomotion::StartWalk(const glm::vec3& from, const glm::vec3& to, float speed) {
+		mWalk.Start(from, to, speed);
 	}
 
 	float Locomotion::GetWalkDistanceLeft() const {
-		return mWalkDistanceLeft;
+		return mWalk.GetDistanceLeft();
 	}
 
 	void Locomotion::WriteTo(RakNet::BitStream& stream) const {

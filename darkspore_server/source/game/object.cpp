@@ -507,8 +507,13 @@ namespace Game {
 		const float angle = (static_cast<float>(mObject.GetId() % 4) - 1.5f) * spreadRadians;
 		const glm::vec3 side = glm::angleAxis(angle, glm::vec3(0.f, 0.f, 1.f)) * glm::normalize(away);
 
-		// The idle's exit stops the agent, so it goes before the walk, not after.
-		mBehavior.Exit();
+		// The idle's exit stops the agent, so it goes before the walk, not after. That stop is not
+		// sent: the client still walked the follow, and a stop at the server's guess of where it was
+		// snapped the pet back up to 3 units as it turned to the enemy.
+		{
+			const MoveHold hold(mObject.GetGame(), mObject.GetId());
+			mBehavior.Exit();
+		}
 		locomotion->SetGoalPosition(target + side * distance);
 		mPursuedId = cast.target->GetId();
 		mPursuedAt = target;
