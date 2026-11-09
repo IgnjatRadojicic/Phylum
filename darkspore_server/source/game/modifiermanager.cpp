@@ -133,6 +133,24 @@ namespace Game {
 		return ids;
 	}
 
+	bool ModifierManager::HasAny(uint32_t agent) const {
+		for (const auto& [_, instance] : mInstances) {
+			if (instance.agent == agent) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool ModifierManager::HasAny(uint32_t agent, uint32_t guid) const {
+		for (const auto& [_, instance] : mInstances) {
+			if (instance.agent == agent && instance.spec.guid == guid) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	uint32_t ModifierManager::GetRemainingMs(uint32_t id, uint64_t now) const {
 		const auto instance = Get(id);
 		if (!instance || instance->spec.durationMs == 0) {

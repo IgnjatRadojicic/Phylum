@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 // Game
@@ -75,6 +76,7 @@ namespace Game {
 			void Stack(uint32_t id);
 			void Finish(uint32_t id);
 			void EndByEvent(uint32_t id);
+			static bool Listens(const sol::table& context, uint32_t type);
 
 			bool CallScript(const char* function, sol::table context, sol::object argument = sol::lua_nil);
 			void SendUpdated(uint32_t id, bool restarted);
@@ -85,6 +87,8 @@ namespace Game {
 
 			ModifierManager mManager;
 			std::unordered_map<uint32_t, Run> mRuns;
+			// Ids inside Finish, so a deactivate script cannot end its own modifier a second time.
+			std::unordered_set<uint32_t> mFinishing;
 	};
 }
 

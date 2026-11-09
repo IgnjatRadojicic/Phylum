@@ -1007,7 +1007,7 @@ namespace {
 				Wait(100);
 				const bool ended = agent->GetLuaThread() == nullptr && watcher.get_or("ended", 0) == 1;
 
-				Report("lost-modifier-ends-watcher", running && ended && watcher.get_or("heard", 0) >= 1,
+				Report("lost-modifier-ends-watcher", running && ended && watcher.get_or("heard", 0) == 1,
 					"id=" + std::to_string(id) + " running=" + std::to_string(running) + " ended=" + std::to_string(ended) +
 					" heard=" + std::to_string(watcher.get_or("heard", 0)));
 			}

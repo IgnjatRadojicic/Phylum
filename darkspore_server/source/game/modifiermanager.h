@@ -103,6 +103,10 @@ namespace Game {
 			const ModifierInstance* FindFirst(uint32_t agent, uint32_t guid) const;
 			std::vector<uint32_t> GetAll(uint32_t agent) const;
 
+			// Whether the agent holds any modifier (of that GUID), counting ones marked to end.
+			bool HasAny(uint32_t agent) const;
+			bool HasAny(uint32_t agent, uint32_t guid) const;
+
 			uint32_t GetRemainingMs(uint32_t id, uint64_t now) const;
 
 		private:

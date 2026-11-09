@@ -204,6 +204,16 @@ namespace Game {
 	}
 
 	void ModifierSystem::Finish(uint32_t id) {
+		// A deactivate script can end its own modifier again (an event it raises, its agent's death).
+		if (!mFinishing.insert(id).second) {
+			return;
+		}
+		struct Done {
+			std::unordered_set<uint32_t>& finishing;
+			uint32_t id;
+			~Done() { finishing.erase(id); }
+		} done { mFinishing, id };
+
 		const auto it = mRuns.find(id);
 		if (it == mRuns.end()) {
 			mManager.Remove(id);
@@ -252,7 +262,9 @@ namespace Game {
 		// Last, as in the client (0x9e11f0 raises it at 0x9e1261 after the modifier has left the
 		// agent), and only when no other modifier of that GUID is left. An agent on its way out
 		// hears nothing: its other modifiers are ending with it.
-		if (object && !object->IsMarkedForDeletion() && !mManager.FindFirst(agent, guid)) {
+		// One marked to end still counts: it sends the event itself when it goes, so two of a GUID
+		// ending in one frame send it once.
+		if (object && !object->IsMarkedForDeletion() && !mManager.HasAny(agent, guid)) {
 			if (auto events = mGame.GetActionEvents()) {
 				events->LostModifierOfType(agent, guid);
 			}
@@ -260,6 +272,8 @@ namespace Game {
 	}
 
 	void ModifierSystem::DeliverEvent(uint32_t agent, const sol::table& data) {
+		const auto type = data.get_or<uint32_t>("eventType", 0);
+
 		// A copy of the ids, because handlers can start and end modifiers.
 		for (const uint32_t id : mManager.GetAll(agent)) {
 			const auto it = mRuns.find(id);
@@ -267,7 +281,13 @@ namespace Game {
 				continue;
 			}
 
+			// The same test ModifierApi.HandleEvent makes, here so a modifier that doesn't listen costs
+			// no Lua thread. Read on every event, because a script can change its handledEvents.
 			sol::table context(it->second.context);
+			if (!Listens(context, type)) {
+				continue;
+			}
+
 			CallScript("HandleEvent", context, data);
 			if (context.get_or("endsByEvent", false)) {
 				EndByEvent(id);
@@ -276,7 +296,18 @@ namespace Game {
 	}
 
 	bool ModifierSystem::HasModifiers(uint32_t agent) const {
-		return !mManager.GetAll(agent).empty();
+		return mManager.HasAny(agent);
+	}
+
+	bool ModifierSystem::Listens(const sol::table& context, uint32_t type) {
+		const sol::optional<sol::table> script = context["ability"];
+		if (!script || type == 0) {
+			return false;
+		}
+
+		// nBit works on doubles, so a flag set can come back negative; the low 32 bits are the flags.
+		const auto flags = static_cast<uint32_t>(static_cast<int64_t>(script->get_or<double>("handledEvents", 0)));
+		return (flags & type) != 0;
 	}
 
 	void ModifierSystem::EndByEvent(uint32_t id) {
@@ -285,9 +316,13 @@ namespace Game {
 			return;
 		}
 
-		if (const auto instance = mManager.Get(id)) {
-			Trace("ending-on-event", instance->spec.guid, id, instance->agent, instance->initiator);
+		// Already ending (deferred, or inside its own Deactivate): ending it again would run Deactivate
+		// and send ModifierDeleted twice.
+		const auto instance = mManager.Get(id);
+		if (!instance || instance->markedForDelete) {
+			return;
 		}
+		Trace("ending-on-event", instance->spec.guid, id, instance->agent, instance->initiator);
 
 		// A thread cannot be stopped while it runs, so a modifier that sent the event to its own
 		// agent ends at the next update instead, as the client defers an instance it is inside

@@ -26,8 +26,8 @@ namespace Game {
 	//     hears it too: modifier_gravityorb_passive hides its orb when GUID 1 is its own agent.
 	//   StartedNewAction: to an agent that starts a cast or is given somewhere to go. No slots.
 	//     Sleeping Cloud's channel ends on it.
-	//   BreakRoot: to an object that is teleported, before it moves (0xa09b2c). No slots. The
-	//     roots end on it.
+	//   BreakRoot: to an object that is teleported, before it moves (0xa09b2c). No slots. No root
+	//     ends on it: their numbered HandleEvent answers nil (see docs/events.md).
 	//   LostModifierOfType: to an agent whose last modifier of a GUID ended, GUID 1 that modifier's
 	//     GUID (0x9e1261). Stealth Attack ends when its stealth goes.
 	//   PlayerSwap: to the hero that leaves the field. No slots. The Field Medic buff ends on it.
