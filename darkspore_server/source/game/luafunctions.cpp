@@ -75,15 +75,29 @@ namespace {
 		return result;
 	}
 
+	// Scripts give a point as a vector or as a plain list of three numbers (the targeted AOE template
+	// notifies its aoeEffect at {x, y, z}). Anything else leaves the point as it was.
+	void LuaReadPoint(const sol::object& value, glm::vec3& point) {
+		if (value.is<glm::vec3>()) {
+			point = value.as<glm::vec3>();
+		} else if (value.get_type() == sol::type::table) {
+			const auto list = value.as<sol::table>();
+			const sol::optional<float> x = list[1], y = list[2], z = list[3];
+			if (x && y && z) {
+				point = glm::vec3(*x, *y, *z);
+			}
+		}
+	}
+
 	auto LuaGetServerEvent(const Game::ObjectManager& objectManager, const sol::table& value) {
 		Game::ServerEvent serverEvent;
 		serverEvent.mServerEventDef = value.get_or<uint32_t>("asset", 0);
 		serverEvent.mObjectId = value.get_or<uint32_t>("objectId", 0);
 		serverEvent.mSimpleSwarmEffectId = value.get_or<uint32_t>("simpleSwarmEffectId", 0);
 
-		if (sol::object eventData = value["position"]; eventData.is<glm::vec3>()) { serverEvent.mPosition = eventData.as<glm::vec3>(); }
-		if (sol::object eventData = value["facing"]; eventData.is<glm::vec3>()) { serverEvent.mFacing = eventData.as<glm::vec3>(); }
-		if (sol::object eventData = value["targetPoint"]; eventData.is<glm::vec3>()) { serverEvent.mTargetPoint = eventData.as<glm::vec3>(); }
+		LuaReadPoint(value["position"], serverEvent.mPosition);
+		LuaReadPoint(value["facing"], serverEvent.mFacing);
+		LuaReadPoint(value["targetPoint"], serverEvent.mTargetPoint);
 
 		const auto& object = objectManager.Get(serverEvent.mObjectId);
 		if (object) {

@@ -89,7 +89,8 @@ namespace Game {
 			void WriteReflection(RakNet::BitStream& stream) const override;
 
 		public:
-			glm::quat mOrientation {};
+			// Identity, not glm's all-zero quaternion: Darkspin leaves the field out.
+			glm::quat mOrientation { 1.f, 0.f, 0.f, 0.f };
 			glm::vec3 mPosition {};
 			glm::vec3 mFacing {};
 			glm::vec3 mTargetPoint {};
