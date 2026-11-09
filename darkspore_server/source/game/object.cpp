@@ -1111,6 +1111,19 @@ namespace Game {
 		}
 	}
 
+	uint32_t Object::GetCreatureType() const {
+		if (!mNoun) {
+			return 0;
+		}
+		if (const auto& playerClass = mNoun->GetPlayerClassData()) {
+			return playerClass->GetCreatureType();
+		}
+		if (const auto& nonPlayerClass = mNoun->GetNonPlayerClassData()) {
+			return nonPlayerClass->GetCreatureType();
+		}
+		return 0;
+	}
+
 	float Object::GetFootprintRadius() const {
 		float result = 0;
 		if (mNoun) {

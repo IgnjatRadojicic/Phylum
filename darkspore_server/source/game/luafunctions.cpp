@@ -2424,6 +2424,7 @@ namespace Game {
 		object["GetFacing"] = &LuaFunction::Object::GetFacing;
 		object["GetObjectAngleDeg"] = &LuaFunction::Object::GetObjectAngleDeg;
 		object["GetFootprintRadius"] = &Object::GetFootprintRadius;
+		object["GetCreatureType"] = &Object::GetCreatureType;
 		object["GetRightDirection"] = &LuaFunction::Object::GetRightDirection;
 		object["GetCenterPoint"] = &Object::GetCenterPoint;
 

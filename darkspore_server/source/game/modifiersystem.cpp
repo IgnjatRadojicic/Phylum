@@ -8,10 +8,29 @@
 #include "object.h"
 #include "objectmanager.h"
 
+#include "utils/functions.h"
+
 #include <algorithm>
 
 // Game
 namespace Game {
+	namespace {
+		// A tick that returns ends a modifier with no duration that is not bound to its agent's
+		// life (scripts that stay on end their tick in WaitForever). One more: the hero's deploy
+		// bonus waits out the gear's invincibility time (DeployBonusInvincibilityTime, 0 without
+		// gear) and returns, and its Deactivate takes the Immune and the shield off. It is
+		// OnAgentDeath, but held on until death it would leave every swapped-in hero immune.
+		// The client never ends a modifier on a returned tick (0x8f0fb0), so this is the server's.
+		constexpr uint32_t kDeployBonus = utils::hash_id("Deploy_BonusModifier");
+
+		bool EndsWithTick(const ModifierSpec& spec) {
+			if (spec.guid == kDeployBonus) {
+				return true;
+			}
+			return spec.durationMs == 0 && spec.deactivation == DeactivationType::Default;
+		}
+	}
+
 	ModifierSystem::ModifierSystem(Instance& game) : mGame(game) {}
 
 	uint32_t ModifierSystem::Request(const ModifierSpec& spec, const ModifierDurationRules& rules, float seconds, uint32_t agent, uint32_t initiator, sol::table context) {
@@ -154,7 +173,7 @@ namespace Game {
 		// Abilities have instance numbers too, and they can equal this id.
 		context["instanceId"] = id;
 		context["modifierId"] = id;
-		context["endsWithTick"] = instance->spec.durationMs == 0 && instance->spec.deactivation == DeactivationType::Default;
+		context["endsWithTick"] = EndsWithTick(instance->spec);
 		mRuns[id].context = sol::main_table(context);
 
 		if (const auto object = mGame.GetObjectManager().Get(instance->agent)) {

@@ -1051,6 +1051,21 @@ namespace {
 			end
 		end
 
+		-- A modifier the engine puts on an agent itself, outside any cast. Returns its id or 0.
+		local function RequestByEngine(agent, guid, rank)
+			-- A request keeps its cast context per coroutine, so it needs one. A plain one,
+			-- not the object's own thread, so nothing that cancels the object's cast reaches it.
+			local request = coroutine.create(function()
+				return nModifier.RequestModifier(agent, agent, guid, nil, rank)
+			end)
+			local ok, id = coroutine.resume(request)
+			CastContext.Forget(request)
+			if not ok then
+				error(id)
+			end
+			return (id and id ~= kObjIDNone) and id or 0
+		end
+
 		-- A class's always-on modifier (see PassiveModifiers in passivemodifiers.h). Some class
 		-- data names something that is no modifier, which is left alone.
 		function ModifierApi.StartPassive(agent, guid)
@@ -1060,18 +1075,20 @@ namespace {
 				ScriptTrace("PASSIVE agent=" .. agent .. " guid=" .. guid .. " skipped=" .. skip)
 				return 0
 			end
-			-- A request keeps its cast context per coroutine, so it needs one. A plain one,
-			-- not the object's own thread, so nothing that cancels the object's cast reaches it.
-			local request = coroutine.create(function()
-				return nModifier.RequestModifier(agent, agent, guid, nil, 1)
-			end)
-			local ok, id = coroutine.resume(request)
-			CastContext.Forget(request)
-			if not ok then
-				error(id)
-			end
-			id = (id and id ~= kObjIDNone) and id or 0
+			local id = RequestByEngine(agent, guid, 1)
 			ScriptTrace("PASSIVE agent=" .. agent .. " guid=" .. guid .. " id=" .. id)
+			return id
+		end
+
+		-- The game's DeployModifier on a hero that arrives (see HeroDeploy in herodeploy.h).
+		function ModifierApi.Deploy(agent, rank)
+			local guid = nUtil.SPID("DeployModifier")
+			if not nModifier.registered[guid] then
+				ScriptTrace("DEPLOY agent=" .. agent .. " skipped=unregistered")
+				return 0
+			end
+			local id = RequestByEngine(agent, guid, rank)
+			ScriptTrace("DEPLOY agent=" .. agent .. " rank=" .. rank .. " id=" .. id)
 			return id
 		end
 

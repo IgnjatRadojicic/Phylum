@@ -11,6 +11,7 @@
 #include "actionevents.h"
 #include "abilityeventdelivery.h"
 #include "passivemodifiers.h"
+#include "herodeploy.h"
 #include "scripttriggervolumes.h"
 #include "serverevent.h"
 #include "catalyst.h"
@@ -986,6 +987,7 @@ namespace Game {
 				StopPassive(outgoing);
 				StartPassive(incoming);
 
+				SendServerEvent(HeroDeploy::BeamOut(*outgoing));
 				SendObjectUpdate(outgoing);
 				for (const auto& [_, client] : mServer->GetClients()) {
 					mServer->SendObjectTeleport(client, incoming, incoming->GetPosition(), incoming->GetOrientation());
@@ -997,6 +999,11 @@ namespace Game {
 		// set player current creature
 		for (const auto& [_, client] : mServer->GetClients()) {
 			mServer->SendPlayerCharacterDeploy(client, player, creatureIndex);
+		}
+
+		// The incoming hero then beams in through the game's own deploy script.
+		if (incoming && outgoing != incoming && mLua && mScriptsReady) {
+			HeroDeploy(*mLua).Start(incoming, HeroDeploy::Arrival::Swap);
 		}
 
 		SendLabsPlayerUpdate(player);

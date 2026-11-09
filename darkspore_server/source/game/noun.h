@@ -255,6 +255,9 @@ namespace Game {
 			Homeworld GetHomeworld() const;
 			PrimaryAttribute GetPrimaryAttribute() const;
 
+			// Its element, numbered as the scripts' nDamageTypes (Technology 0 ... Supernatural 4).
+			uint32_t GetCreatureType() const { return mCreatureType; }
+
 		private:
 			std::shared_ptr<ClassAttributes> mAttributes;
 			uint32_t mPassiveModifier = 0;
@@ -304,6 +307,9 @@ namespace Game {
 
 			bool IsTargetable() const;
 			bool IsPet() const;
+
+			// Its element, numbered as the scripts' nDamageTypes (Technology 0 ... Supernatural 4).
+			uint32_t GetCreatureType() const { return mCreatureType; }
 
 		private:
 			std::shared_ptr<ClassAttributes> mAttributes;
