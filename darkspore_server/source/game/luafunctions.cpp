@@ -1989,8 +1989,10 @@ namespace Game {
 				}
 			}
 
+			// A time since the thread started, not a delay: a cast's later waits name the moment of
+			// their step (Swipe hits at 0.73 and lets go at 2.23). One already past waits one update.
 			if (seconds > 0) {
-				uint64_t time = utils::get_milliseconds() + static_cast<uint64_t>(seconds * 1000);
+				uint64_t time = thread->started_ms() + static_cast<uint64_t>(seconds * 1000);
 				thread->set_resume_condition([time](lua_State* L, sol::variadic_results& results) { return utils::get_milliseconds() >= time; });
 			}
 

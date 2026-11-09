@@ -43,6 +43,10 @@ namespace Game {
 			// A finished or failed thread is free. Only one waiting to resume is still in use.
 			bool is_waiting() const { return mCoroutine.valid() && mCoroutine.status() == sol::call_status::yielded; }
 
+			// When the thread was given its function. WaitUntilTime counts from it (client 0xA077E0
+			// compares the time since thread+0xE8), while WaitForXSeconds counts from the call.
+			uint64_t started_ms() const { return mStartMs; }
+
 			sol::object get_value(const std::string& key) const;
 			void set_value(const std::string& key, sol::object&& value);
 
@@ -112,6 +116,7 @@ namespace Game {
 			bool mEndRequested = false;
 
 			ResumeCondition mResumeCondition;
+			uint64_t mStartMs = 0;
 			std::function<void()> mOnNextResumeFailure;
 
 			sol::thread mThread;

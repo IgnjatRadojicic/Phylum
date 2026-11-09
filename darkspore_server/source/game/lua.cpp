@@ -154,6 +154,7 @@ namespace Game {
 		// Reset coroutine
 		mCoroutine = sol::nil;
 		mCoroutine = sol::coroutine(mThread.thread_state(), sol::ref_index(func.registry_index()));
+		mStartMs = utils::get_milliseconds();
 	}
 
 	void LuaThread::renew() {
